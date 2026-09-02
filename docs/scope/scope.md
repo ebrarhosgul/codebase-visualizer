@@ -58,7 +58,7 @@ spec [0004](../specs/0004-design-system-and-ui-foundation/index.md) · code in `
 - [x] Design it (spec): `/architect design system & UI foundation`
 - [ ] Build it: `/develop design system & UI foundation`
   - [x] Tokens & specifications: Semantic color palette, typography scales, globals.css, and living design.md (AC-1, AC-4, AC-8)
-  - [ ] Layout state & split panes: Zustand workspace store, react-resizable-panels, and responsive drawer fallbacks (AC-2, AC-7, AC-9)
+  - [x] Layout state & split panes: Zustand workspace store, react-resizable-panels, and responsive drawer fallbacks (AC-2, AC-7, AC-9)
   - [ ] Interactive primitives: Button, IconButton, Badge, Input, Tooltip, Dialog, Tabs, and DropdownMenu (AC-3, AC-6)
   - [ ] Canvas controls & node cards: Custom React Flow nodes, syntax badges, minimap, and controls toolbar (AC-5)
 - [ ] Verify it: `/check verify design system & UI foundation`
