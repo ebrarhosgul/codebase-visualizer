@@ -113,7 +113,7 @@ function buildDirectoryHierarchy(
 
   // Freeze into canonical DirectoryNode records
   const result: Record<string, DirectoryNode> = {};
-  for (const [key, d] of Object.entries(dirMap)) {
+  for (const d of Object.values(dirMap)) {
     result[d.id] = {
       id: d.id,
       path: d.path,

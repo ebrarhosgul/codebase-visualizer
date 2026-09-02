@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
  * Properties for the primary workspace layout container.
  */
 export interface WorkspaceLayoutProps {
+  readonly headerContent?: React.ReactNode;
   readonly leftContent: React.ReactNode;
   readonly centerContent: React.ReactNode;
   readonly rightContent: React.ReactNode;
@@ -30,6 +31,7 @@ export interface WorkspaceLayoutProps {
  * panel collapse states, and small screen drawer fallbacks.
  */
 export function WorkspaceLayout({
+  headerContent,
   leftContent,
   centerContent,
   rightContent,
@@ -151,6 +153,12 @@ export function WorkspaceLayout({
             <span>Inspector</span>
           </button>
         </header>
+
+        {headerContent && (
+          <div className="p-2 border-b border-[var(--border-subtle)] bg-[var(--surface-panel-secondary)] shrink-0 z-10">
+            {headerContent}
+          </div>
+        )}
 
         {/* Center graph canvas taking uncompressed viewport */}
         <main
@@ -339,22 +347,29 @@ export function WorkspaceLayout({
         className,
       )}
     >
-      <ResizableSplitPane
-        direction="horizontal"
-        panels={panels}
-        onResize={(sizes) => {
-          if (!isLeftCollapsed && sizes[0] !== undefined) {
-            setLeftSidebarWidth(sizes[0]);
-          }
-          if (!isRightCollapsed) {
-            const rightIndex = panels.length - 1;
-            const rightSize = sizes[rightIndex];
-            if (rightSize !== undefined) {
-              setRightPanelWidth(rightSize);
+      {headerContent && (
+        <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--surface-panel)] flex items-center px-4 shrink-0 z-20">
+          {headerContent}
+        </header>
+      )}
+      <div className="flex-1 min-h-0 relative">
+        <ResizableSplitPane
+          direction="horizontal"
+          panels={panels}
+          onResize={(sizes) => {
+            if (!isLeftCollapsed && sizes[0] !== undefined) {
+              setLeftSidebarWidth(sizes[0]);
             }
-          }
-        }}
-      />
+            if (!isRightCollapsed) {
+              const rightIndex = panels.length - 1;
+              const rightSize = sizes[rightIndex];
+              if (rightSize !== undefined) {
+                setRightPanelWidth(rightSize);
+              }
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }
