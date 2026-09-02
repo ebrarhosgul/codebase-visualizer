@@ -2,31 +2,35 @@
 
 _Steps derived from spec 0004 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
 
+## UI / manual
+
+- [ ] Inspect page in browser → dark theme renders by default without white flash on reload → AC-1
+- [ ] Inspect surface and text contrast in DevTools → text contrast exceeds 4.5 to 1, borders exceed 3 to 1 → AC-1, AC-4
+- [ ] Drag split pane separators between explorer, canvas, and inspector → panels resize smoothly and maintain minimum bounds → AC-2
+- [ ] Collapse left explorer panel → panel folds away, expand button appears, keyboard focus transfers to expand toggle → AC-2, AC-3
+- [ ] Collapse right inspector panel → panel folds away, expand button appears, keyboard focus transfers to expand toggle → AC-2, AC-3
+- [ ] Reload browser after resizing or collapsing panels → dimensions and collapse states restore from local storage → AC-2, AC-7
+- [ ] Tab through interactive controls using keyboard → focus rings appear with 2px offset on buttons, inputs, tabs, and drag handles → AC-3
+- [ ] Navigate split pane drag handles with arrow keys → panel size adjusts predictably by keyboard → AC-3
+- [ ] Resize viewport width below 860px → layout switches to uncompressed canvas with overlay slide over drawers for files and inspector → AC-9
+- [ ] Open overlay drawers on narrow screen and press Escape key → drawer closes safely and returns focus → AC-3, AC-9
+- [ ] Inspect React Flow node cards → dark slate background, syntax colored file type badges, and collapsible detail rows render correctly → AC-5
+- [ ] Click zoom in, zoom out, fit view, and minimap toggle buttons on canvas controls toolbar → canvas responds with correct zoom actions → AC-5
+- [ ] Switch tabs in right inspector panel between Code, Inspector, and Trace → corresponding tab panels display smoothly → AC-6
+
 ## Commands
 
 - [ ] `npm run typecheck` → passes with strict TypeScript validation across layout components, store, and primitives → AC-2, AC-6, AC-7
 - [ ] `npm run lint` → passes without lint errors across all component and layout files → AC-1, AC-6
-- [ ] `npm test` → Vitest suite passes all unit and component tests for layout store, split pane resizing, responsive breakpoints, and base UI primitives → AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-9
+- [ ] `npm test` → Vitest suite passes all 68 unit and component tests for layout store, split pane resizing, responsive breakpoints, and base UI primitives → AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-9
 - [ ] `npm run build` → Next.js production build succeeds with clean stylesheet bundling → AC-1, AC-4, AC-8
-
-## Verification checklist
-
-- [ ] Dark mode first color tokens defined in `src/app/globals.css` provide high contrast ratios meeting WCAG AA standards → AC-1
-- [ ] Three pane resizable layout allows dragging pane boundaries, enforcing minimum width limits, and collapsing sidebars → AC-2
-- [ ] Split pane handles, buttons, tabs, dialogs, and dropdown menus support keyboard navigation with visible focus rings → AC-3
-- [ ] Typography scale pairs Geist Sans and Geist Mono with uniform line heights for compact developer interfaces → AC-4
-- [ ] React Flow canvas theme customizes node cards with syntax colored badges, minimap styling, and controls bar → AC-5
-- [ ] Base user interface primitives (Button, IconButton, Badge, Input, Tooltip, Dialog, Tabs, DropdownMenu) render predictably → AC-6
-- [ ] Zustand layout store saves panel dimensions to browser `localStorage` and restores them safely without hydration mismatch → AC-7
-- [ ] Canonical design specification in `docs/design.md` documents tokens, spacing scales, and accessibility conventions → AC-8
-- [ ] Viewports narrower than 860px adaptively transition side panels to slide over overlay drawers → AC-9
 
 ## Acceptance criteria coverage
 
-- AC-1 dark mode color tokens covered by `src/app/globals.css` and token contrast verification tests
+- AC-1 dark mode color tokens covered by `src/app/globals.css`, inline head script, and contrast checks
 - AC-2 resizable split pane layout covered by `src/components/layout/` and workspace layout tests
-- AC-3 keyboard and accessibility compliance covered by component accessibility unit tests
-- AC-4 developer typography scale covered by `src/app/globals.css` and layout styling
+- AC-3 keyboard and accessibility compliance covered by focus rings, ARIA roles, and component unit tests
+- AC-4 developer typography scale covered by Geist Sans and Geist Mono in `src/app/globals.css`
 - AC-5 React Flow theme and custom nodes covered by `src/components/canvas/` and canvas rendering tests
 - AC-6 base component foundation covered by `src/components/ui/` and primitive unit tests
 - AC-7 workspace layout state store covered by `src/stores/workspace-store.ts` and store persistence tests
