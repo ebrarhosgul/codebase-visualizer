@@ -6,4 +6,5 @@ export * from "./file";
 export * from "./symbol";
 export * from "./edge";
 export * from "./codebase-graph";
+export * from "./path-trace";
 export * from "./serialization";
