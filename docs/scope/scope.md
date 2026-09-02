@@ -15,7 +15,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 2 | Coding standards & tooling | Foundation | in-progress |
 | 3 | Graph and repository data model | Foundation | in-progress |
 | 4 | Design system & UI foundation | Foundation | in-progress |
-| 5 | Walking skeleton loop | Slice 1 | planned |
+| 5 | Walking skeleton loop | Slice 1 | in-progress |
 | 6 | Bidirectional graph and code deep linking | Slice 2 | planned |
 | 7 | Architectural filtering and layer inspection | Slice 3 | planned |
 | 8 | Semantic AI query and path tracing | Slice 4 | planned |
@@ -61,15 +61,23 @@ spec [0004](../specs/0004-design-system-and-ui-foundation/index.md) · code in `
   - [x] Layout state & split panes: Zustand workspace store, react-resizable-panels, and responsive drawer fallbacks (AC-2, AC-7, AC-9)
   - [x] Interactive primitives: Button, IconButton, Badge, Input, Tooltip, Dialog, Tabs, and DropdownMenu (AC-3, AC-6)
   - [x] Canvas controls & node cards: Custom React Flow nodes, syntax badges, minimap, and controls toolbar (AC-5)
-- [ ] Verify it: `/check verify design system & UI foundation`
+- [x] Verify it: `/check verify design system & UI foundation`
 - [ ] Test it: `/test design system & UI foundation`
 
 ## Slice 1: Walking skeleton loop
 
-### 5. Walking skeleton loop · needs a decision
+### 5. Walking skeleton loop · in-progress
 The thinnest end to end slice: accept a public GitHub URL, parse TypeScript and JavaScript files into basic nodes and dependency edges, render an interactive canvas, and display source code side by side when selecting a node.
 **Done when:** a user can submit a public GitHub repository, watch the graph render, click a file node, and view the raw code in a side panel.
-- [ ] Design it (spec): `/architect walking skeleton loop`
+spec [0005](../specs/0005-walking-skeleton-loop/index.md) · code in `src/`
+- [x] Design it (spec): `/architect walking skeleton loop`
+- [x] Build it: `/develop walking skeleton loop`
+  - [x] Ingestion pipeline & archive extraction: GitHub tarball client, rate limits, in memory tar extraction, and streaming SSE route handler (AC-1, AC-2, AC-3, AC-9)
+  - [x] In memory AST parsing: ts-morph virtual file system extracting canonical files, directories, external stubs, and import edges (AC-3, AC-4)
+  - [x] Graph state & layout calculation: Zustand useGraphStore and client Dagre hierarchical layout utility (AC-5, AC-8)
+  - [x] Canvas rendering & Monaco code inspection: React Flow interactive canvas with custom node cards and dynamically mounted Monaco Editor in split view (AC-6, AC-7, AC-8)
+- [ ] Verify it: `/check verify walking skeleton loop`
+- [ ] Test it: `/test walking skeleton loop`
 
 ## Slice 2: Bidirectional graph and code deep linking
 
