@@ -12,7 +12,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | # | Feature | Phase | Status |
 |---|---------|-------|--------|
 | 1 | Stack & architecture | Foundation | in-progress |
-| 2 | Coding standards & tooling | Foundation | planned |
+| 2 | Coding standards & tooling | Foundation | in-progress |
 | 3 | Graph and repository data model | Foundation | planned |
 | 4 | Design system & UI foundation | Foundation | planned |
 | 5 | Walking skeleton loop | Slice 1 | planned |
@@ -31,11 +31,11 @@ spec [0001](../specs/0001-stack-and-architecture/index.md) · code in `src/`
 - [x] Scaffold from the decision: `/develop stack & architecture`
 - [ ] Smoke check it runs: `/test`
 
-### 2. Coding standards & tooling
+### 2. Coding standards & tooling · in-progress
 Capture conventions, then install linting, formatting, and pre commit quality checks from the real scaffolded project.
 **Done when:** root `AGENTS.md` reflects the real stack, and lint and format checks run clean.
-- [ ] Capture conventions + tooling choices: `/audit`
-- [ ] Install the tooling: `/develop tooling`
+- [x] Capture conventions + tooling choices: `/audit`
+- [x] Install the tooling: `/develop tooling`
 - [ ] Check it runs clean: `/test`
 
 ### 3. Graph and repository data model · needs a decision

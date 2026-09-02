@@ -6,7 +6,8 @@ export default function Home() {
           Codebase Visualizer
         </h1>
         <p className="text-lg text-neutral-400">
-          Transform any public GitHub repository into an interactive architecture map.
+          Transform any public GitHub repository into an interactive
+          architecture map.
         </p>
         <div className="pt-4 flex justify-center gap-3">
           <span className="px-3 py-1 text-xs rounded-full bg-neutral-800 text-neutral-300 border border-neutral-700">
