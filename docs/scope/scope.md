@@ -56,11 +56,11 @@ Establish layout primitives for dense split screen exploration, graph canvas sty
 **Done when:** `design.md` covers color tokens, split panes, canvas controls, and base components meet keyboard and accessibility standards.
 spec [0004](../specs/0004-design-system-and-ui-foundation/index.md) · code in `src/components/`, `src/stores/`
 - [x] Design it (spec): `/architect design system & UI foundation`
-- [ ] Build it: `/develop design system & UI foundation`
+- [x] Build it: `/develop design system & UI foundation`
   - [x] Tokens & specifications: Semantic color palette, typography scales, globals.css, and living design.md (AC-1, AC-4, AC-8)
   - [x] Layout state & split panes: Zustand workspace store, react-resizable-panels, and responsive drawer fallbacks (AC-2, AC-7, AC-9)
   - [x] Interactive primitives: Button, IconButton, Badge, Input, Tooltip, Dialog, Tabs, and DropdownMenu (AC-3, AC-6)
-  - [ ] Canvas controls & node cards: Custom React Flow nodes, syntax badges, minimap, and controls toolbar (AC-5)
+  - [x] Canvas controls & node cards: Custom React Flow nodes, syntax badges, minimap, and controls toolbar (AC-5)
 - [ ] Verify it: `/check verify design system & UI foundation`
 - [ ] Test it: `/test design system & UI foundation`
 
