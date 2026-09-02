@@ -140,7 +140,7 @@ Ordered build tasks following the Tracer Bullet delivery approach:
 2. [x] Establish the canonical design specification document in `docs/design.md` covering tokens, spacing, and component states, satisfies **AC-8**
 3. [x] Construct the workspace layout Zustand store with `partialize` persistence, hydration guards, and responsive breakpoint listeners (`src/stores/workspace-store.ts`), satisfies **AC-7**, **AC-9**
 4. [x] Install `react-resizable-panels`, `lucide-react`, and `clsx`, and build the `ResizableSplitPane` workspace layout with responsive drawer fallbacks (`src/components/layout/`), satisfies **AC-2**, **AC-3**, **AC-9**
-5. Install `@radix-ui/react-dialog`, `@radix-ui/react-tooltip`, `@radix-ui/react-tabs`, and `@radix-ui/react-dropdown-menu`, and implement base interactive component primitives (`src/components/ui/`), satisfies **AC-3**, **AC-6**
+5. [x] Install `@radix-ui/react-dialog`, `@radix-ui/react-tooltip`, `@radix-ui/react-tabs`, and `@radix-ui/react-dropdown-menu`, and implement base interactive component primitives (`src/components/ui/`), satisfies **AC-3**, **AC-6**
 6. Build React Flow custom node cards, syntax badge indicators, minimap styling, and canvas controls bar (`src/components/canvas/`), satisfies **AC-5**
 7. Write unit and component test suite verifying panel persistence, responsive breakpoints, keyboard accessibility, contrast ratios, and component rendering (`src/components/__tests__/`), satisfies **AC-1**, **AC-2**, **AC-3**, **AC-5**, **AC-6**, **AC-7**, **AC-9**
 

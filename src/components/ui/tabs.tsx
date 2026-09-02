@@ -1,0 +1,85 @@
+"use client";
+
+import React from "react";
+import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { cn } from "@/lib/utils";
+
+/**
+ * Item descriptor for the convenient Tabs component.
+ */
+export interface TabItem {
+  readonly value: string;
+  readonly label: React.ReactNode;
+  readonly content?: React.ReactNode;
+  readonly disabled?: boolean;
+}
+
+/**
+ * Properties for the convenience Tabs component.
+ */
+export interface TabsProps {
+  readonly value: string;
+  readonly onValueChange: (val: string) => void;
+  readonly items: readonly TabItem[];
+  readonly className?: string;
+  readonly listClassName?: string;
+}
+
+/**
+ * Accessible tab strip wrapped around Radix Tabs primitives.
+ */
+export function Tabs({
+  value,
+  onValueChange,
+  items,
+  className,
+  listClassName,
+}: TabsProps): React.JSX.Element {
+  return (
+    <TabsPrimitive.Root
+      value={value}
+      onValueChange={onValueChange}
+      className={cn("w-full flex flex-col", className)}
+    >
+      <TabsPrimitive.List
+        className={cn(
+          "h-9 px-1 bg-[var(--surface-panel-secondary)] border-b border-[var(--border-subtle)] flex items-center gap-1 shrink-0",
+          listClassName,
+        )}
+      >
+        {items.map((tab) => (
+          <TabsPrimitive.Trigger
+            key={tab.value}
+            value={tab.value}
+            disabled={tab.disabled}
+            className={cn(
+              "px-2.5 py-1 text-xs font-medium rounded transition-colors select-none",
+              "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]",
+              "focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] focus-visible:outline-offset-1",
+              "data-[state=active]:bg-[var(--surface-card)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:shadow-xs",
+              "disabled:opacity-40 disabled:cursor-not-allowed",
+            )}
+          >
+            {tab.label}
+          </TabsPrimitive.Trigger>
+        ))}
+      </TabsPrimitive.List>
+      {items.map((tab) =>
+        tab.content !== undefined ? (
+          <TabsPrimitive.Content
+            key={tab.value}
+            value={tab.value}
+            className="flex-1 overflow-auto focus-visible:outline-none"
+          >
+            {tab.content}
+          </TabsPrimitive.Content>
+        ) : null,
+      )}
+    </TabsPrimitive.Root>
+  );
+}
+
+export const TabsRoot = TabsPrimitive.Root;
+export const TabsList = TabsPrimitive.List;
+export const TabsTrigger = TabsPrimitive.Trigger;
+export const TabsContent = TabsPrimitive.Content;
