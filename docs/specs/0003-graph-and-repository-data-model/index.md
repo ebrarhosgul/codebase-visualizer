@@ -247,13 +247,13 @@ Repository graph processing is managed in the client Zustand store with an `Abor
 
 Ordered tasks following the Tracer Bullet delivery approach:
 
-1. Create source location schemas, repository entity types, and external module models (`src/entities/source-location.ts`, `src/entities/repository.ts`, `src/entities/external.ts`), satisfies **AC-1**, **AC-2**, **AC-4**, **AC-5**
-2. Define directory, file, and symbol node schemas with deterministic id and anonymous anchor helpers (`src/entities/directory.ts`, `src/entities/file.ts`, `src/entities/symbol.ts`), satisfies **AC-1**, **AC-2**, **AC-3**, **AC-5**
-3. Implement edge taxonomy, aggregation logic, and call site metadata tracking (`src/entities/edge.ts`), satisfies **AC-2**, **AC-4**
-4. Build canonical root graph container, serialization helpers, and schema version guards (`src/entities/codebase-graph.ts`, `src/entities/serialization.ts`), satisfies **AC-1**, **AC-7**
-5. Construct graph traversal utilities and cycle safe path tracing algorithms (`src/graph/traversal.ts`, `src/graph/path-trace.ts`), satisfies **AC-6**
-6. Build pure transformation adapter projecting `CodebaseGraph` into React Flow nodes and edges using `GraphScope` and `FilterOptions` (`src/graph/adapters/react-flow-adapter.ts`), satisfies **AC-8**
-7. Implement unit test suite verifying schema validation, deterministic identifiers, edge aggregation, circular dependency navigation, and serialization round trips (`src/entities/__tests__/`), satisfies **AC-1**, **AC-2**, **AC-3**, **AC-4**, **AC-5**, **AC-6**, **AC-7**, **AC-8**
+1. [x] Create source location schemas, repository entity types, and external module models (`src/entities/source-location.ts`, `src/entities/repository.ts`, `src/entities/external.ts`), satisfies **AC-1**, **AC-2**, **AC-4**, **AC-5**
+2. [x] Define directory, file, and symbol node schemas with deterministic id and anonymous anchor helpers (`src/entities/directory.ts`, `src/entities/file.ts`, `src/entities/symbol.ts`), satisfies **AC-1**, **AC-2**, **AC-3**, **AC-5**
+3. [x] Implement edge taxonomy, aggregation logic, and call site metadata tracking (`src/entities/edge.ts`), satisfies **AC-2**, **AC-4**
+4. [x] Build canonical root graph container, serialization helpers, and schema version guards (`src/entities/codebase-graph.ts`, `src/entities/serialization.ts`), satisfies **AC-1**, **AC-7**
+5. [x] Construct graph traversal utilities and cycle safe path tracing algorithms (`src/graph/traversal.ts`, `src/graph/path-trace.ts`), satisfies **AC-6**
+6. [x] Build pure transformation adapter projecting `CodebaseGraph` into React Flow nodes and edges using `GraphScope` and `FilterOptions` (`src/graph/adapters/react-flow-adapter.ts`), satisfies **AC-8**
+7. [x] Implement unit test suite verifying schema validation, deterministic identifiers, edge aggregation, circular dependency navigation, and serialization round trips (`src/entities/__tests__/`), satisfies **AC-1**, **AC-2**, **AC-3**, **AC-4**, **AC-5**, **AC-6**, **AC-7**, **AC-8**
 
 ## Consequences
 

@@ -13,7 +13,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 |---|---------|-------|--------|
 | 1 | Stack & architecture | Foundation | in-progress |
 | 2 | Coding standards & tooling | Foundation | in-progress |
-| 3 | Graph and repository data model | Foundation | planned |
+| 3 | Graph and repository data model | Foundation | in-progress |
 | 4 | Design system & UI foundation | Foundation | planned |
 | 5 | Walking skeleton loop | Slice 1 | planned |
 | 6 | Bidirectional graph and code deep linking | Slice 2 | planned |
@@ -38,10 +38,18 @@ Capture conventions, then install linting, formatting, and pre commit quality ch
 - [x] Install the tooling: `/develop tooling`
 - [ ] Check it runs clean: `/test`
 
-### 3. Graph and repository data model · needs a decision
+### 3. Graph and repository data model · in-progress
 Define core domain entities for repositories, files, abstract syntax tree nodes, import relationships, function calls, and query path responses.
 **Done when:** the data model represents syntax graphs, symbol definitions, and navigation links without breaking migrations as slices grow.
-- [ ] Design it (spec): `/architect graph and repository data model`
+spec [0003](../specs/0003-graph-and-repository-data-model/index.md) · code in `src/entities/`, `src/graph/`
+- [x] Design it (spec): `/architect graph and repository data model`
+- [x] Build it: `/develop graph and repository data model`
+  - [x] Core schemas: repository, source location, directory, file, and symbol entities (AC-1, AC-2, AC-3, AC-5)
+  - [x] Graph edges: taxonomy, aggregation, and external module models (AC-2, AC-4)
+  - [x] Canonical container: root graph schema, serialization, and versioning (AC-1, AC-7)
+  - [x] Graph operations: cycle safe traversal, path tracing, and React Flow adapter (AC-6, AC-8)
+- [ ] Verify it: `/check verify graph and repository data model`
+- [ ] Test it: `/test graph and repository data model`
 
 ### 4. Design system & UI foundation · needs a decision
 Establish layout primitives for dense split screen exploration, graph canvas styling, typography, and dark mode developer aesthetics.
