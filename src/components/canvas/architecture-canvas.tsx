@@ -41,7 +41,9 @@ function ArchitectureCanvasInner({
   );
 
   const [isMinimapVisible, setIsMinimapVisible] = React.useState(true);
-  const { fitView, zoomIn, zoomOut, getZoom } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getZoom, setCenter } = useReactFlow();
+  const activeTarget = useGraphStore((state) => state.activeTarget);
+  const navigateToTarget = useGraphStore((state) => state.navigateToTarget);
 
   // Compute positioned React Flow elements using pure transformation and Dagre layout
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -91,20 +93,68 @@ function ArchitectureCanvasInner({
     setNodes((currentNodes) =>
       currentNodes.map((n) => ({
         ...n,
-        selected: n.id === selectedNodeId,
+        selected:
+          n.id === selectedNodeId ||
+          (activeTarget != null &&
+            (n.id === activeTarget.symbolId || n.id === activeTarget.fileId)),
       })),
     );
-  }, [selectedNodeId, setNodes]);
+  }, [selectedNodeId, activeTarget, setNodes]);
 
-  // Handle node selection: synchronize selection and switch right tab to code (AC-7)
+  // Programmatically center camera when activeTarget updates (AC-3, AC-4)
+  useEffect(() => {
+    if (!activeTarget) {
+      return;
+    }
+
+    // Look for target node (symbol node if available, otherwise file node)
+    const targetId = activeTarget.symbolId || activeTarget.fileId;
+    const targetNode =
+      nodes.find((n) => n.id === targetId) ||
+      nodes.find((n) => n.id === activeTarget.fileId);
+
+    if (targetNode) {
+      const anyNode = targetNode as unknown as {
+        measured?: { width: number; height: number };
+        width?: number;
+        height?: number;
+      };
+      const nodeWidth = anyNode.measured?.width ?? anyNode.width ?? 240;
+      const nodeHeight = anyNode.measured?.height ?? anyNode.height ?? 80;
+      const centerX = targetNode.position.x + nodeWidth / 2;
+      const centerY = targetNode.position.y + nodeHeight / 2;
+
+      setCenter(centerX, centerY, { zoom: 1.2, duration: 800 });
+    }
+  }, [activeTarget, nodes, setCenter]);
+
+  // Handle node selection: synchronize selection, navigate target, and switch right tab to code (AC-2, AC-7)
   const handleNodeClick: NodeMouseHandler = useCallback(
     (_, node) => {
       selectNode(node.id);
       if (node.id.startsWith("file:")) {
         setActiveRightTab("code");
+        navigateToTarget({
+          fileId: node.id,
+          source: "canvas",
+          timestamp: Date.now(),
+        });
+      } else if (node.id.startsWith("symbol:")) {
+        setActiveRightTab("code");
+        const symbol = graph?.symbols[node.id];
+        if (symbol) {
+          navigateToTarget({
+            fileId: symbol.fileId,
+            symbolId: symbol.id,
+            line: symbol.range.startLine,
+            column: symbol.range.startColumn,
+            source: "canvas",
+            timestamp: Date.now(),
+          });
+        }
       }
     },
-    [selectNode, setActiveRightTab],
+    [selectNode, setActiveRightTab, navigateToTarget, graph],
   );
 
   // Handle canvas background click to clear selection

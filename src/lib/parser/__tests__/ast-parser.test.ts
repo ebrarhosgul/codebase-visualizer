@@ -95,4 +95,85 @@ describe("parseRepositoryAst", () => {
     expect(result.graph.files["file:src/broken.ts"]?.parseError).toBeDefined();
     expect(() => codebaseGraphSchema.parse(result.graph)).not.toThrow();
   });
+
+  it("extracts top level functions, classes, interfaces, and types into canonical SymbolNodes (AC-5)", () => {
+    const files: ExtractedFile[] = [
+      {
+        path: "src/calculator.ts",
+        content: `
+          export interface CalculatorConfig {
+            precision: number;
+          }
+
+          export type NumberOrString = number | string;
+
+          export enum Operation {
+            Add = "ADD",
+            Subtract = "SUBTRACT"
+          }
+
+          /**
+           * Adds two numbers together.
+           */
+          export function calculateSum(a: number, b: number): number {
+            return a + b;
+          }
+
+          export class Calculator {
+            public compute(op: Operation): number {
+              return 42;
+            }
+          }
+        `,
+        sizeBytes: 500,
+      },
+    ];
+
+    const result = parseRepositoryAst(files, mockRepoInfo);
+    expect(() => codebaseGraphSchema.parse(result.graph)).not.toThrow();
+
+    const fileNode = result.graph.files["file:src/calculator.ts"];
+    expect(fileNode).toBeDefined();
+    expect(fileNode?.symbolIds.length).toBeGreaterThanOrEqual(5);
+
+    // Verify function
+    const fnSymbol =
+      result.graph.symbols["symbol:src/calculator.ts#calculateSum"];
+    expect(fnSymbol).toBeDefined();
+    expect(fnSymbol?.kind).toBe("function");
+    expect(fnSymbol?.isExported).toBe(true);
+    expect(fnSymbol?.range.startLine).toBeGreaterThan(1);
+    expect(fnSymbol?.documentation).toContain("Adds two numbers together.");
+
+    // Verify interface
+    const ifaceSymbol =
+      result.graph.symbols["symbol:src/calculator.ts#CalculatorConfig"];
+    expect(ifaceSymbol).toBeDefined();
+    expect(ifaceSymbol?.kind).toBe("interface");
+
+    // Verify type alias
+    const typeSymbol =
+      result.graph.symbols["symbol:src/calculator.ts#NumberOrString"];
+    expect(typeSymbol).toBeDefined();
+    expect(typeSymbol?.kind).toBe("type_alias");
+
+    // Verify enum
+    const enumSymbol =
+      result.graph.symbols["symbol:src/calculator.ts#Operation"];
+    expect(enumSymbol).toBeDefined();
+    expect(enumSymbol?.kind).toBe("enum");
+
+    // Verify class and method
+    const classSymbol =
+      result.graph.symbols["symbol:src/calculator.ts#Calculator"];
+    expect(classSymbol).toBeDefined();
+    expect(classSymbol?.kind).toBe("class");
+    expect(classSymbol?.childSymbolIds.length).toBe(1);
+
+    const methodSymbol =
+      result.graph.symbols["symbol:src/calculator.ts#Calculator.compute"];
+    expect(methodSymbol).toBeDefined();
+    expect(methodSymbol?.kind).toBe("method");
+    expect(methodSymbol?.parentSymbolId).toBe(classSymbol?.id);
+  });
 });

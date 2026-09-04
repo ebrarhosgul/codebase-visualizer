@@ -6,3 +6,4 @@ export * from "./tooltip";
 export * from "./dialog";
 export * from "./tabs";
 export * from "./dropdown-menu";
+export * from "./toast";

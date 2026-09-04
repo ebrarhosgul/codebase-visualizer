@@ -16,7 +16,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 3 | Graph and repository data model | Foundation | in-progress |
 | 4 | Design system & UI foundation | Foundation | in-progress |
 | 5 | Walking skeleton loop | Slice 1 | in-progress |
-| 6 | Bidirectional graph and code deep linking | Slice 2 | planned |
+| 6 | Bidirectional graph and code deep linking | Slice 2 | in-progress |
 | 7 | Architectural filtering and layer inspection | Slice 3 | planned |
 | 8 | Semantic AI query and path tracing | Slice 4 | planned |
 | 9 | Client cache and ingestion streaming | Slice 5 | planned |
@@ -81,10 +81,19 @@ spec [0005](../specs/0005-walking-skeleton-loop/index.md) · code in `src/`
 
 ## Slice 2: Bidirectional graph and code deep linking
 
-### 6. Bidirectional graph and code deep linking · needs a decision
+### 6. Bidirectional graph and code deep linking · in-progress
 Synchronize focus across views: clicking graph nodes scrolls the code viewer to target symbol declarations, selecting code highlights corresponding graph nodes, and the browser URL reflects the active file and node for easy sharing.
 **Done when:** selecting a node jumps directly to the matching code declaration, selecting code focuses the graph element, and copying the URL preserves state.
-- [ ] Design it (spec): `/architect bidirectional graph and code deep linking`
+spec [0006](../specs/0006-bidirectional-graph-and-code-deep-linking/index.md) · code in `src/`
+- [x] Design it (spec): `/architect bidirectional graph and code deep linking`
+- [x] Build it: `/develop bidirectional graph and code deep linking`
+  - [x] AST symbol declaration extraction: ts-morph extraction of functions, classes, and types with SourceLocations and FileNode symbol linking (AC-5)
+  - [x] Navigation target state & dual guard anti loop lock: Zustand NavigationTarget, coordinate matching, and 300ms time lock (AC-4, AC-8)
+  - [x] Monaco Editor line reveal & pulse highlight: programmatic line scroll, pulse decorations, and debounced cursor inspection (AC-2, AC-3)
+  - [x] React Flow camera centering: useReactFlow setCenter with readable zoom and node card focus states (AC-3, AC-4)
+  - [x] Bidirectional URL sync hook & share actions: useSearchParams Suspense wrapper, replaceState cursor updates, and clipboard share button (AC-1, AC-6, AC-7, AC-8)
+- [ ] Verify it: `/check verify bidirectional graph and code deep linking`
+- [ ] Test it: `/test bidirectional graph and code deep linking`
 
 ## Slice 3: Architectural filtering and layer inspection
 
