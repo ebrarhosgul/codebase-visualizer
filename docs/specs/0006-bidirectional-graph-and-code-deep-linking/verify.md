@@ -1,16 +1,23 @@
-# Verify: Bidirectional graph and code deep linking · spec 0006 · updated 2026-09-04
+# Verify: Bidirectional graph and code deep linking, spec 0006 (updated 2026-09-04)
 
-_Steps derived from spec 0006 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
+_Steps derived from spec 0006 acceptance criteria and value sourcing guarantees. `/check verify` runs these; `/test` locks the durable ones._
 
 ## UI / manual
 
 - [ ] Click a file or symbol node on the React Flow canvas → right workspace panel switches to Code tab, loads target file, smoothly scrolls to declaration line, and shows a two second pulse highlight → AC-2, AC-8
 - [ ] Move cursor or select text across function declarations in Monaco Editor → React Flow camera smoothly pans and centers on matching symbol or file node without lagging → AC-3
 - [ ] Observe browser URL address bar while clicking nodes or moving editor cursor → query parameters (`repo`, `branch`, `file`, `line`, `symbol`) update accurately → AC-1
-- [ ] Rapidly click a canvas node and move editor cursor immediately within 200 milliseconds → time lock prevents camera and cursor feedback loop → AC-4
+- [ ] Rapidly click a canvas node and move editor cursor immediately within 200 milliseconds → dual guard time lock and coordinate match prevents camera and cursor feedback loop → AC-4
 - [ ] Open a shared deep link URL in a new browser tab with query parameters → repository ingests as normal, buffers navigation coordinates, and automatically jumps to target line and centers node upon parsing completion → AC-1, AC-7
 - [ ] Open a deep link URL pointing to a non existent file or symbol → UI falls back gracefully to repository overview, shows an informative toast alert, and cleans up invalid parameters → AC-6
 - [ ] Click the Share Link button in header or editor toolbar → full deep link URL copies to clipboard and confirmation notification displays → AC-8
+
+## Value sourcing checks
+
+- [ ] Vary deep link file path across different repository subdirectories → verifies relative path extraction from `FileNode.path`
+- [ ] Vary active cursor position across nested functions and class methods → verifies innermost symbol identification from `SourceLocation.startLine` and `endLine`
+- [ ] Inspect React Flow camera zoom and pan coordinates when focusing nodes at canvas extremities → verifies node position calculation and viewport centering
+- [ ] Trigger fallback with malformed and unresolvable file queries → verifies toast notification string formatting and URL query cleanup
 
 ## Commands
 
