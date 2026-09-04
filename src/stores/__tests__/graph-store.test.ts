@@ -281,5 +281,27 @@ describe("useGraphStore", () => {
     const state = useGraphStore.getState();
     expect(state.pendingTarget).toBeNull();
     expect(state.activeTarget).toBeNull();
+    expect(state.fallbackNotification).toContain("non-existent.ts");
+
+    state.clearFallbackNotification();
+    expect(useGraphStore.getState().fallbackNotification).toBeNull();
+  });
+
+  it("clears lastProgrammaticTarget when selecting a file node without line (AC-4)", () => {
+    // Set an initial programmatic target with line
+    useGraphStore.getState().navigateToTarget({
+      fileId: "file:src/first.ts",
+      line: 42,
+      source: "canvas",
+      timestamp: Date.now(),
+    });
+    expect(useGraphStore.getState().lastProgrammaticTarget).toEqual({
+      fileId: "file:src/first.ts",
+      line: 42,
+    });
+
+    // Selecting a file node directly resets lastProgrammaticTarget so coordinates do not stay locked
+    useGraphStore.getState().selectNode("file:src/second.ts");
+    expect(useGraphStore.getState().lastProgrammaticTarget).toBeNull();
   });
 });

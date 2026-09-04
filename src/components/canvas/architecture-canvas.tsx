@@ -73,6 +73,7 @@ function ArchitectureCanvasInner({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const lastCenteredTargetKeyRef = React.useRef<string | null>(null);
 
   // Sync state whenever underlying graph is recomputed
   useEffect(() => {
@@ -80,11 +81,17 @@ function ArchitectureCanvasInner({
     setEdges(initialEdges);
 
     if (initialNodes.length > 0) {
-      // Defer fitView slightly so DOM bounding boxes have settled
-      const timer = setTimeout(() => {
-        fitView({ padding: 0.2, duration: 400 });
-      }, 50);
-      return () => clearTimeout(timer);
+      // Defer fitView slightly so DOM bounding boxes have settled, but skip if targeting a specific node
+      const hasTarget = Boolean(
+        useGraphStore.getState().activeTarget ||
+        useGraphStore.getState().pendingTarget,
+      );
+      if (!hasTarget) {
+        const timer = setTimeout(() => {
+          fitView({ padding: 0.2, duration: 400 });
+        }, 50);
+        return () => clearTimeout(timer);
+      }
     }
   }, [initialNodes, initialEdges, setNodes, setEdges, fitView]);
 
@@ -101,11 +108,17 @@ function ArchitectureCanvasInner({
     );
   }, [selectedNodeId, activeTarget, setNodes]);
 
-  // Programmatically center camera when activeTarget updates (AC-3, AC-4)
+  // Programmatically center camera when activeTarget updates from editor or url (AC-3, AC-4)
   useEffect(() => {
-    if (!activeTarget) {
+    if (!activeTarget || activeTarget.source === "canvas") {
       return;
     }
+
+    const targetKey = `${activeTarget.source}:${activeTarget.symbolId || activeTarget.fileId}:${activeTarget.timestamp}`;
+    if (lastCenteredTargetKeyRef.current === targetKey) {
+      return;
+    }
+    lastCenteredTargetKeyRef.current = targetKey;
 
     // Look for target node (symbol node if available, otherwise file node)
     const targetId = activeTarget.symbolId || activeTarget.fileId;

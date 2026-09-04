@@ -26,6 +26,7 @@ interface MockEditor {
   onDidChangeCursorPosition: (cb: (e: CursorPositionEvent) => void) => {
     dispose: () => void;
   };
+  getModel?: () => { getLineCount: () => number } | null;
 }
 
 interface MockMonaco {
@@ -67,6 +68,7 @@ vi.mock("@monaco-editor/react", () => ({
           cursorPositionCallback = cb;
           return { dispose: vi.fn() };
         },
+        getModel: () => ({ getLineCount: () => 100 }),
       };
       const mockMonaco: MockMonaco = {
         editor: {
@@ -91,6 +93,10 @@ vi.mock("@monaco-editor/react", () => ({
 describe("CodeViewer", () => {
   beforeEach(() => {
     useGraphStore.getState().reset();
+    mockRevealLineInCenter.mockClear();
+    mockSetPosition.mockClear();
+    mockCreateDecorationsCollection.mockClear();
+    mockClearDecorations.mockClear();
   });
 
   it("renders empty state placeholder when no file is selected", () => {
@@ -238,11 +244,9 @@ describe("CodeViewer", () => {
       edges: {},
     } as unknown as CodebaseGraph;
 
-    useGraphStore
-      .getState()
-      .setGraph(mockGraph, {
-        "file:src/index.ts": "line1\nline2\nline3\nline4\nline5",
-      });
+    useGraphStore.getState().setGraph(mockGraph, {
+      "file:src/index.ts": "line1\nline2\nline3\nline4\nline5",
+    });
 
     useGraphStore.getState().selectNode("file:src/index.ts");
     render(<CodeViewer />);
@@ -389,7 +393,71 @@ describe("CodeViewer", () => {
     expect(activeTarget?.line).toBe(12);
     expect(activeTarget?.source).toBe("editor");
 
+    // Moving cursor in editor should NOT trigger revealLineInCenter or pulse decorations
+    expect(mockRevealLineInCenter).not.toHaveBeenCalled();
+
     vi.useRealTimers();
+  });
+
+  it("clamps out-of-bounds line numbers to model line count (AC-2)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "s1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/index.ts": {
+          id: "file:src/index.ts",
+          path: "src/index.ts",
+          name: "index.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 128,
+          lineCount: 30,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore
+      .getState()
+      .setGraph(mockGraph, { "file:src/index.ts": "line1\nline2" });
+    useGraphStore.getState().selectNode("file:src/index.ts");
+    render(<CodeViewer />);
+
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/index.ts",
+        line: 9999, // Way past line count (mock getLineCount is 100)
+        column: 1,
+        source: "canvas",
+        timestamp: Date.now(),
+      });
+    });
+
+    // Clamped to max line 100
+    expect(mockRevealLineInCenter).toHaveBeenCalledWith(100, 1);
+    expect(mockSetPosition).toHaveBeenCalledWith({
+      lineNumber: 100,
+      column: 1,
+    });
   });
 
   it("copies deep link to clipboard when Share button is clicked (AC-8)", async () => {

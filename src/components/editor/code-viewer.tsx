@@ -91,7 +91,11 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
       return;
     }
 
-    const targetLine = target.line;
+    const modelLineCount =
+      typeof editor.getModel === "function"
+        ? (editor.getModel()?.getLineCount() ?? target.line)
+        : target.line;
+    const targetLine = Math.max(1, Math.min(target.line, modelLineCount));
     const targetCol = target.column ?? 1;
 
     editor.revealLineInCenter(targetLine, monaco.editor.ScrollType.Smooth);
@@ -134,6 +138,7 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
   useEffect(() => {
     if (
       activeTarget &&
+      activeTarget.source !== "editor" &&
       activeTarget.fileId === selectedFileId &&
       activeTarget.line != null
     ) {
@@ -151,6 +156,7 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
       const currentTarget = useGraphStore.getState().activeTarget;
       if (
         currentTarget &&
+        currentTarget.source !== "editor" &&
         currentTarget.fileId === selectedFileId &&
         currentTarget.line != null
       ) {
@@ -245,9 +251,13 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
     url.searchParams.set("file", fileNode.path);
     if (activeTarget?.line) {
       url.searchParams.set("line", String(activeTarget.line));
+    } else {
+      url.searchParams.delete("line");
     }
     if (activeTarget?.symbolId && graph?.symbols[activeTarget.symbolId]) {
       url.searchParams.set("symbol", graph.symbols[activeTarget.symbolId].name);
+    } else {
+      url.searchParams.delete("symbol");
     }
 
     try {

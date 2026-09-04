@@ -2,6 +2,7 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { useDeepLinking } from "../use-deep-linking";
 import { useGraphStore } from "@/stores/graph-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 import type { CodebaseGraph } from "@/entities";
 
 const mockReplace = vi.fn();
@@ -17,6 +18,7 @@ vi.mock("next/navigation", () => ({
 describe("useDeepLinking", () => {
   beforeEach(() => {
     useGraphStore.getState().reset();
+    useWorkspaceStore.getState().resetLayout();
     mockSearchParams = new URLSearchParams();
     mockReplace.mockClear();
     vi.restoreAllMocks();
@@ -27,6 +29,9 @@ describe("useDeepLinking", () => {
   });
 
   it("buffers deep link parameters on mount (AC-1, AC-7)", () => {
+    vi.spyOn(useGraphStore.getState(), "startIngestion").mockResolvedValue(
+      undefined,
+    );
     mockSearchParams = new URLSearchParams(
       "repo=facebook/react&file=packages/react/src/React.js&line=25&symbol=useState",
     );
@@ -136,5 +141,51 @@ describe("useDeepLinking", () => {
       "",
       expect.stringContaining("file=src%2Findex.ts&line=8"),
     );
+  });
+
+  it("handles fallbackNotification by invoking onFallback and cleaning URL parameters (AC-6)", () => {
+    const fallbackMock = vi.fn();
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+    const { rerender } = renderHook(() => useDeepLinking(fallbackMock));
+
+    // Simulate store triggering fallbackNotification for a missing file
+    act(() => {
+      useGraphStore.setState({
+        fallbackNotification:
+          'File "missing.ts" was not found in the parsed repository.',
+      });
+    });
+
+    rerender();
+
+    expect(fallbackMock).toHaveBeenCalledWith(
+      'File "missing.ts" was not found in the parsed repository.',
+    );
+    expect(replaceStateSpy).toHaveBeenCalled();
+    expect(useGraphStore.getState().fallbackNotification).toBeNull();
+  });
+
+  it("switches workspace right tab to code when URL deep link activates a target (AC-1, AC-7)", () => {
+    // Start with inspector tab active and panel collapsed
+    useWorkspaceStore.getState().setActiveRightTab("inspector");
+    useWorkspaceStore.getState().setRightPanelCollapsed(true);
+
+    const { rerender } = renderHook(() => useDeepLinking());
+
+    // Simulate URL deep link target activation
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/index.ts",
+        line: 14,
+        source: "url",
+        timestamp: Date.now(),
+      });
+    });
+
+    rerender();
+
+    expect(useWorkspaceStore.getState().activeRightTab).toBe("code");
+    expect(useWorkspaceStore.getState().isRightPanelCollapsed).toBe(false);
   });
 });

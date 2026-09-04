@@ -57,6 +57,7 @@ export interface GraphStoreState extends DeepLinkState {
   readonly ingestionProgress: IngestProgress | null;
   readonly ingestionError: IngestError | null;
   readonly isIngesting: boolean;
+  readonly fallbackNotification: string | null;
 }
 
 export interface GraphStoreActions {
@@ -72,6 +73,7 @@ export interface GraphStoreActions {
   readonly flushPendingDeepLink: () => FlushResult;
   readonly isNavigationLocked: (fileId?: string, line?: number) => boolean;
   readonly clearActiveTarget: () => void;
+  readonly clearFallbackNotification: () => void;
   readonly reset: () => void;
 }
 
@@ -91,6 +93,7 @@ const initialState: GraphStoreState = {
   lockedUntil: 0,
   pendingTarget: null,
   lastProgrammaticTarget: null,
+  fallbackNotification: null,
 };
 
 let activeAbortController: AbortController | null = null;
@@ -282,6 +285,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
         selectedFileId: nodeId,
         activeTarget: target,
         lockedUntil: Date.now() + 300,
+        lastProgrammaticTarget: null,
       });
       return;
     }
@@ -356,9 +360,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     const newProgrammaticTarget =
       isProgrammatic && target.line != null
         ? { fileId: target.fileId, line: target.line }
-        : target.source === "editor"
-          ? null
-          : state.lastProgrammaticTarget;
+        : null;
 
     set({
       activeTarget: target,
@@ -434,10 +436,15 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
         : null;
 
     if (!resolvedFileId) {
-      set({ pendingTarget: null, activeTarget: null });
+      const reason = `File "${pending.fileId.replace(/^file:/, "")}" was not found in the parsed repository.`;
+      set({
+        pendingTarget: null,
+        activeTarget: null,
+        fallbackNotification: reason,
+      });
       return {
         success: false,
-        fallbackReason: `File "${pending.fileId.replace(/^file:/, "")}" was not found in the parsed repository.`,
+        fallbackReason: reason,
       };
     }
 
@@ -455,10 +462,14 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
           targetLine = matched.range.startLine;
         }
       } else {
-        set({ pendingTarget: null });
+        const reason = `Symbol "${symbolName}" was not found in ${resolvedFileId.replace(/^file:/, "")}.`;
+        set({
+          pendingTarget: null,
+          fallbackNotification: reason,
+        });
         return {
           success: false,
-          fallbackReason: `Symbol "${symbolName}" was not found in ${resolvedFileId.replace(/^file:/, "")}.`,
+          fallbackReason: reason,
         };
       }
     } else if (
@@ -504,6 +515,10 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
 
   clearActiveTarget: (): void => {
     set({ activeTarget: null });
+  },
+
+  clearFallbackNotification: (): void => {
+    set({ fallbackNotification: null });
   },
 
   reset: (): void => {

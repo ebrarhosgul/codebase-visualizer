@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useGraphStore } from "@/stores/graph-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 
 export interface DeepLinkingSyncProps {
   readonly onFallback?: (message: string) => void;
@@ -44,6 +45,12 @@ export function useDeepLinking(onFallback?: (message: string) => void): void {
   const isIngesting = useGraphStore((state) => state.isIngesting);
   const startIngestion = useGraphStore((state) => state.startIngestion);
   const bufferDeepLink = useGraphStore((state) => state.bufferDeepLink);
+  const fallbackNotification = useGraphStore(
+    (state) => state.fallbackNotification,
+  );
+  const clearFallbackNotification = useGraphStore(
+    (state) => state.clearFallbackNotification,
+  );
 
   const initialHydratedRef = useRef(false);
   const lastSynchronizedUrlRef = useRef<string>("");
@@ -78,7 +85,9 @@ export function useDeepLinking(onFallback?: (message: string) => void): void {
         cleanUrl.searchParams.delete("file");
         cleanUrl.searchParams.delete("line");
         cleanUrl.searchParams.delete("symbol");
-        window.history.replaceState(null, "", cleanUrl.toString());
+        const nextQuery = cleanUrl.searchParams.toString();
+        const nextUrl = nextQuery ? `?${nextQuery}` : cleanUrl.pathname;
+        window.history.replaceState(null, "", nextUrl);
       }
       return;
     }
@@ -113,7 +122,76 @@ export function useDeepLinking(onFallback?: (message: string) => void): void {
     onFallback,
   ]);
 
-  // 2. Synchronize active state to URL query parameters
+  // 2. Handle fallback notifications when bookmarked file or symbol is not found (AC-6)
+  useEffect(() => {
+    if (!fallbackNotification) {
+      return;
+    }
+    onFallback?.(fallbackNotification);
+    if (typeof window !== "undefined") {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("file");
+      cleanUrl.searchParams.delete("line");
+      cleanUrl.searchParams.delete("symbol");
+      const nextQuery = cleanUrl.searchParams.toString();
+      const nextUrl = nextQuery ? `?${nextQuery}` : cleanUrl.pathname;
+      window.history.replaceState(null, "", nextUrl);
+    }
+    clearFallbackNotification();
+  }, [fallbackNotification, onFallback, clearFallbackNotification]);
+
+  // 3. Switch workspace right panel to code when URL deep link navigates to a target (AC-1, AC-7)
+  useEffect(() => {
+    if (activeTarget?.source === "url") {
+      useWorkspaceStore.getState().setActiveRightTab("code");
+      useWorkspaceStore.getState().setRightPanelCollapsed(false);
+    }
+  }, [activeTarget]);
+
+  // 4. Handle browser back and forward popstate navigation
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handlePopState = () => {
+      const currentSearchParams = new URLSearchParams(window.location.search);
+      const fileParam = currentSearchParams.get("file")?.trim();
+      const lineParam = currentSearchParams.get("line")?.trim();
+      const symbolParam = currentSearchParams.get("symbol")?.trim();
+
+      if (fileParam) {
+        const fileId = fileParam.startsWith("file:")
+          ? fileParam
+          : `file:${fileParam}`;
+        const lineNum = lineParam ? parseInt(lineParam, 10) : null;
+        const validLine =
+          lineNum && Number.isFinite(lineNum) && lineNum > 0 ? lineNum : null;
+        const currentGraph = useGraphStore.getState().graph;
+        let symbolId: string | null = null;
+
+        if (symbolParam && currentGraph) {
+          const matched = Object.values(currentGraph.symbols).find(
+            (s) => s.fileId === fileId && s.name === symbolParam,
+          );
+          symbolId = matched ? matched.id : null;
+        }
+
+        useGraphStore.getState().navigateToTarget({
+          fileId,
+          symbolId,
+          line: validLine,
+          source: "url",
+          timestamp: Date.now(),
+        });
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // 5. Synchronize active state to URL query parameters
   useEffect(() => {
     if (typeof window === "undefined" || !repository) {
       return;
