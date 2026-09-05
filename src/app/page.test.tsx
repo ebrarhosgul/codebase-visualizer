@@ -1,4 +1,4 @@
-import { render, screen, act, fireEvent } from "@testing-library/react";
+import { render, screen, act, fireEvent, within } from "@testing-library/react";
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import Home from "./page";
 import { useGraphStore } from "@/stores/graph-store";
@@ -339,8 +339,10 @@ describe("Home Page", () => {
       fireEvent.mouseDown(inspectorTab, { button: 0 });
     });
 
-    expect(screen.getByText("File Details")).toBeInTheDocument();
-    expect(screen.getByText("45")).toBeInTheDocument();
-    expect(screen.getByText("2 KB")).toBeInTheDocument();
+    const panel = screen.getByTestId("node-inspector-panel");
+    expect(panel).toBeInTheDocument();
+    expect(within(panel).getByText("index.ts")).toBeInTheDocument();
+    expect(within(panel).getByText("src/index.ts")).toBeInTheDocument();
+    expect(within(panel).getByText("45")).toBeInTheDocument();
   });
 });

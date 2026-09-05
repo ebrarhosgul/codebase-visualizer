@@ -10,7 +10,6 @@ import {
   EyeOff,
   Eye,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { useGraphStore } from "@/stores/graph-store";
 import {
   ARCHITECTURAL_LAYERS,

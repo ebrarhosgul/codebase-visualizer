@@ -1,22 +1,13 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, Suspense } from "react";
-import {
-  Search,
-  Layers,
-  Code2,
-  Sparkles,
-  GitBranch,
-  Package,
-  ArrowRight,
-  ArrowLeft,
-} from "lucide-react";
+import { Search, Layers, Code2, Sparkles, GitBranch } from "lucide-react";
 import { WorkspaceLayout } from "@/components/layout";
 import { Input, Badge, Tabs, Toast } from "@/components/ui";
 import { ArchitectureCanvas } from "@/components/canvas";
 import { CodeViewer } from "@/components/editor";
 import { RepoSubmissionBar } from "@/components/workspace/repo-submission-bar";
-import { FolderTree } from "@/components/workspace";
+import { FolderTree, NodeInspector } from "@/components/workspace";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useGraphStore } from "@/stores/graph-store";
 import { DeepLinkingSync } from "@/hooks/use-deep-linking";
@@ -31,7 +22,6 @@ export default function Home(): React.JSX.Element {
 
   const graph = useGraphStore((state) => state.graph);
   const repository = graph?.repository ?? null;
-  const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
   const selectNode = useGraphStore((state) => state.selectNode);
   const setHoveredNodeId = useGraphStore((state) => state.setHoveredNodeId);
@@ -63,50 +53,6 @@ export default function Home(): React.JSX.Element {
     },
     [selectNode, setActiveRightTab, navigateToTarget],
   );
-
-  // Selected node inspection data
-  const selectedNodeDetails = useMemo(() => {
-    if (!graph || !selectedNodeId) {
-      return null;
-    }
-
-    if (selectedNodeId.startsWith("file:")) {
-      const file = graph.files[selectedNodeId];
-      if (!file) return null;
-
-      // Find incoming and outgoing edges for this file
-      const incoming = Object.values(graph.edges).filter(
-        (e) => e.targetId === file.id,
-      );
-      const outgoing = Object.values(graph.edges).filter(
-        (e) => e.sourceId === file.id,
-      );
-
-      return {
-        type: "file" as const,
-        file,
-        incoming,
-        outgoing,
-      };
-    }
-
-    if (selectedNodeId.startsWith("ext:")) {
-      const ext = graph.externalModules[selectedNodeId];
-      if (!ext) return null;
-
-      const incoming = Object.values(graph.edges).filter(
-        (e) => e.targetId === ext.id,
-      );
-
-      return {
-        type: "external" as const,
-        ext,
-        incoming,
-      };
-    }
-
-    return null;
-  }, [graph, selectedNodeId]);
 
   const leftContent = (
     <div className="p-3 flex flex-col gap-3 h-full">
@@ -203,145 +149,7 @@ export default function Home(): React.JSX.Element {
                 <span>Inspector</span>
               </span>
             ),
-            content: (
-              <div className="p-4 text-xs text-[var(--text-secondary)] space-y-4 overflow-auto h-full">
-                {selectedNodeDetails ? (
-                  selectedNodeDetails.type === "file" ? (
-                    <div className="space-y-4">
-                      <div>
-                        <div className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-                          File Details
-                        </div>
-                        <div className="text-sm font-semibold text-[var(--text-primary)] font-mono mt-1 break-all">
-                          {selectedNodeDetails.file.path}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 p-2.5 rounded bg-[var(--surface-canvas)] border border-[var(--border-subtle)] font-mono text-[11px]">
-                        <div>
-                          <span className="text-[var(--text-muted)]">
-                            Lines:{" "}
-                          </span>
-                          <span className="text-[var(--text-primary)]">
-                            {selectedNodeDetails.file.lineCount}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[var(--text-muted)]">
-                            Size:{" "}
-                          </span>
-                          <span className="text-[var(--text-primary)]">
-                            {Math.round(
-                              (selectedNodeDetails.file.sizeBytes / 1024) * 10,
-                            ) / 10}{" "}
-                            KB
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Outgoing Imports */}
-                      <div>
-                        <div className="text-[11px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5 mb-2">
-                          <ArrowRight className="w-3 h-3 text-[var(--accent-primary)]" />
-                          <span>
-                            Imports ({selectedNodeDetails.outgoing.length})
-                          </span>
-                        </div>
-                        {selectedNodeDetails.outgoing.length > 0 ? (
-                          <div className="space-y-1">
-                            {selectedNodeDetails.outgoing.map((edge) => (
-                              <div
-                                key={edge.id}
-                                onClick={() => selectNode(edge.targetId)}
-                                className="p-1.5 rounded bg-[var(--surface-canvas)] border border-[var(--border-subtle)] flex items-center justify-between cursor-pointer hover:border-[var(--accent-primary)]"
-                              >
-                                <span
-                                  className="font-mono text-[10px] truncate"
-                                  title={edge.targetId}
-                                >
-                                  {edge.targetId.replace(/^(file:|ext:)/, "")}
-                                </span>
-                                <Badge
-                                  variant={
-                                    edge.isExternal ? "warning" : "syntax-ts"
-                                  }
-                                >
-                                  {edge.isExternal ? "ext" : "local"}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-[11px] text-[var(--text-muted)]">
-                            No outgoing imports.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Incoming Dependents */}
-                      <div>
-                        <div className="text-[11px] font-semibold text-[var(--text-primary)] flex items-center gap-1.5 mb-2">
-                          <ArrowLeft className="w-3 h-3 text-[var(--accent-primary)]" />
-                          <span>
-                            Imported by ({selectedNodeDetails.incoming.length})
-                          </span>
-                        </div>
-                        {selectedNodeDetails.incoming.length > 0 ? (
-                          <div className="space-y-1">
-                            {selectedNodeDetails.incoming.map((edge) => (
-                              <div
-                                key={edge.id}
-                                onClick={() => selectNode(edge.sourceId)}
-                                className="p-1.5 rounded bg-[var(--surface-canvas)] border border-[var(--border-subtle)] flex items-center justify-between cursor-pointer hover:border-[var(--accent-primary)]"
-                              >
-                                <span
-                                  className="font-mono text-[10px] truncate"
-                                  title={edge.sourceId}
-                                >
-                                  {edge.sourceId.replace(/^file:/, "")}
-                                </span>
-                                <Badge variant="syntax-ts">importer</Badge>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-[11px] text-[var(--text-muted)]">
-                            Not imported by any parsed file.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-semibold text-[var(--text-primary)]">
-                          External Package
-                        </span>
-                      </div>
-                      <div className="font-mono text-sm text-amber-300">
-                        {selectedNodeDetails.ext.name}
-                      </div>
-                      <div className="text-[11px] text-[var(--text-muted)]">
-                        Referenced by {selectedNodeDetails.incoming.length}{" "}
-                        files in this codebase.
-                      </div>
-                    </div>
-                  )
-                ) : (
-                  <div className="space-y-2 text-center py-8 text-[var(--text-muted)]">
-                    <Layers className="w-6 h-6 mx-auto opacity-50" />
-                    <div className="text-xs font-semibold text-[var(--text-primary)]">
-                      No Node Selected
-                    </div>
-                    <p className="text-[11px] max-w-xs mx-auto">
-                      Click any file or external module on the graph canvas to
-                      inspect declarations, incoming imports, and dependencies.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ),
+            content: <NodeInspector />,
           },
           {
             value: "trace",

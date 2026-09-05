@@ -25,6 +25,7 @@ describe("Architectural Layer Taxonomy and Classification", () => {
   });
 
   it("retrieves layer definition with color and priority rank", () => {
+    expect(ARCHITECTURAL_LAYERS.length).toBe(9);
     const compLayer = getLayerDefinition("components");
     expect(compLayer.label).toBe("Components");
     expect(compLayer.color).toBe("#3b82f6");
