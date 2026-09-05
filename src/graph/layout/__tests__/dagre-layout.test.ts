@@ -369,4 +369,48 @@ describe("computeDagreLayout", () => {
       expect(utilsCard.position.x).toBeGreaterThan(collapsedCard.position.x);
     }
   });
+
+  it("packs remaining visible nodes neatly after excluded nodes are pruned (AC-3)", () => {
+    // When elements are pruned down to 1 file in components and 1 file in lib
+    const prunedNodes: CodebaseReactFlowNode[] = [
+      {
+        id: "file:src/components/button.tsx",
+        type: "file",
+        position: { x: 0, y: 0 },
+        data: {
+          entityType: "file",
+          label: "button.tsx",
+          entity: {
+            id: "file:src/components/button.tsx",
+            path: "src/components/button.tsx",
+            name: "button.tsx",
+            extension: ".tsx",
+            language: "typescript",
+            sizeBytes: 100,
+            lineCount: 10,
+            directoryId: "dir:src/components",
+            symbolIds: [],
+            importIds: [],
+            exportIds: [],
+          },
+        },
+      },
+    ];
+
+    const elements: ReactFlowElements = {
+      nodes: Object.freeze(prunedNodes),
+      edges: Object.freeze([]),
+    };
+
+    const laidOut = computeDagreLayout(elements, {
+      direction: "LR",
+      groupByFolder: true,
+    });
+
+    // Should only have 1 folderGroup (src/components) and 1 file node
+    expect(laidOut.nodes.length).toBe(2);
+    const folderGroup = laidOut.nodes.find((n) => n.type === "folderGroup");
+    expect(folderGroup).toBeDefined();
+    expect(folderGroup?.id).toBe("folder-group:src/components");
+  });
 });

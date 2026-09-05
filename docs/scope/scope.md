@@ -17,7 +17,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 4 | Design system & UI foundation | Foundation | done |
 | 5 | Walking skeleton loop | Slice 1 | in-progress |
 | 6 | Bidirectional graph and code deep linking | Slice 2 | done |
-| 7 | Architectural filtering and layer inspection | Slice 3 | in-progress |
+| 7 | Architectural filtering and layer inspection | Slice 3 | done |
 | 8 | Semantic AI query and path tracing | Slice 4 | planned |
 | 9 | Client cache and ingestion streaming | Slice 5 | planned |
 
@@ -97,7 +97,7 @@ spec [0006](../specs/0006-bidirectional-graph-and-code-deep-linking/index.md) ·
 
 ## Slice 3: Architectural filtering and layer inspection
 
-### 7. Architectural filtering and layer inspection · in-progress
+### 7. Architectural filtering and layer inspection · done
 Provide canvas controls to zoom, pan, collapse directories, filter by architectural layer, and inspect node detail drawers showing exports, imports, and method calls.
 **Done when:** users can filter the graph by folder or architectural layer, search for symbols, and inspect incoming and outgoing dependencies in a detail drawer.
 spec [0007](../specs/0007-architectural-filtering-and-layer-inspection/index.md) · code in `src/`
@@ -107,8 +107,8 @@ spec [0007](../specs/0007-architectural-filtering-and-layer-inspection/index.md)
   - [x] Graph pruning & edge aggregation: pure graph filtering, outermost folder resolution, and bundled dependency edges (AC-3, AC-4, AC-9)
   - [x] Canvas controls & folder collapse nodes: top layer filter bar, interactive folder collapse triggers, and summary cards (AC-2, AC-4, AC-5, AC-10)
   - [x] Node Inspector & dual action navigation: dependency inspection metrics, caller and callee chip lists, and Monaco deep link reveal (AC-7, AC-8, AC-9)
-- [ ] Verify it: `/check verify architectural filtering and layer inspection`
-- [ ] Test it: `/test architectural filtering and layer inspection`
+- [x] Verify it: `/check verify architectural filtering and layer inspection`
+- [x] Test it: `/test architectural filtering and layer inspection`
 
 ## Slice 4: Semantic AI query and path tracing
 

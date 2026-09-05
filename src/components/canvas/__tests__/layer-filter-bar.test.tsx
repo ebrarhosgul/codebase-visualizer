@@ -129,4 +129,62 @@ describe("LayerFilterBar Component", () => {
     fireEvent.click(resetBtn);
     expect(useGraphStore.getState().selectedLayers).toEqual([]);
   });
+
+  it("submits search immediately and focuses primary match on Enter key (AC-6)", () => {
+    const onFocus = vi.fn();
+    render(<LayerFilterBar onFocusPrimaryMatch={onFocus} />);
+
+    const searchInput = screen.getByTestId("canvas-search-input");
+    fireEvent.change(searchInput, { target: { value: "card.tsx" } });
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+
+    expect(useGraphStore.getState().searchQuery).toBe("card.tsx");
+    expect(onFocus).toHaveBeenCalledWith("file:card");
+  });
+
+  it("clears search input and store query when clear button is clicked (AC-6)", () => {
+    render(<LayerFilterBar />);
+
+    const searchInput = screen.getByTestId("canvas-search-input");
+    fireEvent.change(searchInput, { target: { value: "button" } });
+
+    const clearSearchBtn = screen.getByRole("button", { name: "Clear search" });
+    fireEvent.click(clearSearchBtn);
+
+    expect(searchInput).toHaveValue("");
+    expect(useGraphStore.getState().searchQuery).toBe("");
+  });
+
+  it("toggles hideExternal state and updates aria-pressed (AC-2)", () => {
+    render(<LayerFilterBar />);
+
+    const extBtn = screen.getByTestId("toggle-hide-external");
+    expect(extBtn).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(extBtn);
+    expect(useGraphStore.getState().hideExternal).toBe(true);
+    expect(extBtn).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("meets accessibility requirements with proper roles, labels, and groups (AC-2, a11y)", () => {
+    render(<LayerFilterBar />);
+
+    expect(
+      screen.getByRole("navigation", {
+        name: "Architectural filter and canvas controls",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "Architectural layers" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Filter canvas by file or symbol name"),
+    ).toBeInTheDocument();
+  });
+
+  it("returns null when graph is empty or null (AC-2)", () => {
+    useGraphStore.getState().reset();
+    const { container } = render(<LayerFilterBar />);
+    expect(container.firstChild).toBeNull();
+  });
 });

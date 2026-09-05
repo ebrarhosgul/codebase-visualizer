@@ -66,4 +66,28 @@ describe("CollapsedFolderNode Component", () => {
       "src/components",
     ]);
   });
+
+  it("selects node in store on single click (AC-7)", () => {
+    renderWithProvider(<CollapsedFolderNode {...mockProps} />);
+
+    const card = screen.getByTestId("collapsed-folder-src/components");
+    fireEvent.click(card);
+
+    expect(useGraphStore.getState().selectedNodeId).toBe(
+      "folder-group:src/components",
+    );
+  });
+
+  it("formats singular file label when fileCount is 1 (AC-4)", () => {
+    const singleFileProps: NodeProps = {
+      ...mockProps,
+      data: {
+        ...mockProps.data,
+        fileCount: 1,
+      },
+    };
+
+    renderWithProvider(<CollapsedFolderNode {...singleFileProps} />);
+    expect(screen.getByText("1 file")).toBeInTheDocument();
+  });
 });

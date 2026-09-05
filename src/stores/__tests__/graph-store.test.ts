@@ -514,4 +514,112 @@ describe("useGraphStore", () => {
     expect(state.selectedLayers).toEqual([]);
     expect(state.collapsedFolderIds).toEqual([]);
   });
+
+  it("reveals hidden node by uncollapsing folders, adding layer, and clearing search (AC-9)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 2,
+        totalSymbols: 1,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/components/modal.tsx": {
+          id: "file:src/components/modal.tsx",
+          path: "src/components/modal.tsx",
+          name: "modal.tsx",
+          extension: ".tsx",
+          language: "typescript",
+          sizeBytes: 500,
+          lineCount: 20,
+          directoryId: "dir:src/components",
+          symbolIds: ["symbol:modal"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {
+        "symbol:modal": {
+          id: "symbol:modal",
+          fileId: "file:src/components/modal.tsx",
+          parentSymbolId: null,
+          name: "Modal",
+          kind: "function",
+          range: {
+            startLine: 5,
+            startColumn: 1,
+            endLine: 15,
+            endColumn: 1,
+            startOffset: 50,
+            endOffset: 150,
+          },
+          selectionRange: {
+            startLine: 5,
+            startColumn: 10,
+            endLine: 5,
+            endColumn: 15,
+            startOffset: 59,
+            endOffset: 64,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "function Modal()",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {
+        "ext:lodash": {
+          id: "ext:lodash",
+          name: "lodash",
+          isStdLib: false,
+          symbolIds: [],
+        },
+      },
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+
+    // Apply restrictive filters: layer 'utils', collapsed 'src/components', search 'unrelated', hideExternal true
+    const store = useGraphStore.getState();
+    store.setLayerFilters(["utils"]);
+    store.toggleFolderCollapse("src/components");
+    store.setSearchQuery("unrelated");
+    store.toggleHideExternal();
+
+    expect(useGraphStore.getState().selectedLayers).toEqual(["utils"]);
+    expect(useGraphStore.getState().collapsedFolderIds).toEqual([
+      "src/components",
+    ]);
+    expect(useGraphStore.getState().searchQuery).toBe("unrelated");
+    expect(useGraphStore.getState().hideExternal).toBe(true);
+
+    // Reveal symbol in modal.tsx
+    store.revealNode("symbol:modal");
+
+    const revealedState = useGraphStore.getState();
+    // Components layer should be added to selectedLayers
+    expect(revealedState.selectedLayers).toContain("components");
+    // src/components should be uncollapsed
+    expect(revealedState.collapsedFolderIds).not.toContain("src/components");
+    // Search query should be cleared
+    expect(revealedState.searchQuery).toBe("");
+    // Node should be selected
+    expect(revealedState.selectedNodeId).toBe("symbol:modal");
+
+    // Reveal external module resets hideExternal
+    store.revealNode("ext:lodash");
+    expect(useGraphStore.getState().hideExternal).toBe(false);
+  });
 });

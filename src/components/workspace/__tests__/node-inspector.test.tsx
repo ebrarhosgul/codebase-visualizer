@@ -164,4 +164,53 @@ describe("NodeInspector Component", () => {
       screen.getByTestId("constituent-file-file:src/components/button.tsx"),
     ).toBeInTheDocument();
   });
+
+  it("selects constituent file in store when clicked (AC-7)", () => {
+    useGraphStore.getState().selectNode("folder-group:src/components");
+    render(<NodeInspector />);
+
+    const constituentFile = screen.getByTestId(
+      "constituent-file-file:src/components/button.tsx",
+    );
+    fireEvent.click(constituentFile);
+
+    expect(useGraphStore.getState().selectedNodeId).toBe(
+      "file:src/components/button.tsx",
+    );
+  });
+
+  it("triggers dual-action navigation when outgoing dependency chip is clicked (AC-8)", () => {
+    // page.tsx has outgoing dependency to button.tsx
+    useGraphStore.getState().selectNode("file:src/app/page.tsx");
+    render(<NodeInspector />);
+
+    const outgoingChip = screen.getByTestId("outgoing-dep-0");
+    fireEvent.click(outgoingChip);
+
+    expect(useGraphStore.getState().activeTarget?.fileId).toBe(
+      "file:src/components/button.tsx",
+    );
+    expect(useWorkspaceStore.getState().activeRightTab).toBe("code");
+  });
+
+  it("renders symbol inspection details with kind badge and parent file path (AC-7)", () => {
+    useGraphStore.getState().selectNode("symbol:button");
+    render(<NodeInspector />);
+
+    expect(screen.getByText("Button")).toBeInTheDocument();
+    expect(screen.getByText("src/components/button.tsx")).toBeInTheDocument();
+    expect(screen.getByText("symbol")).toBeInTheDocument();
+  });
+
+  it("resets all filters when clicking reset filters button in warning banner (AC-9, AC-10)", () => {
+    useGraphStore.getState().selectNode("file:src/components/button.tsx");
+    useGraphStore.getState().setLayerFilters(["utils"]);
+
+    render(<NodeInspector />);
+
+    const resetBtn = screen.getByRole("button", { name: /Reset filters/i });
+    fireEvent.click(resetBtn);
+
+    expect(useGraphStore.getState().selectedLayers).toEqual([]);
+  });
 });

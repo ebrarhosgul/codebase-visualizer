@@ -245,5 +245,80 @@ describe("Graph Filtering and Edge Aggregation", () => {
         result.visibleEdges.find((e) => e.id === "edge:3"),
       ).toBeUndefined();
     });
+
+    it("returns empty result structure when graph is null or has zero files (AC-3)", () => {
+      const filters: GraphFilterState = {
+        selectedLayers: [],
+        collapsedFolderIds: [],
+        searchQuery: "",
+        hideExternal: false,
+      };
+
+      const nullResult = filterAndAggregateGraph(null, filters);
+      expect(nullResult.visibleFiles).toEqual([]);
+      expect(nullResult.visibleEdges).toEqual([]);
+      expect(nullResult.collapsedFolders).toEqual([]);
+
+      const emptyResult = filterAndAggregateGraph(
+        { files: {} } as unknown as CodebaseGraph,
+        filters,
+      );
+      expect(emptyResult.visibleFiles).toEqual([]);
+      expect(emptyResult.visibleEdges).toEqual([]);
+    });
+
+    it("bundles edges between two different collapsed folders (AC-4)", () => {
+      const filters: GraphFilterState = {
+        selectedLayers: [],
+        collapsedFolderIds: ["src/components", "src/utils"],
+        searchQuery: "",
+        hideExternal: false,
+      };
+
+      const result = filterAndAggregateGraph(mockGraph, filters);
+      expect(result.collapsedFolders.length).toBe(2);
+      expect(result.visibleFiles.length).toBe(0);
+
+      // edge:2 (card in components -> format in utils) connects two collapsed folders
+      const crossFolderEdge = result.bundledEdges.find(
+        (e) =>
+          e.sourceId === "folder-group:src/components" &&
+          e.targetId === "folder-group:src/utils",
+      );
+      expect(crossFolderEdge).toBeDefined();
+      expect(crossFolderEdge?.weight).toBe(2);
+    });
+
+    it("returns zero visible nodes when search query matches nothing (AC-6, AC-10)", () => {
+      const filters: GraphFilterState = {
+        selectedLayers: [],
+        collapsedFolderIds: [],
+        searchQuery: "nonexistent_term_xyz",
+        hideExternal: false,
+      };
+
+      const result = filterAndAggregateGraph(mockGraph, filters);
+      expect(result.visibleFiles).toEqual([]);
+      expect(result.visibleEdges).toEqual([]);
+      expect(result.bundledEdges).toEqual([]);
+      expect(result.visibleDirectories).toEqual([]);
+    });
+
+    it("prunes directories containing no visible files (AC-3)", () => {
+      const filters: GraphFilterState = {
+        selectedLayers: ["components"], // excludes utils
+        collapsedFolderIds: [],
+        searchQuery: "",
+        hideExternal: false,
+      };
+
+      const result = filterAndAggregateGraph(mockGraph, filters);
+      expect(result.visibleDirectories.map((d) => d.id)).toEqual([
+        "dir:src/components",
+      ]);
+      expect(
+        result.visibleDirectories.find((d) => d.id === "dir:src/utils"),
+      ).toBeUndefined();
+    });
   });
 });

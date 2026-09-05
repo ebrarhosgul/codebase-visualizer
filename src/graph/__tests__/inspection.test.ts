@@ -130,8 +130,59 @@ describe("Structural Node Inspection Calculator", () => {
     expect(detail?.directoryDetails?.externalIncomingCount).toBe(1);
   });
 
-  it("returns null for non existent node", () => {
+  it("preserves isVisibleOnCanvas flag correctly for hidden nodes (AC-9)", () => {
+    const detail = getNodeInspectionDetail(
+      mockGraph,
+      "file:src/components/button.tsx",
+      false,
+    );
+    expect(detail).toBeDefined();
+    expect(detail?.isVisibleOnCanvas).toBe(false);
+  });
+
+  it("calculates outgoing dependencies and extracts callLine from edge metadata (AC-7, AC-8)", () => {
+    const graphWithCallSite: CodebaseGraph = {
+      ...mockGraph,
+      edges: {
+        "edge:call": {
+          id: "edge:call",
+          sourceId: "symbol:button",
+          targetId: "symbol:internalHelper",
+          kind: "call",
+          weight: 1,
+          isExternal: false,
+          metadata: {
+            callSites: [
+              {
+                startLine: 24,
+                startColumn: 5,
+                endLine: 24,
+                endColumn: 20,
+                startOffset: 100,
+                endOffset: 120,
+              },
+            ],
+          },
+        } as unknown as GraphEdge,
+      },
+    };
+
+    const detail = getNodeInspectionDetail(
+      graphWithCallSite,
+      "symbol:button",
+      true,
+    );
+    expect(detail).toBeDefined();
+    expect(detail?.metrics.fanOut).toBe(1);
+    expect(detail?.outgoingDependencies[0]?.dependencyKind).toBe("call");
+    expect(detail?.outgoingDependencies[0]?.callLine).toBe(24);
+  });
+
+  it("returns null for non existent node or empty directory", () => {
     expect(getNodeInspectionDetail(mockGraph, "file:nonexistent")).toBeNull();
     expect(getNodeInspectionDetail(null, "file:1")).toBeNull();
+    expect(
+      getNodeInspectionDetail(mockGraph, "folder-group:empty/dir"),
+    ).toBeNull();
   });
 });

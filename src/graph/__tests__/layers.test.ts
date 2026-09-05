@@ -36,6 +36,31 @@ describe("Architectural Layer Taxonomy and Classification", () => {
     expect(fallback.rank).toBe(9);
   });
 
+  it("handles path normalization with Windows backslashes and surrounding slashes (AC-1)", () => {
+    expect(classifyLayerForPath("src\\components\\modal\\dialog.tsx")).toBe(
+      "components",
+    );
+    expect(classifyLayerForPath("/src/stores/workspace.ts/")).toBe("stores");
+    expect(classifyLayerForPath("src\\lib\\parser\\ast.ts")).toBe("lib");
+  });
+
+  it("handles case insensitivity across path segments (AC-1)", () => {
+    expect(classifyLayerForPath("SRC/COMPONENTS/BUTTON.TSX")).toBe(
+      "components",
+    );
+    expect(classifyLayerForPath("src/Hooks/useAuth.ts")).toBe("hooks");
+    expect(classifyLayerForPath("src/ENTITIES/Repository.ts")).toBe("entities");
+  });
+
+  it("falls back to other for unclassified or unknown paths and layer IDs (AC-1)", () => {
+    expect(classifyLayerForPath("docs/readme.md")).toBe("other");
+    expect(classifyLayerForPath("config/database.json")).toBe("other");
+    // @ts-expect-error testing invalid layer ID fallback
+    const unknownLayer = getLayerDefinition("invalid-layer-id");
+    expect(unknownLayer.id).toBe("other");
+    expect(unknownLayer.rank).toBe(9);
+  });
+
   it("discovers present architectural layers in graph ordered by rank", () => {
     const mockGraph = {
       files: {

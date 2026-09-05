@@ -1,7 +1,7 @@
 # 0007. Architectural Filtering and Layer Inspection
 
 **Date**: 2026-09-05
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

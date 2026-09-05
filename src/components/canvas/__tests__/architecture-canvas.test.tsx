@@ -531,4 +531,47 @@ describe("ArchitectureCanvas", () => {
 
     expect(useGraphStore.getState().searchQuery).toBe("");
   });
+
+  it("renders LayerFilterBar controls above the canvas when graph is loaded (AC-2)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/components/button.tsx": {
+          id: "file:src/components/button.tsx",
+          path: "src/components/button.tsx",
+          name: "button.tsx",
+          extension: ".tsx",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src/components",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    expect(screen.getByTestId("layer-filter-bar")).toBeInTheDocument();
+  });
 });
