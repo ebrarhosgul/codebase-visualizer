@@ -79,60 +79,65 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
   );
   const pulseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const cursorDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const cursorDisposableRef = useRef<{ dispose: () => void } | null>(null);
 
   const fileNode = selectedFileId && graph ? graph.files[selectedFileId] : null;
   const sourceCode = selectedFileId ? fileSources[selectedFileId] : null;
 
   // Programmatic reveal and pulse decoration when activeTarget updates (AC-2)
-  const revealAndHighlightLine = useCallback((target: NavigationTarget) => {
-    const editor = editorRef.current;
-    const monaco = monacoRef.current;
-    if (!editor || !monaco || target.line == null) {
-      return;
-    }
+  const revealAndHighlightLine = useCallback(
+    (target: NavigationTarget) => {
+      const editor = editorRef.current;
+      const monaco = monacoRef.current;
+      if (!editor || !monaco || target.line == null) {
+        return;
+      }
 
-    const modelLineCount =
-      typeof editor.getModel === "function"
-        ? (editor.getModel()?.getLineCount() ?? target.line)
-        : target.line;
-    const targetLine = Math.max(1, Math.min(target.line, modelLineCount));
-    const targetCol = target.column ?? 1;
+      const modelLineCount =
+        typeof editor.getModel === "function"
+          ? (editor.getModel()?.getLineCount() ?? target.line)
+          : target.line;
+      const maxLines = Math.max(fileNode?.lineCount ?? 1, modelLineCount);
+      const targetLine = Math.max(1, Math.min(target.line, maxLines));
+      const targetCol = target.column ?? 1;
 
-    editor.revealLineInCenter(targetLine, monaco.editor.ScrollType.Smooth);
-    editor.setPosition({ lineNumber: targetLine, column: targetCol });
+      editor.revealLineInCenter(targetLine, monaco.editor.ScrollType.Smooth);
+      editor.setPosition({ lineNumber: targetLine, column: targetCol });
 
-    // Clean up previous pulse decorations
-    if (decorationsCollectionRef.current) {
-      decorationsCollectionRef.current.clear();
-    }
-    if (pulseTimeoutRef.current) {
-      clearTimeout(pulseTimeoutRef.current);
-    }
-
-    // Create new pulse decoration on the target line
-    const range = new monaco.Range(targetLine, 1, targetLine, 1);
-    const collection = editor.createDecorationsCollection([
-      {
-        range,
-        options: {
-          isWholeLine: true,
-          className: "monaco-pulse-line",
-          overviewRuler: {
-            color: "#38bdf8",
-            position: monaco.editor.OverviewRulerLane.Full,
-          },
-        },
-      },
-    ]);
-    decorationsCollectionRef.current = collection;
-
-    // 2-second fade out timer
-    pulseTimeoutRef.current = setTimeout(() => {
+      // Clean up previous pulse decorations
       if (decorationsCollectionRef.current) {
         decorationsCollectionRef.current.clear();
       }
-    }, 2000);
-  }, []);
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+      }
+
+      // Create new pulse decoration on the target line
+      const range = new monaco.Range(targetLine, 1, targetLine, 1);
+      const collection = editor.createDecorationsCollection([
+        {
+          range,
+          options: {
+            isWholeLine: true,
+            className: "monaco-pulse-line",
+            overviewRuler: {
+              color: "#38bdf8",
+              position: monaco.editor.OverviewRulerLane.Full,
+            },
+          },
+        },
+      ]);
+      decorationsCollectionRef.current = collection;
+
+      // 2-second fade out timer
+      pulseTimeoutRef.current = setTimeout(() => {
+        if (decorationsCollectionRef.current) {
+          decorationsCollectionRef.current.clear();
+        }
+      }, 2000);
+    },
+    [fileNode?.lineCount],
+  );
 
   // Subscribe to activeTarget changes to trigger reveal
   useEffect(() => {
@@ -164,7 +169,8 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
       }
 
       // Register cursor position change listener with 150ms debounce
-      const disposable = editor.onDidChangeCursorPosition((e) => {
+      cursorDisposableRef.current?.dispose();
+      cursorDisposableRef.current = editor.onDidChangeCursorPosition((e) => {
         if (cursorDebounceRef.current) {
           clearTimeout(cursorDebounceRef.current);
         }
@@ -222,17 +228,15 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
           });
         }, 150);
       });
-
-      return () => {
-        disposable.dispose();
-      };
     },
     [selectedFileId, revealAndHighlightLine, navigateToTarget],
   );
 
-  // Clean up timers on unmount
+  // Clean up timers and listeners on unmount
   useEffect(() => {
     return () => {
+      cursorDisposableRef.current?.dispose();
+      cursorDisposableRef.current = null;
       if (pulseTimeoutRef.current) {
         clearTimeout(pulseTimeoutRef.current);
       }
@@ -357,11 +361,18 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
       {/* Monaco Editor Canvas */}
       <div className="flex-1 w-full min-h-0 relative">
         <Editor
+          path={fileNode.path}
           height="100%"
           language={language}
           value={sourceCode}
           theme="vs-dark"
           onMount={handleEditorMount}
+          loading={
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-[var(--text-muted)] bg-[var(--surface-panel)]">
+              <Code2 className="w-6 h-6 animate-pulse mb-2 text-[var(--accent-primary)]" />
+              <span className="text-xs">Loading editor...</span>
+            </div>
+          }
           options={{
             readOnly: true,
             fontSize: 12,

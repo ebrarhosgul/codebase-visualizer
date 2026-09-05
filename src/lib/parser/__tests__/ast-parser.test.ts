@@ -96,6 +96,31 @@ describe("parseRepositoryAst", () => {
     expect(() => codebaseGraphSchema.parse(result.graph)).not.toThrow();
   });
 
+  it("does not report parseError on valid TypeScript files importing uninstalled modules or referencing globals", () => {
+    const files: ExtractedFile[] = [
+      {
+        path: "src/airportApi.ts",
+        content: `
+          import { AirportResponse } from '@/types';
+          import { MOCK_AIRPORTS } from '@/mocks/airports';
+
+          export async function getAirportDetails(icaoCode: string) {
+            if (process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
+              return MOCK_AIRPORTS[icaoCode] || null;
+            }
+            return null;
+          }
+        `,
+        sizeBytes: 300,
+      },
+    ];
+
+    const result = parseRepositoryAst(files, mockRepoInfo);
+    const fileNode = result.graph.files["file:src/airportApi.ts"];
+    expect(fileNode).toBeDefined();
+    expect(fileNode?.parseError).toBeUndefined();
+  });
+
   it("extracts top level functions, classes, interfaces, and types into canonical SymbolNodes (AC-5)", () => {
     const files: ExtractedFile[] = [
       {

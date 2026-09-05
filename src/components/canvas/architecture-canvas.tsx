@@ -114,46 +114,59 @@ function ArchitectureCanvasInner({
       return;
     }
 
-    const targetKey = `${activeTarget.source}:${activeTarget.symbolId || activeTarget.fileId}:${activeTarget.timestamp}`;
+    // Look for target node in current nodes state or layout initialNodes
+    const targetId = activeTarget.symbolId || activeTarget.fileId;
+    const targetNode =
+      nodes.find((n) => n.id === targetId) ||
+      nodes.find((n) => n.id === activeTarget.fileId) ||
+      initialNodes.find((n) => n.id === targetId) ||
+      initialNodes.find((n) => n.id === activeTarget.fileId);
+
+    if (!targetNode) {
+      return;
+    }
+
+    // If source is editor cursor, avoid jitter if target node has not changed
+    const targetKey =
+      activeTarget.source === "editor"
+        ? `editor:${targetNode.id}`
+        : `${activeTarget.source}:${targetNode.id}:${activeTarget.timestamp}`;
+
     if (lastCenteredTargetKeyRef.current === targetKey) {
       return;
     }
     lastCenteredTargetKeyRef.current = targetKey;
 
-    // Look for target node (symbol node if available, otherwise file node)
-    const targetId = activeTarget.symbolId || activeTarget.fileId;
-    const targetNode =
-      nodes.find((n) => n.id === targetId) ||
-      nodes.find((n) => n.id === activeTarget.fileId);
+    const anyNode = targetNode as unknown as {
+      measured?: { width: number; height: number };
+      width?: number;
+      height?: number;
+    };
+    const nodeWidth = anyNode.measured?.width ?? anyNode.width ?? 240;
+    const nodeHeight = anyNode.measured?.height ?? anyNode.height ?? 80;
+    const centerX = targetNode.position.x + nodeWidth / 2;
+    const centerY = targetNode.position.y + nodeHeight / 2;
 
-    if (targetNode) {
-      const anyNode = targetNode as unknown as {
-        measured?: { width: number; height: number };
-        width?: number;
-        height?: number;
-      };
-      const nodeWidth = anyNode.measured?.width ?? anyNode.width ?? 240;
-      const nodeHeight = anyNode.measured?.height ?? anyNode.height ?? 80;
-      const centerX = targetNode.position.x + nodeWidth / 2;
-      const centerY = targetNode.position.y + nodeHeight / 2;
-
-      setCenter(centerX, centerY, { zoom: 1.2, duration: 800 });
-    }
-  }, [activeTarget, nodes, setCenter]);
+    setCenter(centerX, centerY, { zoom: 1.2, duration: 800 });
+  }, [activeTarget, nodes, initialNodes, setCenter]);
 
   // Handle node selection: synchronize selection, navigate target, and switch right tab to code (AC-2, AC-7)
   const handleNodeClick: NodeMouseHandler = useCallback(
     (_, node) => {
       selectNode(node.id);
+      setActiveRightTab("code");
+      useWorkspaceStore.getState().setRightPanelCollapsed(false);
+      if (useWorkspaceStore.getState().isSmallScreen) {
+        useWorkspaceStore.getState().setRightDrawerOpen(true);
+      }
+
       if (node.id.startsWith("file:")) {
-        setActiveRightTab("code");
         navigateToTarget({
           fileId: node.id,
           source: "canvas",
           timestamp: Date.now(),
         });
       } else if (node.id.startsWith("symbol:")) {
-        setActiveRightTab("code");
         const symbol = graph?.symbols[node.id];
         if (symbol) {
           navigateToTarget({
@@ -173,7 +186,12 @@ function ArchitectureCanvasInner({
   // Handle canvas background click to clear selection
   const handlePaneClick = useCallback(() => {
     selectNode(null);
+    lastCenteredTargetKeyRef.current = null;
   }, [selectNode]);
+
+  const handleMoveStart = useCallback(() => {
+    lastCenteredTargetKeyRef.current = null;
+  }, []);
 
   // Empty or Welcome state when no graph is loaded
   if (!graph || Object.keys(graph.files).length === 0) {
@@ -235,6 +253,7 @@ function ArchitectureCanvasInner({
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
+        onMoveStart={handleMoveStart}
         nodeTypes={codebaseNodeTypes}
         minZoom={0.2}
         maxZoom={2.5}

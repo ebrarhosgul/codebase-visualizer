@@ -188,4 +188,238 @@ describe("useDeepLinking", () => {
     expect(useWorkspaceStore.getState().activeRightTab).toBe("code");
     expect(useWorkspaceStore.getState().isRightPanelCollapsed).toBe(false);
   });
+
+  it("accepts colons in file and repo query parameters (AC-1)", () => {
+    mockSearchParams = new URLSearchParams(
+      "repo=https://github.com/org/repo&file=file:src/main.ts&line=10",
+    );
+    const fallbackMock = vi.fn();
+
+    act(() => {
+      renderHook(() => useDeepLinking(fallbackMock));
+    });
+
+    expect(fallbackMock).not.toHaveBeenCalled();
+    const pending = useGraphStore.getState().pendingTarget;
+    expect(pending?.fileId).toBe("file:src/main.ts");
+    expect(pending?.line).toBe(10);
+  });
+
+  it("rejects path traversal attempts in query params (AC-6)", () => {
+    mockSearchParams = new URLSearchParams(
+      "repo=org/repo&file=../../etc/passwd&line=1",
+    );
+    const fallbackMock = vi.fn();
+
+    act(() => {
+      renderHook(() => useDeepLinking(fallbackMock));
+    });
+
+    expect(fallbackMock).toHaveBeenCalledWith(
+      expect.stringContaining("Invalid deep link"),
+    );
+    expect(useGraphStore.getState().pendingTarget).toBeNull();
+  });
+
+  it("rejects non-numeric line parameters (AC-6)", () => {
+    mockSearchParams = new URLSearchParams(
+      "repo=org/repo&file=src/main.ts&line=10abc",
+    );
+    const fallbackMock = vi.fn();
+
+    act(() => {
+      renderHook(() => useDeepLinking(fallbackMock));
+    });
+
+    expect(fallbackMock).toHaveBeenCalledWith(
+      expect.stringContaining("Invalid deep link"),
+    );
+    expect(useGraphStore.getState().pendingTarget).toBeNull();
+  });
+
+  it("deselects file when popstate event has no file parameter (AC-1)", () => {
+    useGraphStore.getState().selectNode("file:src/index.ts");
+    expect(useGraphStore.getState().selectedFileId).toBe("file:src/index.ts");
+
+    renderHook(() => useDeepLinking());
+
+    // Simulate browser back button navigation where window.location has no file param
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: new URL("http://localhost:3000/?repo=test/repo"),
+    });
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(useGraphStore.getState().selectedFileId).toBeNull();
+    expect(useGraphStore.getState().activeTarget).toBeNull();
+  });
+
+  it("uses router.replace for discrete canvas clicks to preserve navigation history (AC-1)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "s1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/index.ts": {
+          id: "file:src/index.ts",
+          path: "src/index.ts",
+          name: "index.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+
+    const { rerender } = renderHook(() => useDeepLinking());
+
+    // Trigger canvas node click
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/index.ts",
+        source: "canvas",
+        timestamp: Date.now(),
+      });
+    });
+
+    rerender();
+
+    expect(mockReplace).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "repo=test%2Frepo&branch=main&file=src%2Findex.ts",
+      ),
+      { scroll: false },
+    );
+  });
+
+  it("opens right drawer when active target arrives on small screens (AC-1, AC-7)", () => {
+    useWorkspaceStore.getState().setSmallScreen(true);
+    useWorkspaceStore.getState().setRightDrawerOpen(false);
+
+    const { rerender } = renderHook(() => useDeepLinking());
+
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/index.ts",
+        source: "url",
+        timestamp: Date.now(),
+      });
+    });
+
+    rerender();
+
+    expect(useWorkspaceStore.getState().isRightDrawerOpen).toBe(true);
+  });
+
+  it("matches symbol entity during popstate back navigation (AC-1)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "s1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 1,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/utils.ts": {
+          id: "file:src/utils.ts",
+          path: "src/utils.ts",
+          name: "utils.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 20,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/utils.ts#calc"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {
+        "symbol:src/utils.ts#calc": {
+          id: "symbol:src/utils.ts#calc",
+          fileId: "file:src/utils.ts",
+          parentSymbolId: null,
+          name: "calc",
+          kind: "function",
+          range: {
+            startLine: 5,
+            startColumn: 1,
+            endLine: 10,
+            endColumn: 1,
+            startOffset: 50,
+            endOffset: 100,
+          },
+          selectionRange: {
+            startLine: 5,
+            startColumn: 10,
+            endLine: 5,
+            endColumn: 14,
+            startOffset: 59,
+            endOffset: 63,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "function calc()",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    renderHook(() => useDeepLinking());
+
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: new URL(
+        "http://localhost:3000/?repo=test/repo&file=src/utils.ts&line=5&symbol=calc",
+      ),
+    });
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    const activeTarget = useGraphStore.getState().activeTarget;
+    expect(activeTarget?.fileId).toBe("file:src/utils.ts");
+    expect(activeTarget?.symbolId).toBe("symbol:src/utils.ts#calc");
+    expect(activeTarget?.line).toBe(5);
+  });
 });

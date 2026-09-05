@@ -165,6 +165,10 @@ export default function Home(): React.JSX.Element {
                 onClick={() => {
                   selectNode(file.id);
                   setActiveRightTab("code");
+                  useWorkspaceStore.getState().setRightPanelCollapsed(false);
+                  if (useWorkspaceStore.getState().isSmallScreen) {
+                    useWorkspaceStore.getState().setRightDrawerOpen(true);
+                  }
                   navigateToTarget({
                     fileId: file.id,
                     source: "canvas",
@@ -182,6 +186,10 @@ export default function Home(): React.JSX.Element {
                   if (e.key === "Enter" || e.key === " ") {
                     selectNode(file.id);
                     setActiveRightTab("code");
+                    useWorkspaceStore.getState().setRightPanelCollapsed(false);
+                    if (useWorkspaceStore.getState().isSmallScreen) {
+                      useWorkspaceStore.getState().setRightDrawerOpen(true);
+                    }
                     navigateToTarget({
                       fileId: file.id,
                       source: "canvas",
@@ -232,12 +240,13 @@ export default function Home(): React.JSX.Element {
   const centerContent = <ArchitectureCanvas />;
 
   const rightContent = (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex-1 min-h-0 flex flex-col">
       <Tabs
         value={activeRightTab}
         onValueChange={(val) =>
           setActiveRightTab(val as "code" | "inspector" | "trace")
         }
+        className="w-full h-full flex-1 min-h-0"
         items={[
           {
             value: "code",

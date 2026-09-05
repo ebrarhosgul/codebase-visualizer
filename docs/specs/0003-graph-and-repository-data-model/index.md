@@ -1,7 +1,7 @@
 # 0003. Graph and Repository Data Model
 
 **Date**: 2026-09-02
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

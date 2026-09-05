@@ -15,11 +15,9 @@ export const repositorySchema = z.object({
   fullName: z.string().min(1),
   defaultBranch: z.string().min(1),
   commitSha: z.string().min(1),
-  analyzedAt: z
-    .string()
-    .datetime({
-      message: "analyzedAt must be a valid ISO 8601 datetime string",
-    }),
+  analyzedAt: z.string().datetime({
+    message: "analyzedAt must be a valid ISO 8601 datetime string",
+  }),
   totalFiles: z.number().int().nonnegative(),
   totalSymbols: z.number().int().nonnegative(),
   languages: z.record(z.string(), z.number().int().nonnegative()),

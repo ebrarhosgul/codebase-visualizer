@@ -46,6 +46,20 @@ export function RepoSubmissionBar({
   const repository = useGraphStore((state) => state.repository);
 
   const [copied, setCopied] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+
+  // Auto-dismiss completion notification after 4 seconds
+  useEffect(() => {
+    if (ingestionPhase === "complete") {
+      setShowComplete(true);
+      const timer = setTimeout(() => {
+        setShowComplete(false);
+      }, 4000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowComplete(false);
+    }
+  }, [ingestionPhase]);
 
   // Sync url and branch inputs with loaded repository
   useEffect(() => {
@@ -336,18 +350,26 @@ export function RepoSubmissionBar({
       )}
 
       {/* Completion Notification */}
-      {ingestionPhase === "complete" && (
+      {showComplete && ingestionPhase === "complete" && (
         <div
           className="px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between"
           data-testid="ingestion-complete-banner"
         >
-          <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate">
               Repository parsed successfully. Click nodes to inspect source
               code.
             </span>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowComplete(false)}
+            className="ml-2 p-0.5 rounded hover:bg-emerald-500/20 text-emerald-300 shrink-0 transition-colors"
+            aria-label="Dismiss completion notification"
+          >
+            <XCircle className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
     </div>

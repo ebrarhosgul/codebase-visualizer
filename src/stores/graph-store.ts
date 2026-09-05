@@ -356,7 +356,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     }
 
     const isProgrammatic = target.source !== "editor";
-    const newLock = isProgrammatic ? now + 300 : now + 150;
+    const newLock = isProgrammatic ? now + 300 : state.lockedUntil;
     const newProgrammaticTarget =
       isProgrammatic && target.line != null
         ? { fileId: target.fileId, line: target.line }
@@ -383,7 +383,10 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
         : createFileId(cleanFile)
       : "";
 
-    const lineNum = params.line ? parseInt(params.line, 10) : null;
+    const lineNum =
+      params.line && /^\d+$/.test(params.line.trim())
+        ? parseInt(params.line.trim(), 10)
+        : null;
     const validLine =
       lineNum && Number.isFinite(lineNum) && lineNum > 0 ? lineNum : null;
 
@@ -440,6 +443,8 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       set({
         pendingTarget: null,
         activeTarget: null,
+        selectedFileId: null,
+        selectedNodeId: null,
         fallbackNotification: reason,
       });
       return {
@@ -465,6 +470,9 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
         const reason = `Symbol "${symbolName}" was not found in ${resolvedFileId.replace(/^file:/, "")}.`;
         set({
           pendingTarget: null,
+          activeTarget: null,
+          selectedFileId: null,
+          selectedNodeId: null,
           fallbackNotification: reason,
         });
         return {

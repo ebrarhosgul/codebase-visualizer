@@ -58,12 +58,19 @@ export function Toast({
 }: ToastProps): React.JSX.Element {
   const { container, icon: Icon } = variantStyles[variant];
 
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (durationMs > 0) {
-      const timer = setTimeout(onClose, durationMs);
+      const timer = setTimeout(() => {
+        onCloseRef.current();
+      }, durationMs);
       return () => clearTimeout(timer);
     }
-  }, [durationMs, onClose]);
+  }, [durationMs, message]);
 
   return (
     <div

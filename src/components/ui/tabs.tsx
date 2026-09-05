@@ -39,7 +39,7 @@ export function Tabs({
     <TabsPrimitive.Root
       value={value}
       onValueChange={onValueChange}
-      className={cn("w-full flex flex-col", className)}
+      className={cn("w-full h-full flex-1 min-h-0 flex flex-col", className)}
     >
       <TabsPrimitive.List
         className={cn(
@@ -69,7 +69,7 @@ export function Tabs({
           <TabsPrimitive.Content
             key={tab.value}
             value={tab.value}
-            className="flex-1 overflow-auto focus-visible:outline-none"
+            className="w-full flex-1 min-h-0 h-full flex flex-col overflow-hidden focus-visible:outline-none data-[state=inactive]:hidden"
           >
             {tab.content}
           </TabsPrimitive.Content>

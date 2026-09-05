@@ -7,6 +7,7 @@ import type { CodebaseGraph } from "@/entities";
 const mockRevealLineInCenter = vi.fn();
 const mockSetPosition = vi.fn();
 const mockClearDecorations = vi.fn();
+const mockDispose = vi.fn();
 const mockCreateDecorationsCollection = vi.fn().mockReturnValue({
   clear: mockClearDecorations,
 });
@@ -66,7 +67,7 @@ vi.mock("@monaco-editor/react", () => ({
         createDecorationsCollection: mockCreateDecorationsCollection,
         onDidChangeCursorPosition: (cb: (e: CursorPositionEvent) => void) => {
           cursorPositionCallback = cb;
-          return { dispose: vi.fn() };
+          return { dispose: mockDispose };
         },
         getModel: () => ({ getLineCount: () => 100 }),
       };
@@ -97,6 +98,7 @@ describe("CodeViewer", () => {
     mockSetPosition.mockClear();
     mockCreateDecorationsCollection.mockClear();
     mockClearDecorations.mockClear();
+    mockDispose.mockClear();
   });
 
   it("renders empty state placeholder when no file is selected", () => {
@@ -522,5 +524,391 @@ describe("CodeViewer", () => {
     });
 
     expect(writeTextMock).toHaveBeenCalled();
+  });
+
+  it("does not prematurely clamp targetLine when file has more lines than default model (AC-2)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "s1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/large.ts": {
+          id: "file:src/large.ts",
+          path: "src/large.ts",
+          name: "large.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 4096,
+          lineCount: 250, // 250 lines in file
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph, {
+      "file:src/large.ts": "const data = [];",
+    });
+    useGraphStore.getState().selectNode("file:src/large.ts");
+
+    render(<CodeViewer />);
+
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/large.ts",
+        line: 180, // Greater than mock editor's default 100 lines
+        column: 1,
+        source: "canvas",
+        timestamp: Date.now(),
+      });
+    });
+
+    // Should reveal line 180, not clamped to 100
+    expect(mockRevealLineInCenter).toHaveBeenCalledWith(180, 1);
+  });
+
+  it("disposes cursor listener on unmount to prevent event listener leaks (AC-3)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "s1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/index.ts": {
+          id: "file:src/index.ts",
+          path: "src/index.ts",
+          name: "index.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 128,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore
+      .getState()
+      .setGraph(mockGraph, { "file:src/index.ts": "const x = 1;" });
+    useGraphStore.getState().selectNode("file:src/index.ts");
+
+    const { unmount } = render(<CodeViewer />);
+    expect(mockDispose).not.toHaveBeenCalled();
+
+    unmount();
+    expect(mockDispose).toHaveBeenCalled();
+  });
+
+  it("clears pulse decorations after two seconds (AC-2)", () => {
+    vi.useFakeTimers();
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "s1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/index.ts": {
+          id: "file:src/index.ts",
+          path: "src/index.ts",
+          name: "index.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 128,
+          lineCount: 20,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore
+      .getState()
+      .setGraph(mockGraph, { "file:src/index.ts": "line1\nline2\nline3" });
+    useGraphStore.getState().selectNode("file:src/index.ts");
+    render(<CodeViewer />);
+
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/index.ts",
+        line: 5,
+        source: "canvas",
+        timestamp: Date.now(),
+      });
+    });
+
+    mockClearDecorations.mockClear();
+
+    act(() => {
+      vi.advanceTimersByTime(2100);
+    });
+
+    expect(mockClearDecorations).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+
+  it("targets enclosing file with null symbol when cursor is outside any symbol (AC-3)", () => {
+    vi.useFakeTimers();
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "s1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 1,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/index.ts": {
+          id: "file:src/index.ts",
+          path: "src/index.ts",
+          name: "index.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 128,
+          lineCount: 30,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/index.ts#fn"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {
+        "symbol:src/index.ts#fn": {
+          id: "symbol:src/index.ts#fn",
+          fileId: "file:src/index.ts",
+          parentSymbolId: null,
+          name: "fn",
+          kind: "function",
+          range: {
+            startLine: 10,
+            startColumn: 1,
+            endLine: 15,
+            endColumn: 1,
+            startOffset: 100,
+            endOffset: 150,
+          },
+          selectionRange: {
+            startLine: 10,
+            startColumn: 10,
+            endLine: 10,
+            endColumn: 12,
+            startOffset: 109,
+            endOffset: 111,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "function fn()",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore
+      .getState()
+      .setGraph(mockGraph, { "file:src/index.ts": "code content" });
+    useGraphStore.getState().selectNode("file:src/index.ts");
+    render(<CodeViewer />);
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    // Move cursor to line 2 (outside fn which is at lines 10-15)
+    act(() => {
+      cursorPositionCallback?.({
+        position: { lineNumber: 2, column: 1 },
+      });
+      vi.advanceTimersByTime(200);
+    });
+
+    const activeTarget = useGraphStore.getState().activeTarget;
+    expect(activeTarget?.fileId).toBe("file:src/index.ts");
+    expect(activeTarget?.symbolId).toBeNull();
+    expect(activeTarget?.line).toBe(2);
+    expect(activeTarget?.source).toBe("editor");
+
+    vi.useRealTimers();
+  });
+
+  it("clamps non-positive target line numbers to line 1 (AC-2)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "s1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/index.ts": {
+          id: "file:src/index.ts",
+          path: "src/index.ts",
+          name: "index.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 128,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore
+      .getState()
+      .setGraph(mockGraph, { "file:src/index.ts": "const x = 1;" });
+    useGraphStore.getState().selectNode("file:src/index.ts");
+    render(<CodeViewer />);
+
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/index.ts",
+        line: 0,
+        source: "canvas",
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(mockRevealLineInCenter).toHaveBeenCalledWith(1, 1);
+    expect(mockSetPosition).toHaveBeenCalledWith({ lineNumber: 1, column: 1 });
+  });
+
+  it("shows Copied confirmation text when share link button is pressed (AC-8)", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "s1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/index.ts": {
+          id: "file:src/index.ts",
+          path: "src/index.ts",
+          name: "index.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 128,
+          lineCount: 8,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore
+      .getState()
+      .setGraph(mockGraph, { "file:src/index.ts": "const x = 1;" });
+    useGraphStore.getState().selectNode("file:src/index.ts");
+
+    render(<CodeViewer />);
+
+    const shareBtn = screen.getByRole("button", {
+      name: /copy deep link permalink/i,
+    });
+
+    await act(async () => {
+      fireEvent.click(shareBtn);
+    });
+
+    expect(screen.getByText("Copied!")).toBeInTheDocument();
   });
 });

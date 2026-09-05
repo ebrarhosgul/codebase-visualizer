@@ -503,6 +503,7 @@ export function parseRepositoryAst(
 
   const aliasMap = extractPathAliases(tsconfigContent);
   const directoryNodes = buildDirectoryHierarchy(Array.from(existingFilePaths));
+  const program = project.getProgram();
 
   const fileNodes: Record<string, FileNode> = {};
   const symbols: Record<string, SymbolNode> = {};
@@ -530,14 +531,15 @@ export function parseRepositoryAst(
 
     if (sourceFile) {
       try {
-        const diagnostics = sourceFile.getPreEmitDiagnostics();
-        const syntaxErrors = diagnostics.filter((d) => d.getCategory() === 1); // 1 = Error
-        if (syntaxErrors.length > 0) {
-          const firstMsg = syntaxErrors[0]?.getMessageText();
+        const syntacticDiagnostics =
+          program.getSyntacticDiagnostics(sourceFile);
+        if (syntacticDiagnostics.length > 0) {
+          const firstMsg = syntacticDiagnostics[0]?.getMessageText();
           parseError =
             typeof firstMsg === "string"
               ? firstMsg
-              : "Syntax error detected in file.";
+              : (firstMsg?.getMessageText() ??
+                "Syntax error detected in file.");
         }
       } catch {
         // Tolerant of diagnostic failures

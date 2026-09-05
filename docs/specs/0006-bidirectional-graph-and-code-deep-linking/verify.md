@@ -4,27 +4,27 @@ _Steps derived from spec 0006 acceptance criteria and value sourcing guarantees.
 
 ## UI / manual
 
-- [ ] Click a file or symbol node on the React Flow canvas → right workspace panel switches to Code tab, loads target file, smoothly scrolls to declaration line, and shows a two second pulse highlight → AC-2, AC-8
-- [ ] Move cursor or select text across function declarations in Monaco Editor → React Flow camera smoothly pans and centers on matching symbol or file node without lagging → AC-3
-- [ ] Observe browser URL address bar while clicking nodes or moving editor cursor → query parameters (`repo`, `branch`, `file`, `line`, `symbol`) update accurately → AC-1
-- [ ] Rapidly click a canvas node and move editor cursor immediately within 200 milliseconds → dual guard time lock and coordinate match prevents camera and cursor feedback loop → AC-4
-- [ ] Open a shared deep link URL in a new browser tab with query parameters → repository ingests as normal, buffers navigation coordinates, and automatically jumps to target line and centers node upon parsing completion → AC-1, AC-7
-- [ ] Open a deep link URL pointing to a non existent file or symbol → UI falls back gracefully to repository overview, shows an informative toast alert, and cleans up invalid parameters → AC-6
-- [ ] Click the Share Link button in header or editor toolbar → full deep link URL copies to clipboard and confirmation notification displays → AC-8
+- [x] Click a file or symbol node on the React Flow canvas → right workspace panel switches to Code tab, loads target file, smoothly scrolls to declaration line, and shows a two second pulse highlight → AC-2, AC-8
+- [x] Move cursor or select text across function declarations in Monaco Editor → React Flow camera smoothly pans and centers on matching symbol or file node without lagging → AC-3
+- [x] Observe browser URL address bar while clicking nodes or moving editor cursor → query parameters (`repo`, `branch`, `file`, `line`, `symbol`) update accurately → AC-1
+- [x] Rapidly click a canvas node and move editor cursor immediately within 200 milliseconds → dual guard time lock and coordinate match prevents camera and cursor feedback loop → AC-4
+- [x] Open a shared deep link URL in a new browser tab with query parameters → repository ingests as normal, buffers navigation coordinates, and automatically jumps to target line and centers node upon parsing completion → AC-1, AC-7
+- [x] Open a deep link URL pointing to a non existent file or symbol → UI falls back gracefully to repository overview, shows an informative toast alert, and cleans up invalid parameters → AC-6
+- [x] Click the Share Link button in header or editor toolbar → full deep link URL copies to clipboard and confirmation notification displays → AC-8
 
 ## Value sourcing checks
 
-- [ ] Vary deep link file path across different repository subdirectories → verifies relative path extraction from `FileNode.path`
-- [ ] Vary active cursor position across nested functions and class methods → verifies innermost symbol identification from `SourceLocation.startLine` and `endLine`
-- [ ] Inspect React Flow camera zoom and pan coordinates when focusing nodes at canvas extremities → verifies node position calculation and viewport centering
-- [ ] Trigger fallback with malformed and unresolvable file queries → verifies toast notification string formatting and URL query cleanup
+- [x] Vary deep link file path across different repository subdirectories → verifies relative path extraction from `FileNode.path`
+- [x] Vary active cursor position across nested functions and class methods → verifies innermost symbol identification from `SourceLocation.startLine` and `endLine`
+- [x] Inspect React Flow camera zoom and pan coordinates when focusing nodes at canvas extremities → verifies node position calculation and viewport centering
+- [x] Trigger fallback with malformed and unresolvable file queries → verifies toast notification string formatting and URL query cleanup
 
 ## Commands
 
-- [ ] `npm run typecheck` → strict TypeScript checks pass across AST parser symbol visitor, Zustand navigation actions, and Monaco decoration handlers → AC-1, AC-4, AC-5
-- [ ] `npm run lint` → passes with zero lint warnings across newly created hooks, components, and store slices → AC-1, AC-8
-- [ ] `npm test` → Vitest suite passes all unit tests for AST symbol extraction, query parameter serialization, and navigation store time lock logic → AC-1, AC-4, AC-5, AC-6
-- [ ] `npm run build` → Next.js production build succeeds with clean client code splitting for deep link hooks and Monaco editor bindings → AC-1, AC-7
+- [x] `npm run typecheck` → strict TypeScript checks pass across AST parser symbol visitor, Zustand navigation actions, and Monaco decoration handlers → AC-1, AC-4, AC-5
+- [x] `npm run lint` → passes with zero lint warnings across newly created hooks, components, and store slices → AC-1, AC-8
+- [x] `npm test` → Vitest suite passes all unit tests for AST symbol extraction, query parameter serialization, and navigation store time lock logic → AC-1, AC-4, AC-5, AC-6
+- [x] `npm run build` → Next.js production build succeeds with clean client code splitting for deep link hooks and Monaco editor bindings → AC-1, AC-7
 
 ## Acceptance criteria coverage
 

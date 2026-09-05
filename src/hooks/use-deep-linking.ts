@@ -10,10 +10,13 @@ export interface DeepLinkingSyncProps {
 }
 
 /**
- * Validates alphanumeric, slash, dot, and hyphen characters for safe query params.
+ * Validates alphanumeric, slash, dot, colon, and hyphen characters for safe query params.
  */
 function isValidQueryValue(val: string): boolean {
-  return /^[a-zA-Z0-9_\-./#]+$/.test(val);
+  if (val.includes("..")) {
+    return false;
+  }
+  return /^[a-zA-Z0-9_\-./#:]+$/.test(val);
 }
 
 /**
@@ -74,17 +77,28 @@ export function useDeepLinking(onFallback?: (message: string) => void): void {
     const lineParam = currentSearchParams.get("line")?.trim();
     const symbolParam = currentSearchParams.get("symbol")?.trim();
 
-    // Validate parameters against invalid characters
+    // Validate parameters against invalid characters and path traversal
+    const isRepoValid = !repoParam || isValidQueryValue(repoParam);
+    const isBranchValid = !branchParam || isValidQueryValue(branchParam);
     const isFileValid = !fileParam || isValidQueryValue(fileParam);
+    const isLineValid = !lineParam || /^\d+$/.test(lineParam);
     const isSymbolValid = !symbolParam || isValidQueryValue(symbolParam);
 
-    if (!isFileValid || !isSymbolValid) {
+    if (
+      !isRepoValid ||
+      !isBranchValid ||
+      !isFileValid ||
+      !isLineValid ||
+      !isSymbolValid
+    ) {
       onFallback?.("Invalid deep link parameters were discarded.");
       if (typeof window !== "undefined") {
         const cleanUrl = new URL(window.location.href);
         cleanUrl.searchParams.delete("file");
         cleanUrl.searchParams.delete("line");
         cleanUrl.searchParams.delete("symbol");
+        if (!isRepoValid) cleanUrl.searchParams.delete("repo");
+        if (!isBranchValid) cleanUrl.searchParams.delete("branch");
         const nextQuery = cleanUrl.searchParams.toString();
         const nextUrl = nextQuery ? `?${nextQuery}` : cleanUrl.pathname;
         window.history.replaceState(null, "", nextUrl);
@@ -140,11 +154,14 @@ export function useDeepLinking(onFallback?: (message: string) => void): void {
     clearFallbackNotification();
   }, [fallbackNotification, onFallback, clearFallbackNotification]);
 
-  // 3. Switch workspace right panel to code when URL deep link navigates to a target (AC-1, AC-7)
+  // 3. Switch workspace right panel to code when URL deep link or canvas click navigates to a target (AC-1, AC-7)
   useEffect(() => {
-    if (activeTarget?.source === "url") {
+    if (activeTarget?.source === "url" || activeTarget?.source === "canvas") {
       useWorkspaceStore.getState().setActiveRightTab("code");
       useWorkspaceStore.getState().setRightPanelCollapsed(false);
+      if (useWorkspaceStore.getState().isSmallScreen) {
+        useWorkspaceStore.getState().setRightDrawerOpen(true);
+      }
     }
   }, [activeTarget]);
 
@@ -160,17 +177,18 @@ export function useDeepLinking(onFallback?: (message: string) => void): void {
       const lineParam = currentSearchParams.get("line")?.trim();
       const symbolParam = currentSearchParams.get("symbol")?.trim();
 
-      if (fileParam) {
+      if (fileParam && isValidQueryValue(fileParam)) {
         const fileId = fileParam.startsWith("file:")
           ? fileParam
           : `file:${fileParam}`;
-        const lineNum = lineParam ? parseInt(lineParam, 10) : null;
+        const lineNum =
+          lineParam && /^\d+$/.test(lineParam) ? parseInt(lineParam, 10) : null;
         const validLine =
           lineNum && Number.isFinite(lineNum) && lineNum > 0 ? lineNum : null;
         const currentGraph = useGraphStore.getState().graph;
         let symbolId: string | null = null;
 
-        if (symbolParam && currentGraph) {
+        if (symbolParam && isValidQueryValue(symbolParam) && currentGraph) {
           const matched = Object.values(currentGraph.symbols).find(
             (s) => s.fileId === fileId && s.name === symbolParam,
           );
@@ -184,6 +202,9 @@ export function useDeepLinking(onFallback?: (message: string) => void): void {
           source: "url",
           timestamp: Date.now(),
         });
+      } else {
+        // Back navigation to repository overview without selected file
+        useGraphStore.getState().selectNode(null);
       }
     };
 

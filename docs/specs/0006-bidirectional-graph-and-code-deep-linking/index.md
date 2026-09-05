@@ -1,7 +1,7 @@
 # 0006. Bidirectional Graph and Code Deep Linking
 
 **Date**: 2026-09-04
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

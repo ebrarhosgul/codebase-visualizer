@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, beforeEach } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { RepoSubmissionBar } from "../repo-submission-bar";
 import { useGraphStore } from "@/stores/graph-store";
 
@@ -92,5 +92,52 @@ describe("RepoSubmissionBar", () => {
     fireEvent.change(tokenInput, { target: { value: "ghp_secret123" } });
 
     expect(sessionStorage.getItem("github_pat")).toBe("ghp_secret123");
+  });
+
+  it("displays completion notification, allows manual dismissal, and auto-dismisses", () => {
+    vi.useFakeTimers();
+
+    useGraphStore.setState({
+      isIngesting: false,
+      ingestionPhase: "complete",
+    });
+
+    render(<RepoSubmissionBar />);
+
+    expect(screen.getByTestId("ingestion-complete-banner")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Repository parsed successfully/i),
+    ).toBeInTheDocument();
+
+    // Fast-forward past 4000ms auto-dismiss timer
+    act(() => {
+      vi.advanceTimersByTime(4500);
+    });
+
+    expect(
+      screen.queryByTestId("ingestion-complete-banner"),
+    ).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it("allows dismissing completion notification manually via close button", () => {
+    useGraphStore.setState({
+      isIngesting: false,
+      ingestionPhase: "complete",
+    });
+
+    render(<RepoSubmissionBar />);
+
+    expect(screen.getByTestId("ingestion-complete-banner")).toBeInTheDocument();
+
+    const closeBtn = screen.getByRole("button", {
+      name: "Dismiss completion notification",
+    });
+    fireEvent.click(closeBtn);
+
+    expect(
+      screen.queryByTestId("ingestion-complete-banner"),
+    ).not.toBeInTheDocument();
   });
 });
