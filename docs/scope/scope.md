@@ -102,11 +102,11 @@ Provide canvas controls to zoom, pan, collapse directories, filter by architectu
 **Done when:** users can filter the graph by folder or architectural layer, search for symbols, and inspect incoming and outgoing dependencies in a detail drawer.
 spec [0007](../specs/0007-architectural-filtering-and-layer-inspection/index.md) · code in `src/`
 - [x] Design it (spec): `/architect architectural filtering and layer inspection`
-- [ ] Build it: `/develop architectural filtering and layer inspection`
-  - [ ] Layer taxonomy & filter store slice: classification heuristics, Zustand filter state, and debounced search (AC-1, AC-2, AC-6)
-  - [ ] Graph pruning & edge aggregation: pure graph filtering, outermost folder resolution, and bundled dependency edges (AC-3, AC-4, AC-9)
-  - [ ] Canvas controls & folder collapse nodes: top layer filter bar, interactive folder collapse triggers, and summary cards (AC-2, AC-4, AC-5, AC-10)
-  - [ ] Node Inspector & dual action navigation: dependency inspection metrics, caller and callee chip lists, and Monaco deep link reveal (AC-7, AC-8, AC-9)
+- [x] Build it: `/develop architectural filtering and layer inspection`
+  - [x] Layer taxonomy & filter store slice: classification heuristics, Zustand filter state, and debounced search (AC-1, AC-2, AC-6)
+  - [x] Graph pruning & edge aggregation: pure graph filtering, outermost folder resolution, and bundled dependency edges (AC-3, AC-4, AC-9)
+  - [x] Canvas controls & folder collapse nodes: top layer filter bar, interactive folder collapse triggers, and summary cards (AC-2, AC-4, AC-5, AC-10)
+  - [x] Node Inspector & dual action navigation: dependency inspection metrics, caller and callee chip lists, and Monaco deep link reveal (AC-7, AC-8, AC-9)
 - [ ] Verify it: `/check verify architectural filtering and layer inspection`
 - [ ] Test it: `/test architectural filtering and layer inspection`
 

@@ -223,15 +223,15 @@ Hierarchical Directory Collapse:
 
 ## Build plan
 
-1. Create architectural layer taxonomy and heuristic classifier utility with priority ranking in `src/graph/layers.ts`, satisfies **AC-1**.
-2. Add filter state, action handlers, and 200 millisecond debounced search to Zustand store in `src/stores/graph-store.ts`, satisfies **AC-2**, **AC-6**.
-3. Implement pure graph filtering, outermost ancestor resolution, dominant layer calculation, and edge aggregation utility in `src/graph/filtering.ts`, satisfies **AC-3**, **AC-4**, **AC-9**.
-4. Update React Flow adapter and Dagre layout engine to support collapsed folder summary cards and bundled edges in `src/graph/adapters/react-flow-adapter.ts` and `src/graph/layout/dagre-layout.ts`, satisfies **AC-3**, **AC-4**.
-5. Build interactive folder collapse chevron and double click triggers in `src/components/canvas/folder-group-node.tsx` and create `src/components/canvas/collapsed-folder-node.tsx`, satisfies **AC-4**, **AC-5**.
-6. Implement floating canvas top filter bar with layer badges, debounced search input, and bulk collapse toggles in `src/components/canvas/layer-filter-bar.tsx`, satisfies **AC-2**, **AC-6**, **AC-10**.
-7. Create structural inspection calculator utility supporting file, symbol, and directory scopes in `src/graph/inspection.ts`, satisfies **AC-7**, **AC-9**.
-8. Build enhanced Node Inspector view with dependency lists, metrics, and dual action navigation chips in `src/components/workspace/node-inspector.tsx`, satisfies **AC-7**, **AC-8**, **AC-9**.
-9. Implement canvas empty state overlay with quick reset action in `src/components/canvas/architecture-canvas.tsx`, satisfies **AC-10**.
+- [x] 1. Create architectural layer taxonomy and heuristic classifier utility with priority ranking in `src/graph/layers.ts`, satisfies **AC-1**.
+- [x] 2. Add filter state, action handlers, and 200 millisecond debounced search to Zustand store in `src/stores/graph-store.ts`, satisfies **AC-2**, **AC-6**.
+- [x] 3. Implement pure graph filtering, outermost ancestor resolution, dominant layer calculation, and edge aggregation utility in `src/graph/filtering.ts`, satisfies **AC-3**, **AC-4**, **AC-9**.
+- [x] 4. Update React Flow adapter and Dagre layout engine to support collapsed folder summary cards and bundled edges in `src/graph/adapters/react-flow-adapter.ts` and `src/graph/layout/dagre-layout.ts`, satisfies **AC-3**, **AC-4**.
+- [x] 5. Build interactive folder collapse chevron and double click triggers in `src/components/canvas/folder-group-node.tsx` and create `src/components/canvas/collapsed-folder-node.tsx`, satisfies **AC-4**, **AC-5**.
+- [x] 6. Implement floating canvas top filter bar with layer badges, debounced search input, and bulk collapse toggles in `src/components/canvas/layer-filter-bar.tsx`, satisfies **AC-2**, **AC-6**, **AC-10**.
+- [x] 7. Create structural inspection calculator utility supporting file, symbol, and directory scopes in `src/graph/inspection.ts`, satisfies **AC-7**, **AC-9**.
+- [x] 8. Build enhanced Node Inspector view with dependency lists, metrics, and dual action navigation chips in `src/components/workspace/node-inspector.tsx`, satisfies **AC-7**, **AC-8**, **AC-9**.
+- [x] 9. Implement canvas empty state overlay with quick reset action in `src/components/canvas/architecture-canvas.tsx`, satisfies **AC-10**.
 
 ## Consequences
 
