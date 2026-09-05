@@ -24,9 +24,16 @@ export interface DagreLayoutOptions {
  */
 function getFolderForNode(
   node: CodebaseReactFlowNode,
-): { key: string; label: string } | null {
+): { key: string; label: string; isCollapsed?: boolean } | null {
   if (node.type === "folderGroup" || node.type === "directory") {
     return null;
+  }
+  if (node.type === "collapsedFolder") {
+    return {
+      key: node.id,
+      label: (node.data?.label as string) || node.id,
+      isCollapsed: true,
+    };
   }
   const entityData = node.data;
   if (!entityData) return null;
@@ -98,6 +105,8 @@ export function computeDagreLayout(
     interface ClusterInfo {
       key: string;
       label: string;
+      isCollapsed: boolean;
+      collapsedNode?: CodebaseReactFlowNode;
       nodes: CodebaseReactFlowNode[];
       cols: number;
       rows: number;
@@ -114,11 +123,29 @@ export function computeDagreLayout(
     // Partition files into folder clusters
     const clusterMap = new Map<
       string,
-      { key: string; label: string; nodes: CodebaseReactFlowNode[] }
+      {
+        key: string;
+        label: string;
+        isCollapsed: boolean;
+        collapsedNode?: CodebaseReactFlowNode;
+        nodes: CodebaseReactFlowNode[];
+      }
     >();
     const nodeToFolder = new Map<string, string>();
 
     for (const node of fileNodes) {
+      if (node.type === "collapsedFolder") {
+        nodeToFolder.set(node.id, node.id);
+        clusterMap.set(node.id, {
+          key: node.id,
+          label: (node.data?.label as string) || node.id,
+          isCollapsed: true,
+          collapsedNode: node,
+          nodes: [],
+        });
+        continue;
+      }
+
       const folderInfo = getFolderForNode(node) ?? {
         key: "folder-group:other",
         label: "Other",
@@ -127,7 +154,12 @@ export function computeDagreLayout(
 
       let cluster = clusterMap.get(folderInfo.key);
       if (!cluster) {
-        cluster = { key: folderInfo.key, label: folderInfo.label, nodes: [] };
+        cluster = {
+          key: folderInfo.key,
+          label: folderInfo.label,
+          isCollapsed: false,
+          nodes: [],
+        };
         clusterMap.set(folderInfo.key, cluster);
       }
       cluster.nodes.push(node);
@@ -135,6 +167,20 @@ export function computeDagreLayout(
 
     // Compute dimensions and internal grid for each cluster
     const clusters: ClusterInfo[] = Array.from(clusterMap.values()).map((c) => {
+      if (c.isCollapsed) {
+        return {
+          key: c.key,
+          label: c.label,
+          isCollapsed: true,
+          collapsedNode: c.collapsedNode,
+          nodes: [],
+          cols: 1,
+          rows: 1,
+          width: 260,
+          height: 90,
+        };
+      }
+
       // Sort files alphabetically for predictable, neat placement
       c.nodes.sort((a, b) => {
         const nameA = a.data?.label || a.id;
@@ -151,6 +197,7 @@ export function computeDagreLayout(
       return {
         key: c.key,
         label: c.label,
+        isCollapsed: false,
         nodes: c.nodes,
         cols,
         rows,
@@ -201,6 +248,15 @@ export function computeDagreLayout(
       const fy = layoutFolder
         ? Math.round(layoutFolder.y - cluster.height / 2)
         : 0;
+
+      if (cluster.isCollapsed && cluster.collapsedNode) {
+        positionedNodes.push({
+          ...cluster.collapsedNode,
+          position: { x: fx, y: fy },
+          zIndex: 1,
+        });
+        continue;
+      }
 
       folderGroupNodes.push({
         id: cluster.key,
@@ -264,9 +320,11 @@ export function computeDagreLayout(
 
   // Register nodes with fixed card dimensions
   for (const node of fileNodes) {
+    const w = node.type === "collapsedFolder" ? 260 : nodeWidth;
+    const h = node.type === "collapsedFolder" ? 90 : nodeHeight;
     g.setNode(node.id, {
-      width: nodeWidth,
-      height: nodeHeight,
+      width: w,
+      height: h,
     });
   }
 
@@ -287,8 +345,11 @@ export function computeDagreLayout(
       return node;
     }
 
-    const x = Math.round(layoutNode.x - nodeWidth / 2);
-    const y = Math.round(layoutNode.y - nodeHeight / 2);
+    const w = node.type === "collapsedFolder" ? 260 : nodeWidth;
+    const h = node.type === "collapsedFolder" ? 90 : nodeHeight;
+
+    const x = Math.round(layoutNode.x - w / 2);
+    const y = Math.round(layoutNode.y - h / 2);
 
     return {
       ...node,

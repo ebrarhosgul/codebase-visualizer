@@ -281,4 +281,92 @@ describe("computeDagreLayout", () => {
       }
     }
   });
+
+  it("lays out collapsed folder summary cards as standalone macro-nodes (AC-4)", () => {
+    const nodes: CodebaseReactFlowNode[] = [
+      {
+        id: "folder-group:src/components",
+        type: "collapsedFolder",
+        position: { x: 0, y: 0 },
+        data: {
+          entityType: "collapsedFolder",
+          label: "src/components",
+          fileCount: 5,
+          dominantLayerId: "components",
+          externalImportCount: 2,
+          externalExportCount: 4,
+          entity: {
+            directoryId: "folder-group:src/components",
+            path: "src/components",
+            fileCount: 5,
+            dominantLayerId: "components",
+            externalImportCount: 2,
+            externalExportCount: 4,
+            childFileIds: ["file:1", "file:2"],
+          },
+        },
+      },
+      {
+        id: "file:src/utils.ts",
+        type: "file",
+        position: { x: 0, y: 0 },
+        data: {
+          entityType: "file",
+          label: "utils.ts",
+          entity: {
+            id: "file:src/utils.ts",
+            path: "src/utils.ts",
+            name: "utils.ts",
+            extension: ".ts",
+            language: "typescript",
+            sizeBytes: 50,
+            lineCount: 5,
+            directoryId: "dir:src",
+            symbolIds: [],
+            importIds: [],
+            exportIds: [],
+          },
+        },
+      },
+    ];
+
+    const edges: CodebaseReactFlowEdge[] = [
+      {
+        id: "bundled:folder-group:src/components->file:src/utils.ts",
+        source: "folder-group:src/components",
+        target: "file:src/utils.ts",
+        type: "file_import",
+        data: {
+          kind: "file_import",
+          weight: 4,
+          isExternal: false,
+          isBundled: true,
+        },
+      },
+    ];
+
+    const elements: ReactFlowElements = {
+      nodes: Object.freeze(nodes),
+      edges: Object.freeze(edges),
+    };
+
+    const laidOut = computeDagreLayout(elements, {
+      direction: "LR",
+      groupByFolder: true,
+    });
+
+    // The collapsed folder should be positioned directly without a folderGroup wrapper
+    const collapsedCard = laidOut.nodes.find(
+      (n) => n.id === "folder-group:src/components",
+    );
+    expect(collapsedCard).toBeDefined();
+    expect(collapsedCard?.type).toBe("collapsedFolder");
+
+    const utilsCard = laidOut.nodes.find((n) => n.id === "file:src/utils.ts");
+    expect(utilsCard).toBeDefined();
+
+    if (collapsedCard && utilsCard) {
+      expect(utilsCard.position.x).toBeGreaterThan(collapsedCard.position.x);
+    }
+  });
 });
