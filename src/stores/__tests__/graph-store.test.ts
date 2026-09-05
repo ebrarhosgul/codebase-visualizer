@@ -454,4 +454,64 @@ describe("useGraphStore", () => {
     expect(state.selectedNodeId).toBe("file:src/standalone.ts");
     expect(state.lastProgrammaticTarget).toBeNull();
   });
+
+  it("toggles, sets, and clears architectural layer filters", () => {
+    const store = useGraphStore.getState();
+    expect(store.selectedLayers).toEqual([]);
+
+    store.toggleLayerFilter("components");
+    expect(useGraphStore.getState().selectedLayers).toEqual(["components"]);
+
+    store.toggleLayerFilter("stores");
+    expect(useGraphStore.getState().selectedLayers).toEqual([
+      "components",
+      "stores",
+    ]);
+
+    store.toggleLayerFilter("components");
+    expect(useGraphStore.getState().selectedLayers).toEqual(["stores"]);
+
+    store.setLayerFilters(["api", "utils"]);
+    expect(useGraphStore.getState().selectedLayers).toEqual(["api", "utils"]);
+
+    store.clearLayerFilters();
+    expect(useGraphStore.getState().selectedLayers).toEqual([]);
+  });
+
+  it("toggles, collapses, and expands folders", () => {
+    const store = useGraphStore.getState();
+    expect(store.collapsedFolderIds).toEqual([]);
+
+    store.toggleFolderCollapse("src/components");
+    expect(useGraphStore.getState().collapsedFolderIds).toEqual([
+      "src/components",
+    ]);
+
+    store.toggleFolderCollapse("src/components");
+    expect(useGraphStore.getState().collapsedFolderIds).toEqual([]);
+
+    store.expandAllFolders();
+    expect(useGraphStore.getState().collapsedFolderIds).toEqual([]);
+  });
+
+  it("sets search query, toggles external, and resets all filters", () => {
+    const store = useGraphStore.getState();
+    store.setSearchQuery("Button");
+    store.toggleHideExternal();
+    store.setLayerFilters(["components"]);
+    store.toggleFolderCollapse("src/components");
+
+    let state = useGraphStore.getState();
+    expect(state.searchQuery).toBe("Button");
+    expect(state.hideExternal).toBe(true);
+    expect(state.selectedLayers).toEqual(["components"]);
+    expect(state.collapsedFolderIds).toEqual(["src/components"]);
+
+    store.resetAllFilters();
+    state = useGraphStore.getState();
+    expect(state.searchQuery).toBe("");
+    expect(state.hideExternal).toBe(false);
+    expect(state.selectedLayers).toEqual([]);
+    expect(state.collapsedFolderIds).toEqual([]);
+  });
 });
