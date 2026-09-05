@@ -10,6 +10,7 @@ import {
   type NodeMouseHandler,
   Background,
   BackgroundVariant,
+  MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Sparkles, Network } from "lucide-react";
@@ -20,7 +21,7 @@ import { toReactFlowElements } from "@/graph/adapters/react-flow-adapter";
 import { computeDagreLayout } from "@/graph/layout/dagre-layout";
 import { useGraphStore } from "@/stores/graph-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import type { CodebaseReactFlowNode } from "@/graph";
+import type { CodebaseReactFlowNode, CodebaseReactFlowEdge } from "@/graph";
 
 export interface ArchitectureCanvasProps {
   readonly className?: string;
@@ -34,18 +35,22 @@ function ArchitectureCanvasInner({
 }: ArchitectureCanvasProps): React.JSX.Element {
   const graph = useGraphStore((state) => state.graph);
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
+  const hoveredNodeId = useGraphStore((state) => state.hoveredNodeId);
   const selectNode = useGraphStore((state) => state.selectNode);
+  const setHoveredNodeId = useGraphStore((state) => state.setHoveredNodeId);
   const isIngesting = useGraphStore((state) => state.isIngesting);
   const setActiveRightTab = useWorkspaceStore(
     (state) => state.setActiveRightTab,
   );
 
   const [isMinimapVisible, setIsMinimapVisible] = React.useState(true);
-  const { fitView, zoomIn, zoomOut, getZoom, setCenter } = useReactFlow();
+  const [isFollowCursorActive, setIsFollowCursorActive] = React.useState(true);
+  const { fitView, zoomIn, zoomOut, getZoom, setCenter, getViewport } =
+    useReactFlow();
   const activeTarget = useGraphStore((state) => state.activeTarget);
   const navigateToTarget = useGraphStore((state) => state.navigateToTarget);
 
-  // Compute positioned React Flow elements using pure transformation and Dagre layout
+  // Compute positioned React Flow elements using pure transformation and Dagre layout with compound folders
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!graph || Object.keys(graph.files).length === 0) {
       return { initialNodes: [], initialEdges: [] };
@@ -60,14 +65,28 @@ function ArchitectureCanvasInner({
     });
 
     const positioned = computeDagreLayout(rawElements, {
-      direction: "TB",
+      direction: "LR",
       nodeWidth: 240,
       nodeHeight: 80,
+      nodeSeparation: 50,
+      rankSeparation: 100,
+      groupByFolder: true,
     });
+
+    const styledEdges = positioned.edges.map((edge) => ({
+      ...edge,
+      type: "smoothstep",
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: "var(--border-focus)",
+        width: 12,
+        height: 12,
+      },
+    }));
 
     return {
       initialNodes: positioned.nodes as CodebaseReactFlowNode[],
-      initialEdges: [...positioned.edges],
+      initialEdges: styledEdges as CodebaseReactFlowEdge[],
     };
   }, [graph]);
 
@@ -75,13 +94,50 @@ function ArchitectureCanvasInner({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const lastCenteredTargetKeyRef = React.useRef<string | null>(null);
 
+  // Active target for dependency highlighting (hover takes visual priority, falling back to selection/target)
+  const highlightNodeId =
+    hoveredNodeId ||
+    selectedNodeId ||
+    (activeTarget ? activeTarget.symbolId || activeTarget.fileId : null);
+
+  // Compute connected incoming and outgoing node/edge sets for current highlight target
+  const { connectedNodeIds, outgoingEdgeIds, incomingEdgeIds } = useMemo(() => {
+    if (!highlightNodeId || !graph) {
+      return {
+        connectedNodeIds: new Set<string>(),
+        outgoingEdgeIds: new Set<string>(),
+        incomingEdgeIds: new Set<string>(),
+      };
+    }
+
+    const connectedNodes = new Set<string>([highlightNodeId]);
+    const outgoingEdges = new Set<string>();
+    const incomingEdges = new Set<string>();
+
+    for (const edge of Object.values(graph.edges)) {
+      if (edge.sourceId === highlightNodeId) {
+        connectedNodes.add(edge.targetId);
+        outgoingEdges.add(edge.id);
+      }
+      if (edge.targetId === highlightNodeId) {
+        connectedNodes.add(edge.sourceId);
+        incomingEdges.add(edge.id);
+      }
+    }
+
+    return {
+      connectedNodeIds: connectedNodes,
+      outgoingEdgeIds: outgoingEdges,
+      incomingEdgeIds: incomingEdges,
+    };
+  }, [highlightNodeId, graph]);
+
   // Sync state whenever underlying graph is recomputed
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
 
     if (initialNodes.length > 0) {
-      // Defer fitView slightly so DOM bounding boxes have settled, but skip if targeting a specific node
       const hasTarget = Boolean(
         useGraphStore.getState().activeTarget ||
         useGraphStore.getState().pendingTarget,
@@ -95,20 +151,143 @@ function ArchitectureCanvasInner({
     }
   }, [initialNodes, initialEdges, setNodes, setEdges, fitView]);
 
-  // Sync node selection visual state
+  // Sync node selection, active folder container, and hover/connection visual states
   useEffect(() => {
+    const isHighlightActive = Boolean(highlightNodeId);
+
     setNodes((currentNodes) =>
-      currentNodes.map((n) => ({
-        ...n,
-        selected:
+      currentNodes.map((n) => {
+        if (n.type === "folderGroup") {
+          const entity = n.data?.entity as
+            { childFileIds?: readonly string[] } | undefined;
+          const childIds = entity?.childFileIds ?? [];
+          const hasActiveChild = childIds.some(
+            (id) =>
+              id === highlightNodeId ||
+              id === selectedNodeId ||
+              id === activeTarget?.fileId ||
+              id === activeTarget?.symbolId,
+          );
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              hasActiveChild,
+              isHighlighted: hasActiveChild,
+            },
+          };
+        }
+
+        const isTarget = n.id === highlightNodeId;
+        const isConnected = connectedNodeIds.has(n.id);
+        const isSelected =
           n.id === selectedNodeId ||
           (activeTarget != null &&
-            (n.id === activeTarget.symbolId || n.id === activeTarget.fileId)),
-      })),
-    );
-  }, [selectedNodeId, activeTarget, setNodes]);
+            (n.id === activeTarget.symbolId || n.id === activeTarget.fileId));
 
-  // Programmatically center camera when activeTarget updates from editor or url (AC-3, AC-4)
+        return {
+          ...n,
+          selected: isSelected,
+          data: {
+            ...n.data,
+            isHovered: isTarget && hoveredNodeId === n.id,
+            isConnected,
+            isDimmed: isHighlightActive && !isTarget && !isConnected,
+          },
+        };
+      }),
+    );
+  }, [
+    selectedNodeId,
+    activeTarget,
+    highlightNodeId,
+    connectedNodeIds,
+    hoveredNodeId,
+    setNodes,
+  ]);
+
+  // Sync edge visual states (highlighting connected imports/importers with arrows, dimming others)
+  useEffect(() => {
+    const isHighlightActive = Boolean(highlightNodeId);
+
+    setEdges((currentEdges) =>
+      currentEdges.map((e) => {
+        const isOutgoing = outgoingEdgeIds.has(e.id);
+        const isIncoming = incomingEdgeIds.has(e.id);
+
+        if (isHighlightActive) {
+          if (isOutgoing) {
+            return {
+              ...e,
+              animated: true,
+              style: {
+                stroke: "var(--accent-primary)",
+                strokeWidth: 2.5,
+                opacity: 1,
+              },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: "var(--accent-primary)",
+                width: 14,
+                height: 14,
+              },
+            };
+          }
+          if (isIncoming) {
+            return {
+              ...e,
+              animated: true,
+              style: {
+                stroke: "var(--syntax-ts)",
+                strokeWidth: 2.5,
+                opacity: 1,
+              },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: "var(--syntax-ts)",
+                width: 14,
+                height: 14,
+              },
+            };
+          }
+          return {
+            ...e,
+            animated: false,
+            style: {
+              stroke: "var(--border-subtle)",
+              strokeWidth: 1,
+              opacity: 0.12,
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "var(--border-subtle)",
+              width: 10,
+              height: 10,
+            },
+          };
+        }
+
+        // Default idle edge state
+        return {
+          ...e,
+          animated: false,
+          style: {
+            stroke: "var(--border-focus)",
+            strokeWidth: 1.5,
+            opacity: 0.4,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "var(--border-focus)",
+            width: 12,
+            height: 12,
+          },
+        };
+      }),
+    );
+  }, [highlightNodeId, outgoingEdgeIds, incomingEdgeIds, setEdges]);
+
+  // Programmatically center camera when activeTarget updates from editor, tree, or url (AC-3, AC-4)
   useEffect(() => {
     if (!activeTarget || activeTarget.source === "canvas") {
       return;
@@ -126,17 +305,6 @@ function ArchitectureCanvasInner({
       return;
     }
 
-    // If source is editor cursor, avoid jitter if target node has not changed
-    const targetKey =
-      activeTarget.source === "editor"
-        ? `editor:${targetNode.id}`
-        : `${activeTarget.source}:${targetNode.id}:${activeTarget.timestamp}`;
-
-    if (lastCenteredTargetKeyRef.current === targetKey) {
-      return;
-    }
-    lastCenteredTargetKeyRef.current = targetKey;
-
     const anyNode = targetNode as unknown as {
       measured?: { width: number; height: number };
       width?: number;
@@ -147,8 +315,67 @@ function ArchitectureCanvasInner({
     const centerX = targetNode.position.x + nodeWidth / 2;
     const centerY = targetNode.position.y + nodeHeight / 2;
 
+    // Handle editor cursor updates
+    if (activeTarget.source === "editor") {
+      // If user paused cursor follow mode, do not move the camera
+      if (!isFollowCursorActive) {
+        return;
+      }
+
+      // Check if target node is already visible inside current canvas viewport
+      if (typeof window !== "undefined" && getViewport) {
+        const viewport = getViewport();
+        const container = document.querySelector(".react-flow");
+        const containerWidth =
+          container?.clientWidth || window.innerWidth * 0.6;
+        const containerHeight =
+          container?.clientHeight || window.innerHeight * 0.8;
+
+        const screenX = targetNode.position.x * viewport.zoom + viewport.x;
+        const screenY = targetNode.position.y * viewport.zoom + viewport.y;
+        const screenW = nodeWidth * viewport.zoom;
+        const screenH = nodeHeight * viewport.zoom;
+
+        const margin = 40;
+        const isVisible =
+          screenX >= margin &&
+          screenY >= margin &&
+          screenX + screenW <= containerWidth - margin &&
+          screenY + screenH <= containerHeight - margin;
+
+        // If node is already visible, keep camera steady so flow tracking is not disrupted
+        if (isVisible) {
+          return;
+        }
+      }
+
+      const targetKey = `editor:${targetNode.id}`;
+      if (lastCenteredTargetKeyRef.current === targetKey) {
+        return;
+      }
+      lastCenteredTargetKeyRef.current = targetKey;
+
+      setCenter(centerX, centerY, { zoom: 1.2, duration: 800 });
+      return;
+    }
+
+    // Explicit navigation (url, search)
+    const targetKey = `${activeTarget.source}:${targetNode.id}:${activeTarget.timestamp}`;
+    if (lastCenteredTargetKeyRef.current === targetKey) {
+      return;
+    }
+    lastCenteredTargetKeyRef.current = targetKey;
+
     setCenter(centerX, centerY, { zoom: 1.2, duration: 800 });
-  }, [activeTarget, nodes, initialNodes, setCenter]);
+  }, [
+    activeTarget,
+    nodes,
+    initialNodes,
+    setCenter,
+    getZoom,
+    getViewport,
+    isFollowCursorActive,
+  ]);
 
   // Handle node selection: synchronize selection, navigate target, and switch right tab to code (AC-2, AC-7)
   const handleNodeClick: NodeMouseHandler = useCallback(
@@ -190,8 +417,21 @@ function ArchitectureCanvasInner({
   }, [selectNode]);
 
   const handleMoveStart = useCallback(() => {
-    lastCenteredTargetKeyRef.current = null;
+    // Preserve lastCenteredTargetKeyRef to prevent canvas panning from causing sudden auto-centering
   }, []);
+
+  const handleNodeMouseEnter: NodeMouseHandler = useCallback(
+    (_, node) => {
+      if (node.type !== "folderGroup") {
+        setHoveredNodeId(node.id);
+      }
+    },
+    [setHoveredNodeId],
+  );
+
+  const handleNodeMouseLeave: NodeMouseHandler = useCallback(() => {
+    setHoveredNodeId(null);
+  }, [setHoveredNodeId]);
 
   // Empty or Welcome state when no graph is loaded
   if (!graph || Object.keys(graph.files).length === 0) {
@@ -242,6 +482,8 @@ function ArchitectureCanvasInner({
           onFitView={() => fitView({ padding: 0.2, duration: 300 })}
           isMinimapVisible={isMinimapVisible}
           onToggleMinimap={() => setIsMinimapVisible(!isMinimapVisible)}
+          isFollowCursorActive={isFollowCursorActive}
+          onToggleFollowCursor={() => setIsFollowCursorActive((prev) => !prev)}
           currentZoom={getZoom ? Math.round(getZoom() * 10) / 10 : 1.0}
         />
       </div>
@@ -252,12 +494,15 @@ function ArchitectureCanvasInner({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
         onPaneClick={handlePaneClick}
         onMoveStart={handleMoveStart}
         nodeTypes={codebaseNodeTypes}
         minZoom={0.2}
         maxZoom={2.5}
         defaultEdgeOptions={{
+          type: "smoothstep",
           animated: false,
           style: { stroke: "var(--border-focus)", strokeWidth: 1.5 },
         }}

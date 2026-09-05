@@ -21,6 +21,7 @@ import {
 } from "@/entities";
 import type { ExtractedFile, GitHubRepoInfo } from "@/types/ingestion";
 import { extractPathAliases, resolveModuleSpecifier } from "./path-alias";
+import { isSourceFile } from "./tar-extractor";
 
 /**
  * Computes 1-indexed line/column and 0-indexed offset SourceLocation from ts-morph Node.
@@ -387,6 +388,26 @@ function getLanguageFromPath(path: string): string {
   ) {
     return "javascript";
   }
+  if (path.endsWith(".json")) {
+    return "json";
+  }
+  if (path.endsWith(".md") || path.endsWith(".mdx")) {
+    return "markdown";
+  }
+  if (
+    path.endsWith(".css") ||
+    path.endsWith(".scss") ||
+    path.endsWith(".sass") ||
+    path.endsWith(".less")
+  ) {
+    return "css";
+  }
+  if (path.endsWith(".html") || path.endsWith(".htm")) {
+    return "html";
+  }
+  if (path.endsWith(".yaml") || path.endsWith(".yml")) {
+    return "yaml";
+  }
   return "text";
 }
 
@@ -497,7 +518,9 @@ export function parseRepositoryAst(
   const fileSources: Record<string, string> = {};
 
   for (const file of files) {
-    project.createSourceFile(file.path, file.content, { overwrite: true });
+    if (isSourceFile(file.path)) {
+      project.createSourceFile(file.path, file.content, { overwrite: true });
+    }
     existingFilePaths.add(file.path);
   }
 

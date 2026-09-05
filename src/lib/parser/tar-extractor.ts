@@ -3,14 +3,13 @@ import { createGunzip } from "node:zlib";
 import tar from "tar-stream";
 import type { ArchiveExtractionResult, ExtractedFile } from "@/types/ingestion";
 
-const SOURCE_EXTENSIONS = new Set([
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".cjs",
-]);
+import {
+  SOURCE_EXTENSIONS,
+  BINARY_EXTENSIONS,
+  isSourceFile,
+  isBinaryFile,
+} from "@/entities";
+export { SOURCE_EXTENSIONS, BINARY_EXTENSIONS, isSourceFile, isBinaryFile };
 
 const IGNORED_DIRECTORY_PREFIXES = [
   "node_modules/",
@@ -25,28 +24,6 @@ const IGNORED_DIRECTORY_PREFIXES = [
 ];
 
 const MAX_INDIVIDUAL_FILE_BYTES = 1024 * 1024; // 1 MB limit per file
-
-/**
- * Checks if a relative file path matches supported source code extensions.
- */
-function isSourceFile(path: string): boolean {
-  // Ignore declaration files
-  if (
-    path.endsWith(".d.ts") ||
-    path.endsWith(".d.cts") ||
-    path.endsWith(".d.mts")
-  ) {
-    return false;
-  }
-
-  const dotIndex = path.lastIndexOf(".");
-  if (dotIndex === -1) {
-    return false;
-  }
-
-  const ext = path.slice(dotIndex).toLowerCase();
-  return SOURCE_EXTENSIONS.has(ext);
-}
 
 /**
  * Computes a priority score based on directory depth.
@@ -79,14 +56,28 @@ export function stripTarballRootFolder(rawPath: string): string {
   return rawPath.slice(slashIndex + 1);
 }
 
+export interface TarExtractorOptions {
+  readonly maxFiles?: number;
+  readonly includeNonSourceFiles?: boolean;
+}
+
 /**
  * In memory extractor that unpacks a gzipped repository tar archive,
  * captures tsconfig.json, and selects up to maxFiles source files prioritizing shallowest depth.
  */
 export async function unpackRepositoryTarball(
   archiveBuffer: ArrayBuffer,
-  maxFiles: number = 100,
+  maxFilesOrOptions: number | TarExtractorOptions = 100,
 ): Promise<ArchiveExtractionResult> {
+  const maxFiles =
+    typeof maxFilesOrOptions === "number"
+      ? maxFilesOrOptions
+      : (maxFilesOrOptions.maxFiles ?? 100);
+  const includeNonSource =
+    typeof maxFilesOrOptions === "object"
+      ? (maxFilesOrOptions.includeNonSourceFiles ?? false)
+      : false;
+
   return new Promise<ArchiveExtractionResult>((resolve, reject) => {
     const extract = tar.extract();
     const gunzip = createGunzip();
@@ -124,8 +115,9 @@ export async function unpackRepositoryTarball(
         strippedPath === "tsconfig.json" || strippedPath === "jsconfig.json";
 
       const isSource = isSourceFile(strippedPath);
+      const isBinary = isBinaryFile(strippedPath);
 
-      if (!isTsConfig && !isSource) {
+      if (!isTsConfig && !isSource && (!includeNonSource || isBinary)) {
         stream.resume();
         next();
         return;
@@ -158,7 +150,7 @@ export async function unpackRepositoryTarball(
           tsconfigContent = textContent;
         }
 
-        if (isSource) {
+        if (isSource || (includeNonSource && !isTsConfig && !isBinary)) {
           discoveredFiles.push({
             path: strippedPath,
             content: textContent,
@@ -175,8 +167,13 @@ export async function unpackRepositoryTarball(
     });
 
     extract.on("finish", () => {
-      // Sort files prioritizing shallowest directory depth (root and src/ first)
+      // Sort files prioritizing source code and shallowest directory depth (root and src/ first)
       discoveredFiles.sort((a, b) => {
+        const isASource = isSourceFile(a.path);
+        const isBSource = isSourceFile(b.path);
+        if (isASource !== isBSource) {
+          return isASource ? -1 : 1;
+        }
         const scoreA = calculateFileDepthScore(a.path);
         const scoreB = calculateFileDepthScore(b.path);
         if (scoreA !== scoreB) {

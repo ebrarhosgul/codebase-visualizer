@@ -163,10 +163,10 @@ export async function POST(req: NextRequest): Promise<Response> {
           },
         });
 
-        const extraction = await unpackRepositoryTarball(
-          archiveResult.data,
-          100,
-        );
+        const extraction = await unpackRepositoryTarball(archiveResult.data, {
+          maxFiles: 200,
+          includeNonSourceFiles: true,
+        });
 
         if (extraction.files.length === 0) {
           safeEnqueue({

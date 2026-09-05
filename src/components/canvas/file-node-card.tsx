@@ -64,16 +64,23 @@ export function FileNodeCard({
     subtitle = data.entity.path;
   }
 
+  const isHovered = Boolean((data as Record<string, unknown>).isHovered);
+  const isConnected = Boolean((data as Record<string, unknown>).isConnected);
+  const isDimmed = Boolean((data as Record<string, unknown>).isDimmed);
+
   return (
     <div
       role="article"
       aria-label={`${entityType} node: ${label}`}
       className={cn(
-        "relative rounded-lg p-3 min-w-[220px] max-w-[320px] select-none transition-all shadow-md",
+        "relative rounded-lg p-3 min-w-[220px] max-w-[320px] select-none transition-all duration-200 shadow-md",
         "bg-[var(--surface-card)] border",
-        selected
-          ? "border-[var(--border-focus)] ring-2 ring-[var(--border-focus)] shadow-lg"
-          : "border-[var(--border-default)] hover:border-[var(--text-muted)]",
+        selected || isHovered
+          ? "border-[var(--accent-primary)] ring-2 ring-[var(--accent-primary)] shadow-lg shadow-[var(--accent-primary)]/20 scale-[1.02] z-20"
+          : isConnected
+            ? "border-[var(--border-focus)] ring-1 ring-[var(--border-focus)] shadow-sm"
+            : "border-[var(--border-default)] hover:border-[var(--text-muted)]",
+        isDimmed && !selected && !isHovered && !isConnected && "opacity-30",
       )}
     >
       <Handle

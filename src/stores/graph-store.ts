@@ -13,7 +13,7 @@ import type {
   IngestStreamEvent,
 } from "@/types/ingestion";
 
-export type NavigationSource = "canvas" | "editor" | "url" | "search";
+export type NavigationSource = "canvas" | "editor" | "url" | "search" | "tree";
 
 export interface NavigationTarget {
   readonly fileId: string;
@@ -58,12 +58,14 @@ export interface GraphStoreState extends DeepLinkState {
   readonly ingestionError: IngestError | null;
   readonly isIngesting: boolean;
   readonly fallbackNotification: string | null;
+  readonly hoveredNodeId: string | null;
 }
 
 export interface GraphStoreActions {
   readonly startIngestion: (request: IngestRequest) => Promise<void>;
   readonly cancelIngestion: () => void;
   readonly selectNode: (nodeId: string | null) => void;
+  readonly setHoveredNodeId: (nodeId: string | null) => void;
   readonly setGraph: (
     graph: CodebaseGraph,
     fileSources?: Record<string, string>,
@@ -94,6 +96,7 @@ const initialState: GraphStoreState = {
   pendingTarget: null,
   lastProgrammaticTarget: null,
   fallbackNotification: null,
+  hoveredNodeId: null,
 };
 
 let activeAbortController: AbortController | null = null;
@@ -319,6 +322,10 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
 
     // Directory or external module
     set({ selectedNodeId: nodeId, selectedFileId: null, activeTarget: null });
+  },
+
+  setHoveredNodeId: (nodeId: string | null): void => {
+    set({ hoveredNodeId: nodeId });
   },
 
   setGraph: (

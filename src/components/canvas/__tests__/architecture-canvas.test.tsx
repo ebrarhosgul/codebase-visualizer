@@ -404,4 +404,67 @@ describe("ArchitectureCanvas", () => {
 
     expect(mockSetCenter).not.toHaveBeenCalled();
   });
+
+  it("allows toggling cursor-follow mode to pause auto-centering while tracking flow", async () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+      },
+      files: {
+        "file:src/main.ts": {
+          id: "file:src/main.ts",
+          path: "src/main.ts",
+          name: "main.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      directories: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    const { fireEvent } = await import("@testing-library/react");
+    render(<ArchitectureCanvas />);
+
+    // Locate the follow cursor button
+    const followBtn = screen.getByRole("button", {
+      name: /Follow code cursor/i,
+    });
+    expect(followBtn).toBeInTheDocument();
+
+    // Click to pause follow mode
+    act(() => {
+      fireEvent.click(followBtn);
+    });
+
+    mockSetCenter.mockClear();
+
+    // Trigger editor navigation while follow mode is paused
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/main.ts",
+        line: 10,
+        source: "editor",
+        timestamp: Date.now() + 500,
+      });
+    });
+
+    // Camera should NOT move, preserving the user's flow tracking position
+    expect(mockSetCenter).not.toHaveBeenCalled();
+  });
 });

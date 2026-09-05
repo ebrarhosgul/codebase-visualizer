@@ -1,7 +1,14 @@
 "use client";
 
 import React from "react";
-import { ZoomIn, ZoomOut, Maximize, Map, RotateCcw } from "lucide-react";
+import {
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Map,
+  RotateCcw,
+  LocateFixed,
+} from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +23,8 @@ export interface GraphControlsToolbarProps {
   readonly onToggleMinimap: () => void;
   readonly onResetView?: () => void;
   readonly currentZoom?: number;
+  readonly isFollowCursorActive?: boolean;
+  readonly onToggleFollowCursor?: () => void;
   readonly className?: string;
 }
 
@@ -30,6 +39,8 @@ export function GraphControlsToolbar({
   onToggleMinimap,
   onResetView,
   currentZoom,
+  isFollowCursorActive,
+  onToggleFollowCursor,
   className,
 }: GraphControlsToolbarProps): React.JSX.Element {
   const formattedZoom =
@@ -88,6 +99,25 @@ export function GraphControlsToolbar({
           size="sm"
           variant="ghost"
           onClick={onResetView}
+        />
+      )}
+
+      {onToggleFollowCursor && (
+        <IconButton
+          icon={LocateFixed}
+          label={
+            isFollowCursorActive
+              ? "Follow code cursor (active - click to freeze canvas view)"
+              : "Follow code cursor (paused - click to enable auto-pan)"
+          }
+          size="sm"
+          variant={isFollowCursorActive ? "secondary" : "ghost"}
+          onClick={onToggleFollowCursor}
+          className={
+            isFollowCursorActive
+              ? "text-[var(--accent-primary)] border-[var(--accent-primary)]/40"
+              : "text-[var(--text-muted)]"
+          }
         />
       )}
 

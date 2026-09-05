@@ -2,8 +2,6 @@
 
 import React, { useState, useMemo, useCallback, Suspense } from "react";
 import {
-  Folder,
-  FileCode,
   Search,
   Layers,
   Code2,
@@ -18,12 +16,14 @@ import { Input, Badge, Tabs, Toast } from "@/components/ui";
 import { ArchitectureCanvas } from "@/components/canvas";
 import { CodeViewer } from "@/components/editor";
 import { RepoSubmissionBar } from "@/components/workspace/repo-submission-bar";
+import { FolderTree } from "@/components/workspace";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useGraphStore } from "@/stores/graph-store";
 import { DeepLinkingSync } from "@/hooks/use-deep-linking";
 
 export default function Home(): React.JSX.Element {
   const [fileFilter, setFileFilter] = useState("");
+  const [showAllFiles, setShowAllFiles] = useState(false);
   const activeRightTab = useWorkspaceStore((state) => state.activeRightTab);
   const setActiveRightTab = useWorkspaceStore(
     (state) => state.setActiveRightTab,
@@ -34,6 +34,7 @@ export default function Home(): React.JSX.Element {
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
   const selectNode = useGraphStore((state) => state.selectNode);
+  const setHoveredNodeId = useGraphStore((state) => state.setHoveredNodeId);
   const navigateToTarget = useGraphStore((state) => state.navigateToTarget);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -41,22 +42,27 @@ export default function Home(): React.JSX.Element {
     setToastMessage(msg);
   }, []);
 
-  // Filtered file list
-  const filteredFiles = useMemo(() => {
-    if (!graph || !graph.files) {
-      return [];
-    }
-    const query = fileFilter.trim().toLowerCase();
-    const allFiles = Object.values(graph.files);
-    if (!query) {
-      return allFiles;
-    }
-    return allFiles.filter(
-      (f) =>
-        f.path.toLowerCase().includes(query) ||
-        f.name.toLowerCase().includes(query),
-    );
-  }, [graph, fileFilter]);
+  const allFiles = useMemo(
+    () => (graph?.files ? Object.values(graph.files) : []),
+    [graph],
+  );
+
+  const handleSelectFile = useCallback(
+    (fileId: string) => {
+      selectNode(fileId);
+      setActiveRightTab("code");
+      useWorkspaceStore.getState().setRightPanelCollapsed(false);
+      if (useWorkspaceStore.getState().isSmallScreen) {
+        useWorkspaceStore.getState().setRightDrawerOpen(true);
+      }
+      navigateToTarget({
+        fileId,
+        source: "canvas",
+        timestamp: Date.now(),
+      });
+    },
+    [selectNode, setActiveRightTab, navigateToTarget],
+  );
 
   // Selected node inspection data
   const selectedNodeDetails = useMemo(() => {
@@ -154,86 +160,17 @@ export default function Home(): React.JSX.Element {
         className="h-8 text-xs"
       />
 
-      {/* File Navigation Tree / List */}
-      <div className="flex-1 overflow-auto space-y-1 text-xs">
-        {filteredFiles.length > 0 ? (
-          filteredFiles.map((file) => {
-            const isSelected = file.id === selectedFileId;
-            return (
-              <div
-                key={file.id}
-                onClick={() => {
-                  selectNode(file.id);
-                  setActiveRightTab("code");
-                  useWorkspaceStore.getState().setRightPanelCollapsed(false);
-                  if (useWorkspaceStore.getState().isSmallScreen) {
-                    useWorkspaceStore.getState().setRightDrawerOpen(true);
-                  }
-                  navigateToTarget({
-                    fileId: file.id,
-                    source: "canvas",
-                    timestamp: Date.now(),
-                  });
-                }}
-                className={`flex items-center justify-between px-2 py-1.5 rounded cursor-pointer transition-colors ${
-                  isSelected
-                    ? "bg-[var(--surface-hover)] text-[var(--text-primary)] font-semibold border-l-2 border-[var(--accent-primary)]"
-                    : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
-                }`}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    selectNode(file.id);
-                    setActiveRightTab("code");
-                    useWorkspaceStore.getState().setRightPanelCollapsed(false);
-                    if (useWorkspaceStore.getState().isSmallScreen) {
-                      useWorkspaceStore.getState().setRightDrawerOpen(true);
-                    }
-                    navigateToTarget({
-                      fileId: file.id,
-                      source: "canvas",
-                      timestamp: Date.now(),
-                    });
-                  }
-                }}
-                aria-label={`File ${file.path}`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileCode className="w-3.5 h-3.5 text-[var(--syntax-ts)] shrink-0" />
-                  <span
-                    className="truncate font-mono text-[11px]"
-                    title={file.path}
-                  >
-                    {file.path}
-                  </span>
-                </div>
-                <Badge
-                  variant={
-                    file.language === "typescript"
-                      ? "syntax-ts"
-                      : file.language === "javascript"
-                        ? "syntax-js"
-                        : "default"
-                  }
-                  className="shrink-0 text-[9px]"
-                >
-                  {file.extension || file.language}
-                </Badge>
-              </div>
-            );
-          })
-        ) : (
-          <div className="p-4 text-center text-xs text-[var(--text-muted)] space-y-2">
-            <Folder className="w-5 h-5 mx-auto text-[var(--text-muted)] opacity-50" />
-            <p>
-              {graph
-                ? "No files matching filter."
-                : "Submit a repository above to explore files."}
-            </p>
-          </div>
-        )}
-      </div>
+      {/* File Navigation Tree (VS Code-style hierarchical folder tree) */}
+      <FolderTree
+        files={allFiles}
+        selectedFileId={selectedFileId}
+        onSelectFile={handleSelectFile}
+        onHoverFile={setHoveredNodeId}
+        searchQuery={fileFilter}
+        showAllFiles={showAllFiles}
+        onToggleShowAllFiles={() => setShowAllFiles((prev) => !prev)}
+        className="flex-1 min-h-0"
+      />
     </div>
   );
 
