@@ -13,10 +13,12 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Sparkles, Network } from "lucide-react";
+import { Sparkles, Network, FilterX, RotateCcw } from "lucide-react";
 import { codebaseNodeTypes } from "./node-types";
 import { GraphControlsToolbar } from "./graph-controls-toolbar";
 import { CustomMiniMap } from "./custom-minimap";
+import { LayerFilterBar } from "./layer-filter-bar";
+import { Button } from "@/components/ui/button";
 import { toReactFlowElements } from "@/graph/adapters/react-flow-adapter";
 import { computeDagreLayout } from "@/graph/layout/dagre-layout";
 import { useGraphStore } from "@/stores/graph-store";
@@ -39,6 +41,11 @@ function ArchitectureCanvasInner({
   const selectNode = useGraphStore((state) => state.selectNode);
   const setHoveredNodeId = useGraphStore((state) => state.setHoveredNodeId);
   const isIngesting = useGraphStore((state) => state.isIngesting);
+  const selectedLayers = useGraphStore((state) => state.selectedLayers);
+  const collapsedFolderIds = useGraphStore((state) => state.collapsedFolderIds);
+  const searchQuery = useGraphStore((state) => state.searchQuery);
+  const hideExternal = useGraphStore((state) => state.hideExternal);
+  const resetAllFilters = useGraphStore((state) => state.resetAllFilters);
   const setActiveRightTab = useWorkspaceStore(
     (state) => state.setActiveRightTab,
   );
@@ -59,9 +66,15 @@ function ArchitectureCanvasInner({
     const rawElements = toReactFlowElements(graph, {
       scope: {
         granularity: "files",
-        includeExternal: true,
+        includeExternal: !hideExternal,
       },
       enabledEdgeKinds: ["file_import", "re_export"],
+      filters: {
+        selectedLayers,
+        collapsedFolderIds,
+        searchQuery,
+        hideExternal,
+      },
     });
 
     const positioned = computeDagreLayout(rawElements, {
@@ -88,7 +101,7 @@ function ArchitectureCanvasInner({
       initialNodes: positioned.nodes as CodebaseReactFlowNode[],
       initialEdges: styledEdges as CodebaseReactFlowEdge[],
     };
-  }, [graph]);
+  }, [graph, selectedLayers, collapsedFolderIds, searchQuery, hideExternal]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -469,11 +482,58 @@ function ArchitectureCanvasInner({
     );
   }
 
+  // Filtered empty state when filters exclude all nodes (AC-10)
+  if (initialNodes.length === 0) {
+    return (
+      <div
+        className={`relative w-full h-full bg-[var(--surface-canvas)] flex flex-col ${className ?? ""}`}
+        data-testid="canvas-filtered-empty-state"
+      >
+        <div className="absolute top-3 left-4 right-16 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 z-20 max-w-[calc(100%-120px)] sm:max-w-[calc(100%-180px)]">
+          <LayerFilterBar />
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
+          <div className="max-w-md space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-[var(--surface-panel-secondary)] border border-[var(--border-default)] flex items-center justify-center mx-auto text-amber-400 shadow-sm">
+              <FilterX className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
+                No matching architectural nodes
+              </h2>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                All modules and files have been filtered out by the active
+                layer, folder collapse, or search criteria.
+              </p>
+            </div>
+
+            <Button
+              variant="primary"
+              onClick={resetAllFilters}
+              className="gap-2 mx-auto text-xs"
+              data-testid="empty-reset-filters-btn"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset all filters</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`relative w-full h-full bg-[var(--surface-canvas)] ${className ?? ""}`}
       data-testid="architecture-canvas"
     >
+      {/* Floating Layer Filter Bar (AC-2) */}
+      <div className="absolute top-3 left-4 right-16 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 z-20 max-w-[calc(100%-120px)] sm:max-w-[calc(100%-180px)]">
+        <LayerFilterBar />
+      </div>
+
       {/* Floating Toolbar Controls */}
       <div className="absolute top-3 right-3 z-20">
         <GraphControlsToolbar

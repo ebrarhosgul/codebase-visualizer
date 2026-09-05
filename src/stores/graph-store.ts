@@ -12,6 +12,10 @@ import type {
   IngestProgress,
   IngestStreamEvent,
 } from "@/types/ingestion";
+import {
+  type ArchitecturalLayerId,
+  classifyLayerForPath,
+} from "@/graph/layers";
 
 export type NavigationSource = "canvas" | "editor" | "url" | "search" | "tree";
 
@@ -47,7 +51,14 @@ export interface FlushResult {
   readonly fallbackReason?: string;
 }
 
-export interface GraphStoreState extends DeepLinkState {
+export interface GraphFilterState {
+  readonly selectedLayers: readonly ArchitecturalLayerId[];
+  readonly collapsedFolderIds: readonly string[];
+  readonly searchQuery: string;
+  readonly hideExternal: boolean;
+}
+
+export interface GraphStoreState extends DeepLinkState, GraphFilterState {
   readonly repository: Repository | null;
   readonly graph: CodebaseGraph | null;
   readonly fileSources: Readonly<Record<string, string>>;
@@ -76,6 +87,16 @@ export interface GraphStoreActions {
   readonly isNavigationLocked: (fileId?: string, line?: number) => boolean;
   readonly clearActiveTarget: () => void;
   readonly clearFallbackNotification: () => void;
+  readonly toggleLayerFilter: (layerId: ArchitecturalLayerId) => void;
+  readonly setLayerFilters: (layerIds: readonly ArchitecturalLayerId[]) => void;
+  readonly clearLayerFilters: () => void;
+  readonly toggleFolderCollapse: (folderId: string) => void;
+  readonly collapseAllFolders: () => void;
+  readonly expandAllFolders: () => void;
+  readonly setSearchQuery: (query: string) => void;
+  readonly toggleHideExternal: () => void;
+  readonly resetAllFilters: () => void;
+  readonly revealNode: (nodeId: string) => void;
   readonly reset: () => void;
 }
 
@@ -97,6 +118,10 @@ const initialState: GraphStoreState = {
   lastProgrammaticTarget: null,
   fallbackNotification: null,
   hoveredNodeId: null,
+  selectedLayers: Object.freeze([]),
+  collapsedFolderIds: Object.freeze([]),
+  searchQuery: "",
+  hideExternal: false,
 };
 
 let activeAbortController: AbortController | null = null;
@@ -534,6 +559,132 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
 
   clearFallbackNotification: (): void => {
     set({ fallbackNotification: null });
+  },
+
+  toggleLayerFilter: (layerId: ArchitecturalLayerId): void => {
+    const current = get().selectedLayers;
+    const exists = current.includes(layerId);
+    const updated = exists
+      ? current.filter((id) => id !== layerId)
+      : [...current, layerId];
+    set({ selectedLayers: Object.freeze(updated) });
+  },
+
+  setLayerFilters: (layerIds: readonly ArchitecturalLayerId[]): void => {
+    set({ selectedLayers: Object.freeze([...layerIds]) });
+  },
+
+  clearLayerFilters: (): void => {
+    set({ selectedLayers: Object.freeze([]) });
+  },
+
+  toggleFolderCollapse: (folderId: string): void => {
+    const current = get().collapsedFolderIds;
+    const exists = current.includes(folderId);
+    const updated = exists
+      ? current.filter((id) => id !== folderId)
+      : [...current, folderId];
+    set({ collapsedFolderIds: Object.freeze(updated) });
+  },
+
+  collapseAllFolders: (): void => {
+    const graph = get().graph;
+    const folderKeys = new Set<string>();
+    if (graph) {
+      for (const dir of Object.values(graph.directories)) {
+        if (dir.path) {
+          folderKeys.add(dir.path);
+          folderKeys.add(`folder-group:${dir.path}`);
+        }
+      }
+      for (const file of Object.values(graph.files)) {
+        const parts = file.path.split("/");
+        if (parts.length > 1) {
+          const folder = parts.slice(0, -1).join("/");
+          folderKeys.add(folder);
+          folderKeys.add(`folder-group:${folder}`);
+        }
+      }
+    }
+    set({ collapsedFolderIds: Object.freeze(Array.from(folderKeys)) });
+  },
+
+  expandAllFolders: (): void => {
+    set({ collapsedFolderIds: Object.freeze([]) });
+  },
+
+  setSearchQuery: (query: string): void => {
+    set({ searchQuery: query });
+  },
+
+  toggleHideExternal: (): void => {
+    set({ hideExternal: !get().hideExternal });
+  },
+
+  resetAllFilters: (): void => {
+    set({
+      selectedLayers: Object.freeze([]),
+      collapsedFolderIds: Object.freeze([]),
+      searchQuery: "",
+      hideExternal: false,
+    });
+  },
+
+  revealNode: (nodeId: string): void => {
+    const state = get();
+    const graph = state.graph;
+    let targetLayer: ArchitecturalLayerId | null = null;
+    let filePath: string | null = null;
+
+    if (nodeId.startsWith("file:")) {
+      filePath = graph?.files[nodeId]?.path ?? null;
+    } else if (nodeId.startsWith("symbol:")) {
+      const sym = graph?.symbols[nodeId];
+      if (sym) {
+        filePath = graph?.files[sym.fileId]?.path ?? null;
+      }
+    }
+
+    if (filePath) {
+      targetLayer = classifyLayerForPath(filePath);
+    }
+
+    let nextSelectedLayers = state.selectedLayers;
+    if (
+      targetLayer &&
+      state.selectedLayers.length > 0 &&
+      !state.selectedLayers.includes(targetLayer)
+    ) {
+      nextSelectedLayers = Object.freeze([
+        ...state.selectedLayers,
+        targetLayer,
+      ]);
+    }
+
+    let nextCollapsedFolders = state.collapsedFolderIds;
+    if (filePath) {
+      const parts = filePath.split("/");
+      if (parts.length > 1) {
+        const foldersToUncollapse = new Set<string>();
+        for (let i = 1; i < parts.length; i++) {
+          const prefix = parts.slice(0, i).join("/");
+          foldersToUncollapse.add(prefix);
+          foldersToUncollapse.add(`folder-group:${prefix}`);
+        }
+        nextCollapsedFolders = Object.freeze(
+          state.collapsedFolderIds.filter((f) => !foldersToUncollapse.has(f)),
+        );
+      }
+    }
+
+    set({
+      selectedLayers: nextSelectedLayers,
+      collapsedFolderIds: nextCollapsedFolders,
+      hideExternal: nodeId.startsWith("ext:") ? false : state.hideExternal,
+      searchQuery: "",
+    });
+
+    state.selectNode(nodeId);
   },
 
   reset: (): void => {

@@ -467,4 +467,111 @@ describe("ArchitectureCanvas", () => {
     // Camera should NOT move, preserving the user's flow tracking position
     expect(mockSetCenter).not.toHaveBeenCalled();
   });
+
+  it("renders filtered empty state with reset button when filters exclude all nodes (AC-10)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/empty",
+        owner: "test",
+        name: "empty",
+        fullName: "test/empty",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/main.ts": {
+          id: "file:src/main.ts",
+          path: "src/main.ts",
+          name: "main.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+
+    // Apply a search filter that matches nothing
+    act(() => {
+      useGraphStore.getState().setSearchQuery("non_existent_symbol");
+    });
+
+    render(<ArchitectureCanvas />);
+
+    expect(
+      screen.getByTestId("canvas-filtered-empty-state"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No matching architectural nodes"),
+    ).toBeInTheDocument();
+
+    const resetBtn = screen.getByTestId("empty-reset-filters-btn");
+    expect(resetBtn).toBeInTheDocument();
+
+    // Clicking reset button clears filters
+    act(() => {
+      resetBtn.click();
+    });
+
+    expect(useGraphStore.getState().searchQuery).toBe("");
+  });
+
+  it("renders LayerFilterBar controls above the canvas when graph is loaded (AC-2)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/components/button.tsx": {
+          id: "file:src/components/button.tsx",
+          path: "src/components/button.tsx",
+          name: "button.tsx",
+          extension: ".tsx",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src/components",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    expect(screen.getByTestId("layer-filter-bar")).toBeInTheDocument();
+  });
 });

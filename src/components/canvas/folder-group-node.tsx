@@ -2,9 +2,9 @@
 
 import React from "react";
 import type { NodeProps } from "@xyflow/react";
-import { Folder } from "lucide-react";
+import { Folder, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
+import { useGraphStore } from "@/stores/graph-store";
 import { cn } from "@/lib/utils";
 
 export interface FolderGroupNodeData {
@@ -19,6 +19,7 @@ export interface FolderGroupNodeData {
  * Custom React Flow background container node representing a directory cluster.
  * Rendered behind file cards to visually structure architectural layers.
  * Highlights when an enclosed file is selected, hovered, or active in editor.
+ * Offers interactive collapse button and double-click trigger to collapse folder.
  */
 export function FolderGroupNode({ data }: NodeProps): React.JSX.Element {
   const folderData = data as unknown as FolderGroupNodeData;
@@ -27,6 +28,14 @@ export function FolderGroupNode({ data }: NodeProps): React.JSX.Element {
   const isActive = Boolean(
     folderData.hasActiveChild || folderData.isHighlighted,
   );
+  const toggleFolderCollapse = useGraphStore(
+    (state) => state.toggleFolderCollapse,
+  );
+
+  const handleCollapse = (e: React.MouseEvent): void => {
+    e.stopPropagation();
+    toggleFolderCollapse(label);
+  };
 
   return (
     <div
@@ -40,13 +49,24 @@ export function FolderGroupNode({ data }: NodeProps): React.JSX.Element {
     >
       <div
         className={cn(
-          "flex items-center justify-between gap-2 border-b pb-2 mb-2 transition-colors",
+          "flex items-center justify-between gap-2 border-b pb-2 mb-2 transition-colors pointer-events-auto cursor-pointer",
           isActive
             ? "border-[var(--accent-primary)]/40"
             : "border-[var(--border-subtle)]/40",
         )}
+        onDoubleClick={handleCollapse}
+        title="Double click or click chevron to collapse folder"
       >
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <button
+            type="button"
+            onClick={handleCollapse}
+            className="p-1 rounded hover:bg-[var(--surface-canvas)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            aria-label={`Collapse ${label} folder`}
+            data-testid={`folder-collapse-${label}`}
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
           <div
             className={cn(
               "p-1 rounded transition-colors shrink-0",

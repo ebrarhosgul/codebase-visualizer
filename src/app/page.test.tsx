@@ -1,4 +1,4 @@
-import { render, screen, act, fireEvent } from "@testing-library/react";
+import { render, screen, act, fireEvent, within } from "@testing-library/react";
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import Home from "./page";
 import { useGraphStore } from "@/stores/graph-store";
@@ -339,8 +339,54 @@ describe("Home Page", () => {
       fireEvent.mouseDown(inspectorTab, { button: 0 });
     });
 
-    expect(screen.getByText("File Details")).toBeInTheDocument();
-    expect(screen.getByText("45")).toBeInTheDocument();
-    expect(screen.getByText("2 KB")).toBeInTheDocument();
+    const panel = screen.getByTestId("node-inspector-panel");
+    expect(panel).toBeInTheDocument();
+    expect(within(panel).getByText("index.ts")).toBeInTheDocument();
+    expect(within(panel).getByText("src/index.ts")).toBeInTheDocument();
+    expect(within(panel).getByText("45")).toBeInTheDocument();
+  });
+
+  it("renders layer filter bar controls on the page when repository graph is loaded (AC-2)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:test/repo",
+        owner: "test",
+        name: "repo",
+        fullName: "test/repo",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/components/badge.tsx": {
+          id: "file:src/components/badge.tsx",
+          path: "src/components/badge.tsx",
+          name: "badge.tsx",
+          extension: ".tsx",
+          language: "typescript",
+          sizeBytes: 300,
+          lineCount: 12,
+          directoryId: "dir:src/components",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<Home />);
+
+    expect(screen.getByTestId("layer-filter-bar")).toBeInTheDocument();
+    expect(screen.getByTestId("layer-filter-components")).toBeInTheDocument();
   });
 });

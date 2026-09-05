@@ -381,5 +381,30 @@ describe("Graph Operations and React Flow Adapter (AC-6, AC-8)", () => {
       expect(elements.edges.every((e) => e.type === "call")).toBe(true);
       expect(elements.edges.length).toBe(1);
     });
+
+    it("projects filtered elements and collapsed folder nodes when options.filters is passed (AC-3, AC-4)", () => {
+      const graph = createCyclicGraph();
+      const elements = toReactFlowElements(graph, {
+        filters: {
+          selectedLayers: [],
+          collapsedFolderIds: ["src"],
+          searchQuery: "",
+          hideExternal: false,
+        },
+      });
+
+      // Files under src should be collapsed into a single collapsedFolder node
+      const collapsedFolder = elements.nodes.find(
+        (n) => n.id === "folder-group:src",
+      );
+      expect(collapsedFolder).toBeDefined();
+      expect(collapsedFolder?.type).toBe("collapsedFolder");
+      expect(collapsedFolder?.data.entityType).toBe("collapsedFolder");
+
+      // Bundled edge to external module react
+      const bundledEdge = elements.edges.find((e) => e.target === "ext:react");
+      expect(bundledEdge).toBeDefined();
+      expect(bundledEdge?.data?.isBundled).toBe(true);
+    });
   });
 });
