@@ -46,6 +46,7 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title/index.md`.
 - Public APIs need concise documentation comments on exported functions, types, and interfaces.
 - Validate environment variables when the application starts up.
 - Conventional commits with clear headers like `feat:`, `fix:`, `docs:`, or `refactor:`.
+- Design system: build all UI to `design.md` (art direction and the maximalist product bar); token values live in CSS.
 
 ## Tooling
 

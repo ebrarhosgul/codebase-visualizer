@@ -1,0 +1,9 @@
+{
+  "tool": "vitest",
+  "gate": null,
+  "additionalTools": ["@testing-library/react"],
+  "e2eTool": "none",
+  "testDir": "beside the source",
+  "filePattern": "*.test.ts,*.test.tsx",
+  "packageManager": "npm"
+}

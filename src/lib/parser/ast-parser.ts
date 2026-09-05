@@ -1,4 +1,4 @@
-import { Project } from "ts-morph";
+import { Project, SyntaxKind, type SourceFile, type Node } from "ts-morph";
 import {
   type CodebaseGraph,
   type DirectoryNode,
@@ -6,10 +6,14 @@ import {
   type ExternalModuleNode,
   type GraphEdge,
   type Repository,
+  type SymbolNode,
+  type SourceLocation,
   createRepositoryId,
   createDirectoryId,
   createFileId,
   createExternalModuleId,
+  createSymbolId,
+  createDefaultExportSymbolId,
   createGraphEdge,
   aggregateEdge,
   codebaseGraphSchema,
@@ -17,6 +21,351 @@ import {
 } from "@/entities";
 import type { ExtractedFile, GitHubRepoInfo } from "@/types/ingestion";
 import { extractPathAliases, resolveModuleSpecifier } from "./path-alias";
+
+/**
+ * Computes 1-indexed line/column and 0-indexed offset SourceLocation from ts-morph Node.
+ */
+function getNodeSourceLocation(
+  sourceFile: SourceFile,
+  node: Node,
+): SourceLocation {
+  const startOffset = Math.max(0, node.getStart());
+  const endOffset = Math.max(startOffset, node.getEnd());
+  const startPos = sourceFile.getLineAndColumnAtPos(startOffset);
+  const endPos = sourceFile.getLineAndColumnAtPos(endOffset);
+
+  return {
+    startLine: Math.max(1, startPos.line),
+    startColumn: Math.max(1, startPos.column),
+    endLine: Math.max(1, endPos.line),
+    endColumn: Math.max(1, endPos.column),
+    startOffset,
+    endOffset,
+  };
+}
+
+/**
+ * Extracts modifier visibility from a node.
+ */
+function getSymbolVisibility(node: Node): "public" | "protected" | "private" {
+  const anyNode = node as unknown as {
+    hasModifier?: (kind: number) => boolean;
+  };
+  if (typeof anyNode.hasModifier === "function") {
+    if (anyNode.hasModifier(SyntaxKind.PrivateKeyword)) {
+      return "private";
+    }
+    if (anyNode.hasModifier(SyntaxKind.ProtectedKeyword)) {
+      return "protected";
+    }
+  }
+  return "public";
+}
+
+/**
+ * Formats a concise signature string from a declaration node.
+ */
+function getSymbolSignature(node: Node, fallbackName: string): string {
+  try {
+    const firstLine = node.getText().split("\n")[0]?.trim();
+    if (firstLine && firstLine.length > 0) {
+      return firstLine.slice(0, 160);
+    }
+  } catch {
+    // Ignore text formatting issues
+  }
+  return fallbackName;
+}
+
+/**
+ * Extracts jsdoc comment documentation from a declaration node.
+ */
+function getSymbolDoc(node: Node): string | null {
+  const anyNode = node as unknown as {
+    getJsDocs?: () => readonly { getDescription?: () => string }[];
+  };
+  if (typeof anyNode.getJsDocs === "function") {
+    try {
+      const docs = anyNode.getJsDocs();
+      if (Array.isArray(docs) && docs.length > 0) {
+        const description = docs[0]?.getDescription?.()?.trim();
+        if (description) {
+          return description;
+        }
+      }
+    } catch {
+      // Ignore documentation read issues
+    }
+  }
+  return null;
+}
+
+/**
+ * Extracts top-level declarations and class methods into canonical SymbolNode entities.
+ */
+function extractSourceSymbols(
+  sourceFile: SourceFile,
+  filePath: string,
+  fileId: string,
+  existingSymbols: Record<string, SymbolNode>,
+): readonly string[] {
+  const fileSymbolIds: string[] = [];
+
+  function registerSymbol(
+    rawSymbol: Omit<SymbolNode, "id">,
+    preferredName: string,
+  ): string {
+    const baseId =
+      rawSymbol.isDefaultExport && preferredName === "default"
+        ? createDefaultExportSymbolId(filePath)
+        : createSymbolId(filePath, preferredName);
+
+    let symbolId = baseId;
+    let counter = 2;
+    while (existingSymbols[symbolId]) {
+      symbolId = `${baseId}_${counter}`;
+      counter++;
+    }
+
+    const symbol: SymbolNode = {
+      ...rawSymbol,
+      id: symbolId,
+    };
+    existingSymbols[symbolId] = symbol;
+    fileSymbolIds.push(symbolId);
+    return symbolId;
+  }
+
+  try {
+    // 1. Functions
+    for (const fn of sourceFile.getFunctions()) {
+      const name =
+        fn.getName() ||
+        (fn.isDefaultExport() ? "default" : "anonymousFunction");
+      const range = getNodeSourceLocation(sourceFile, fn);
+      const nameNode = fn.getNameNode();
+      const selectionRange = nameNode
+        ? getNodeSourceLocation(sourceFile, nameNode)
+        : range;
+
+      registerSymbol(
+        {
+          fileId,
+          parentSymbolId: null,
+          name,
+          kind: "function",
+          range,
+          selectionRange,
+          isExported: fn.isExported(),
+          isDefaultExport: fn.isDefaultExport(),
+          signature: getSymbolSignature(fn, `function ${name}`),
+          documentation: getSymbolDoc(fn),
+          visibility: getSymbolVisibility(fn),
+          childSymbolIds: Object.freeze([]),
+        },
+        name,
+      );
+    }
+
+    // 2. Classes and methods
+    for (const cls of sourceFile.getClasses()) {
+      const name =
+        cls.getName() || (cls.isDefaultExport() ? "default" : "anonymousClass");
+      const range = getNodeSourceLocation(sourceFile, cls);
+      const nameNode = cls.getNameNode();
+      const selectionRange = nameNode
+        ? getNodeSourceLocation(sourceFile, nameNode)
+        : range;
+
+      const methodIds: string[] = [];
+
+      for (const method of cls.getMethods()) {
+        const methodName = method.getName();
+        const methodRange = getNodeSourceLocation(sourceFile, method);
+        const methodNameNode = method.getNameNode();
+        const methodSelectionRange = methodNameNode
+          ? getNodeSourceLocation(sourceFile, methodNameNode)
+          : methodRange;
+
+        const methodSymbolId = registerSymbol(
+          {
+            fileId,
+            parentSymbolId: null,
+            name: `${name}.${methodName}`,
+            kind: "method",
+            range: methodRange,
+            selectionRange: methodSelectionRange,
+            isExported: cls.isExported(),
+            isDefaultExport: false,
+            signature: getSymbolSignature(method, `${methodName}()`),
+            documentation: getSymbolDoc(method),
+            visibility: getSymbolVisibility(method),
+            childSymbolIds: Object.freeze([]),
+          },
+          `${name}.${methodName}`,
+        );
+
+        methodIds.push(methodSymbolId);
+      }
+
+      const classSymbolId = registerSymbol(
+        {
+          fileId,
+          parentSymbolId: null,
+          name,
+          kind: "class",
+          range,
+          selectionRange,
+          isExported: cls.isExported(),
+          isDefaultExport: cls.isDefaultExport(),
+          signature: getSymbolSignature(cls, `class ${name}`),
+          documentation: getSymbolDoc(cls),
+          visibility: getSymbolVisibility(cls),
+          childSymbolIds: Object.freeze(methodIds),
+        },
+        name,
+      );
+
+      for (const mId of methodIds) {
+        const existingMethod = existingSymbols[mId];
+        if (existingMethod) {
+          existingSymbols[mId] = {
+            ...existingMethod,
+            parentSymbolId: classSymbolId,
+          };
+        }
+      }
+    }
+
+    // 3. Interfaces
+    for (const iface of sourceFile.getInterfaces()) {
+      const name = iface.getName();
+      const range = getNodeSourceLocation(sourceFile, iface);
+      const nameNode = iface.getNameNode();
+      const selectionRange = nameNode
+        ? getNodeSourceLocation(sourceFile, nameNode)
+        : range;
+
+      registerSymbol(
+        {
+          fileId,
+          parentSymbolId: null,
+          name,
+          kind: "interface",
+          range,
+          selectionRange,
+          isExported: iface.isExported(),
+          isDefaultExport: iface.isDefaultExport(),
+          signature: getSymbolSignature(iface, `interface ${name}`),
+          documentation: getSymbolDoc(iface),
+          visibility: "public",
+          childSymbolIds: Object.freeze([]),
+        },
+        name,
+      );
+    }
+
+    // 4. Type Aliases
+    for (const typeAlias of sourceFile.getTypeAliases()) {
+      const name = typeAlias.getName();
+      const range = getNodeSourceLocation(sourceFile, typeAlias);
+      const nameNode = typeAlias.getNameNode();
+      const selectionRange = nameNode
+        ? getNodeSourceLocation(sourceFile, nameNode)
+        : range;
+
+      registerSymbol(
+        {
+          fileId,
+          parentSymbolId: null,
+          name,
+          kind: "type_alias",
+          range,
+          selectionRange,
+          isExported: typeAlias.isExported(),
+          isDefaultExport: typeAlias.isDefaultExport(),
+          signature: getSymbolSignature(typeAlias, `type ${name}`),
+          documentation: getSymbolDoc(typeAlias),
+          visibility: "public",
+          childSymbolIds: Object.freeze([]),
+        },
+        name,
+      );
+    }
+
+    // 5. Enums
+    for (const enumDecl of sourceFile.getEnums()) {
+      const name = enumDecl.getName();
+      const range = getNodeSourceLocation(sourceFile, enumDecl);
+      const nameNode = enumDecl.getNameNode();
+      const selectionRange = nameNode
+        ? getNodeSourceLocation(sourceFile, nameNode)
+        : range;
+
+      registerSymbol(
+        {
+          fileId,
+          parentSymbolId: null,
+          name,
+          kind: "enum",
+          range,
+          selectionRange,
+          isExported: enumDecl.isExported(),
+          isDefaultExport: enumDecl.isDefaultExport(),
+          signature: getSymbolSignature(enumDecl, `enum ${name}`),
+          documentation: getSymbolDoc(enumDecl),
+          visibility: "public",
+          childSymbolIds: Object.freeze([]),
+        },
+        name,
+      );
+    }
+
+    // 6. Variable statements (functions, arrow functions, constants)
+    for (const varStmt of sourceFile.getVariableStatements()) {
+      const isExported = varStmt.isExported();
+      const isDefaultExport = varStmt.isDefaultExport();
+      const doc = getSymbolDoc(varStmt);
+
+      for (const varDecl of varStmt.getDeclarations()) {
+        const name = varDecl.getName();
+        const initializer = varDecl.getInitializer();
+        const isArrowOrFunc =
+          initializer &&
+          (initializer.getKind() === SyntaxKind.ArrowFunction ||
+            initializer.getKind() === SyntaxKind.FunctionExpression);
+
+        const range = getNodeSourceLocation(sourceFile, varDecl);
+        const nameNode = varDecl.getNameNode();
+        const selectionRange = nameNode
+          ? getNodeSourceLocation(sourceFile, nameNode)
+          : range;
+
+        registerSymbol(
+          {
+            fileId,
+            parentSymbolId: null,
+            name,
+            kind: isArrowOrFunc ? "function" : "variable",
+            range,
+            selectionRange,
+            isExported,
+            isDefaultExport,
+            signature: getSymbolSignature(varDecl, name),
+            documentation: doc,
+            visibility: "public",
+            childSymbolIds: Object.freeze([]),
+          },
+          name,
+        );
+      }
+    }
+  } catch {
+    // Gracefully tolerate symbol extraction issues on malformed files
+  }
+
+  return Object.freeze(fileSymbolIds);
+}
 
 export interface ParsedCodebaseData {
   readonly graph: CodebaseGraph;
@@ -154,8 +503,10 @@ export function parseRepositoryAst(
 
   const aliasMap = extractPathAliases(tsconfigContent);
   const directoryNodes = buildDirectoryHierarchy(Array.from(existingFilePaths));
+  const program = project.getProgram();
 
   const fileNodes: Record<string, FileNode> = {};
+  const symbols: Record<string, SymbolNode> = {};
   const externalModules: Record<string, ExternalModuleNode> = {};
   const edges: Record<string, GraphEdge> = {};
 
@@ -176,20 +527,30 @@ export function parseRepositoryAst(
     const directoryId = createDirectoryId(dirPath);
 
     let parseError: string | undefined;
+    let fileSymbolIds: readonly string[] = Object.freeze([]);
+
     if (sourceFile) {
       try {
-        const diagnostics = sourceFile.getPreEmitDiagnostics();
-        const syntaxErrors = diagnostics.filter((d) => d.getCategory() === 1); // 1 = Error
-        if (syntaxErrors.length > 0) {
-          const firstMsg = syntaxErrors[0]?.getMessageText();
+        const syntacticDiagnostics =
+          program.getSyntacticDiagnostics(sourceFile);
+        if (syntacticDiagnostics.length > 0) {
+          const firstMsg = syntacticDiagnostics[0]?.getMessageText();
           parseError =
             typeof firstMsg === "string"
               ? firstMsg
-              : "Syntax error detected in file.";
+              : (firstMsg?.getMessageText() ??
+                "Syntax error detected in file.");
         }
       } catch {
         // Tolerant of diagnostic failures
       }
+
+      fileSymbolIds = extractSourceSymbols(
+        sourceFile,
+        file.path,
+        fileId,
+        symbols,
+      );
     }
 
     const fileNode: FileNode = {
@@ -203,7 +564,7 @@ export function parseRepositoryAst(
       sizeBytes: file.sizeBytes,
       lineCount,
       directoryId,
-      symbolIds: Object.freeze([]),
+      symbolIds: fileSymbolIds,
       importIds: Object.freeze([]),
       exportIds: Object.freeze([]),
       ...(parseError ? { parseError } : {}),
@@ -365,7 +726,7 @@ export function parseRepositoryAst(
     commitSha: repoInfo.commitSha,
     analyzedAt: new Date().toISOString(),
     totalFiles: files.length,
-    totalSymbols: 0,
+    totalSymbols: Object.keys(symbols).length,
     languages: Object.freeze(languageCounts),
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
@@ -375,7 +736,7 @@ export function parseRepositoryAst(
     repository,
     directories: Object.freeze(directoryNodes),
     files: Object.freeze(fileNodes),
-    symbols: Object.freeze({}),
+    symbols: Object.freeze(symbols),
     externalModules: Object.freeze(externalModules),
     edges: Object.freeze(edges),
   };

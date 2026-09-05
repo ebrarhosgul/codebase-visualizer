@@ -13,10 +13,10 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 |---|---------|-------|--------|
 | 1 | Stack & architecture | Foundation | in-progress |
 | 2 | Coding standards & tooling | Foundation | in-progress |
-| 3 | Graph and repository data model | Foundation | in-progress |
-| 4 | Design system & UI foundation | Foundation | in-progress |
+| 3 | Graph and repository data model | Foundation | done |
+| 4 | Design system & UI foundation | Foundation | done |
 | 5 | Walking skeleton loop | Slice 1 | in-progress |
-| 6 | Bidirectional graph and code deep linking | Slice 2 | planned |
+| 6 | Bidirectional graph and code deep linking | Slice 2 | done |
 | 7 | Architectural filtering and layer inspection | Slice 3 | planned |
 | 8 | Semantic AI query and path tracing | Slice 4 | planned |
 | 9 | Client cache and ingestion streaming | Slice 5 | planned |
@@ -38,7 +38,7 @@ Capture conventions, then install linting, formatting, and pre commit quality ch
 - [x] Install the tooling: `/develop tooling`
 - [ ] Check it runs clean: `/test`
 
-### 3. Graph and repository data model · in-progress
+### 3. Graph and repository data model · done
 Define core domain entities for repositories, files, abstract syntax tree nodes, import relationships, function calls, and query path responses.
 **Done when:** the data model represents syntax graphs, symbol definitions, and navigation links without breaking migrations as slices grow.
 spec [0003](../specs/0003-graph-and-repository-data-model/index.md) · code in `src/entities/`, `src/graph/`
@@ -49,9 +49,9 @@ spec [0003](../specs/0003-graph-and-repository-data-model/index.md) · code in `
   - [x] Canonical container: root graph schema, serialization, and versioning (AC-1, AC-7)
   - [x] Graph operations: cycle safe traversal, path tracing, and React Flow adapter (AC-6, AC-8)
 - [x] Verify it: `/check verify graph and repository data model`
-- [ ] Test it: `/test graph and repository data model`
+- [x] Test it: `/test graph and repository data model`
 
-### 4. Design system & UI foundation · in-progress
+### 4. Design system & UI foundation · done
 Establish layout primitives for dense split screen exploration, graph canvas styling, typography, and dark mode developer aesthetics.
 **Done when:** `design.md` covers color tokens, split panes, canvas controls, and base components meet keyboard and accessibility standards.
 spec [0004](../specs/0004-design-system-and-ui-foundation/index.md) · code in `src/components/`, `src/stores/`
@@ -62,7 +62,7 @@ spec [0004](../specs/0004-design-system-and-ui-foundation/index.md) · code in `
   - [x] Interactive primitives: Button, IconButton, Badge, Input, Tooltip, Dialog, Tabs, and DropdownMenu (AC-3, AC-6)
   - [x] Canvas controls & node cards: Custom React Flow nodes, syntax badges, minimap, and controls toolbar (AC-5)
 - [x] Verify it: `/check verify design system & UI foundation`
-- [ ] Test it: `/test design system & UI foundation`
+- [x] Test it: `/test design system & UI foundation`
 
 ## Slice 1: Walking skeleton loop
 
@@ -81,10 +81,19 @@ spec [0005](../specs/0005-walking-skeleton-loop/index.md) · code in `src/`
 
 ## Slice 2: Bidirectional graph and code deep linking
 
-### 6. Bidirectional graph and code deep linking · needs a decision
+### 6. Bidirectional graph and code deep linking · done
 Synchronize focus across views: clicking graph nodes scrolls the code viewer to target symbol declarations, selecting code highlights corresponding graph nodes, and the browser URL reflects the active file and node for easy sharing.
 **Done when:** selecting a node jumps directly to the matching code declaration, selecting code focuses the graph element, and copying the URL preserves state.
-- [ ] Design it (spec): `/architect bidirectional graph and code deep linking`
+spec [0006](../specs/0006-bidirectional-graph-and-code-deep-linking/index.md) · code in `src/`
+- [x] Design it (spec): `/architect bidirectional graph and code deep linking`
+- [x] Build it: `/develop bidirectional graph and code deep linking`
+  - [x] AST symbol declaration extraction: ts-morph extraction of functions, classes, and types with SourceLocations and FileNode symbol linking (AC-5)
+  - [x] Navigation target state & dual guard anti loop lock: Zustand NavigationTarget, coordinate matching, and 300ms time lock (AC-4, AC-8)
+  - [x] Monaco Editor line reveal & pulse highlight: programmatic line scroll, pulse decorations, and debounced cursor inspection (AC-2, AC-3)
+  - [x] React Flow camera centering: useReactFlow setCenter with readable zoom and node card focus states (AC-3, AC-4)
+  - [x] Bidirectional URL sync hook & share actions: useSearchParams Suspense wrapper, replaceState cursor updates, and clipboard share button (AC-1, AC-6, AC-7, AC-8)
+- [x] Verify it: `/check verify bidirectional graph and code deep linking`
+- [x] Test it: `/test bidirectional graph and code deep linking`
 
 ## Slice 3: Architectural filtering and layer inspection
 

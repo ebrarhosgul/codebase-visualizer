@@ -11,6 +11,8 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Share2,
+  Check,
 } from "lucide-react";
 import { Input, Button, Badge } from "@/components/ui";
 import { useGraphStore } from "@/stores/graph-store";
@@ -41,6 +43,43 @@ export function RepoSubmissionBar({
   const ingestionError = useGraphStore((state) => state.ingestionError);
   const startIngestion = useGraphStore((state) => state.startIngestion);
   const cancelIngestion = useGraphStore((state) => state.cancelIngestion);
+  const repository = useGraphStore((state) => state.repository);
+
+  const [copied, setCopied] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+
+  // Auto-dismiss completion notification after 4 seconds
+  useEffect(() => {
+    if (ingestionPhase === "complete") {
+      setShowComplete(true);
+      const timer = setTimeout(() => {
+        setShowComplete(false);
+      }, 4000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowComplete(false);
+    }
+  }, [ingestionPhase]);
+
+  // Sync url and branch inputs with loaded repository
+  useEffect(() => {
+    if (repository?.fullName && !url) {
+      setUrl(repository.fullName);
+    }
+    if (repository?.defaultBranch && !branch) {
+      setBranch(repository.defaultBranch);
+    }
+  }, [repository, url, branch]);
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignore clipboard errors
+    }
+  };
 
   // Load token from sessionStorage on mount
   useEffect(() => {
@@ -173,6 +212,30 @@ export function RepoSubmissionBar({
               <span>Analyze</span>
             </Button>
           )}
+
+          {repository && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleShare}
+              className="h-8 px-2.5 text-xs flex items-center gap-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] shrink-0"
+              title="Copy deep link permalink for current repository and selection"
+              aria-label="Share workspace link"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400 text-xs">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-xs">Share</span>
+                </>
+              )}
+            </Button>
+          )}
         </form>
       </div>
 
@@ -287,18 +350,26 @@ export function RepoSubmissionBar({
       )}
 
       {/* Completion Notification */}
-      {ingestionPhase === "complete" && (
+      {showComplete && ingestionPhase === "complete" && (
         <div
           className="px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between"
           data-testid="ingestion-complete-banner"
         >
-          <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate">
               Repository parsed successfully. Click nodes to inspect source
               code.
             </span>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowComplete(false)}
+            className="ml-2 p-0.5 rounded hover:bg-emerald-500/20 text-emerald-300 shrink-0 transition-colors"
+            aria-label="Dismiss completion notification"
+          >
+            <XCircle className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
     </div>

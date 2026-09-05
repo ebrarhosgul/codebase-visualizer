@@ -9,6 +9,7 @@ import { Tooltip } from "../tooltip";
 import { Dialog } from "../dialog";
 import { Tabs } from "../tabs";
 import { DropdownMenu } from "../dropdown-menu";
+import { Toast } from "../toast";
 
 describe("Button Primitive", () => {
   it("renders with label and handles click events", () => {
@@ -177,5 +178,63 @@ describe("DropdownMenu Primitive", () => {
     expect(
       screen.getByRole("button", { name: "Menu Options" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Toast Primitive", () => {
+  it("renders toast message and triggers manual dismissal", () => {
+    const handleClose = vi.fn();
+    render(
+      <Toast
+        message="Operation completed successfully"
+        variant="success"
+        onClose={handleClose}
+      />,
+    );
+
+    expect(
+      screen.getByText("Operation completed successfully"),
+    ).toBeInTheDocument();
+
+    const dismissButton = screen.getByRole("button", {
+      name: "Dismiss notification",
+    });
+    fireEvent.click(dismissButton);
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("auto dismisses after specified durationMs even when parent re-renders", () => {
+    vi.useFakeTimers();
+    const handleClose = vi.fn();
+
+    const { rerender } = render(
+      <Toast
+        message="Warning occurred"
+        variant="warning"
+        durationMs={3000}
+        onClose={handleClose}
+      />,
+    );
+
+    // Advance halfway through timer
+    vi.advanceTimersByTime(1500);
+    expect(handleClose).not.toHaveBeenCalled();
+
+    // Re-render with new function reference for onClose (simulating parent re-render)
+    const newHandleClose = vi.fn();
+    rerender(
+      <Toast
+        message="Warning occurred"
+        variant="warning"
+        durationMs={3000}
+        onClose={newHandleClose}
+      />,
+    );
+
+    // Advance remainder of timer
+    vi.advanceTimersByTime(1600);
+    expect(newHandleClose).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
   });
 });

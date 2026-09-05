@@ -21,18 +21,12 @@ export const sourceLocationSchema = z.object({
     .number()
     .int()
     .positive({ message: "endColumn must be a 1 indexed positive integer" }),
-  startOffset: z
-    .number()
-    .int()
-    .nonnegative({
-      message: "startOffset must be a zero indexed non negative integer",
-    }),
-  endOffset: z
-    .number()
-    .int()
-    .nonnegative({
-      message: "endOffset must be a zero indexed non negative integer",
-    }),
+  startOffset: z.number().int().nonnegative({
+    message: "startOffset must be a zero indexed non negative integer",
+  }),
+  endOffset: z.number().int().nonnegative({
+    message: "endOffset must be a zero indexed non negative integer",
+  }),
 });
 
 /**

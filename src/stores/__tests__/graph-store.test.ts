@@ -100,4 +100,358 @@ describe("useGraphStore", () => {
     expect(state.repository?.fullName).toBe("a/b");
     expect(state.fileSources["file:test.ts"]).toBe("code");
   });
+
+  it("sets activeTarget and coordinates when navigateToTarget is called from canvas", () => {
+    useGraphStore.getState().navigateToTarget({
+      fileId: "file:src/app.ts",
+      symbolId: "symbol:src/app.ts#startServer",
+      line: 42,
+      column: 5,
+      source: "canvas",
+      timestamp: Date.now(),
+    });
+
+    const state = useGraphStore.getState();
+    expect(state.activeTarget?.fileId).toBe("file:src/app.ts");
+    expect(state.activeTarget?.symbolId).toBe("symbol:src/app.ts#startServer");
+    expect(state.activeTarget?.line).toBe(42);
+    expect(state.selectedFileId).toBe("file:src/app.ts");
+    expect(state.selectedNodeId).toBe("symbol:src/app.ts#startServer");
+    expect(state.lastProgrammaticTarget).toEqual({
+      fileId: "file:src/app.ts",
+      line: 42,
+    });
+    expect(state.lockedUntil).toBeGreaterThan(Date.now() - 100);
+  });
+
+  it("suppresses reverse synchronization in navigateToTarget using dual guard (AC-4)", () => {
+    // 1. Programmatic canvas navigation sets lock and lastProgrammaticTarget
+    useGraphStore.getState().navigateToTarget({
+      fileId: "file:src/app.ts",
+      line: 50,
+      source: "canvas",
+      timestamp: Date.now(),
+    });
+
+    // 2. Immediate reverse navigation from editor to the exact same line is blocked
+    useGraphStore.getState().navigateToTarget({
+      fileId: "file:src/app.ts",
+      line: 50,
+      source: "editor",
+      timestamp: Date.now(),
+    });
+
+    // Source remains canvas because editor event was suppressed by coordinate and time guard
+    expect(useGraphStore.getState().activeTarget?.source).toBe("canvas");
+
+    // 3. Reverse navigation to a different line while still time locked is also blocked
+    useGraphStore.getState().navigateToTarget({
+      fileId: "file:src/app.ts",
+      line: 99,
+      source: "editor",
+      timestamp: Date.now(),
+    });
+    expect(useGraphStore.getState().activeTarget?.line).toBe(50);
+  });
+
+  it("buffers deep link and flushes when repository graph is loaded (AC-1, AC-7)", () => {
+    useGraphStore.getState().bufferDeepLink({
+      repo: "org/repo",
+      file: "src/utils.ts",
+      line: "15",
+      symbol: "helper",
+    });
+
+    expect(useGraphStore.getState().pendingTarget).toEqual({
+      fileId: "file:src/utils.ts",
+      symbolId: "symbol:src/utils.ts#helper",
+      line: 15,
+      source: "url",
+      timestamp: expect.any(Number),
+    });
+
+    // Mock graph with the target file and symbol
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/repo",
+        owner: "org",
+        name: "repo",
+        fullName: "org/repo",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 1,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/utils.ts": {
+          id: "file:src/utils.ts",
+          path: "src/utils.ts",
+          name: "utils.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 20,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/utils.ts#helper"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {
+        "symbol:src/utils.ts#helper": {
+          id: "symbol:src/utils.ts#helper",
+          fileId: "file:src/utils.ts",
+          parentSymbolId: null,
+          name: "helper",
+          kind: "function",
+          range: {
+            startLine: 15,
+            startColumn: 1,
+            endLine: 20,
+            endColumn: 1,
+            startOffset: 100,
+            endOffset: 200,
+          },
+          selectionRange: {
+            startLine: 15,
+            startColumn: 10,
+            endLine: 15,
+            endColumn: 16,
+            startOffset: 109,
+            endOffset: 115,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "function helper()",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    // Setting graph triggers flushPendingDeepLink automatically
+    useGraphStore.getState().setGraph(mockGraph);
+
+    const state = useGraphStore.getState();
+    expect(state.pendingTarget).toBeNull();
+    expect(state.activeTarget?.fileId).toBe("file:src/utils.ts");
+    expect(state.activeTarget?.symbolId).toBe("symbol:src/utils.ts#helper");
+    expect(state.activeTarget?.line).toBe(15);
+  });
+
+  it("handles missing target gracefully during deep link flushing (AC-6)", () => {
+    useGraphStore.getState().bufferDeepLink({
+      repo: "org/repo",
+      file: "non-existent.ts",
+      line: "10",
+    });
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/repo",
+        owner: "org",
+        name: "repo",
+        fullName: "org/repo",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 0,
+        totalSymbols: 0,
+        languages: {},
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {},
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+
+    const state = useGraphStore.getState();
+    expect(state.pendingTarget).toBeNull();
+    expect(state.activeTarget).toBeNull();
+    expect(state.fallbackNotification).toContain("non-existent.ts");
+
+    state.clearFallbackNotification();
+    expect(useGraphStore.getState().fallbackNotification).toBeNull();
+  });
+
+  it("clears lastProgrammaticTarget when selecting a file node without line (AC-4)", () => {
+    // Set an initial programmatic target with line
+    useGraphStore.getState().navigateToTarget({
+      fileId: "file:src/first.ts",
+      line: 42,
+      source: "canvas",
+      timestamp: Date.now(),
+    });
+    expect(useGraphStore.getState().lastProgrammaticTarget).toEqual({
+      fileId: "file:src/first.ts",
+      line: 42,
+    });
+
+    // Selecting a file node directly resets lastProgrammaticTarget so coordinates do not stay locked
+    useGraphStore.getState().selectNode("file:src/second.ts");
+    expect(useGraphStore.getState().lastProgrammaticTarget).toBeNull();
+  });
+
+  it("clears activeTarget and selection when target symbol is not found (AC-6)", () => {
+    useGraphStore.getState().bufferDeepLink({
+      repo: "org/repo",
+      file: "src/valid.ts",
+      symbol: "missingFunc",
+    });
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/repo",
+        owner: "org",
+        name: "repo",
+        fullName: "org/repo",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: {},
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/valid.ts": {
+          id: "file:src/valid.ts",
+          path: "src/valid.ts",
+          name: "valid.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+
+    const state = useGraphStore.getState();
+    expect(state.pendingTarget).toBeNull();
+    expect(state.activeTarget).toBeNull();
+    expect(state.selectedNodeId).toBeNull();
+    expect(state.selectedFileId).toBeNull();
+    expect(state.fallbackNotification).toContain("missingFunc");
+  });
+
+  it("permits consecutive cursor movements in editor without artificial self-lockout (AC-3)", () => {
+    // 1. Move cursor to line 10
+    useGraphStore.getState().navigateToTarget({
+      fileId: "file:src/test.ts",
+      line: 10,
+      source: "editor",
+      timestamp: Date.now(),
+    });
+    expect(useGraphStore.getState().activeTarget?.line).toBe(10);
+
+    // 2. Immediately move cursor to line 11 (should succeed, not be locked out)
+    useGraphStore.getState().navigateToTarget({
+      fileId: "file:src/test.ts",
+      line: 11,
+      source: "editor",
+      timestamp: Date.now() + 50,
+    });
+    expect(useGraphStore.getState().activeTarget?.line).toBe(11);
+  });
+
+  it("checks navigation lock status with isNavigationLocked helper (AC-4)", () => {
+    expect(useGraphStore.getState().isNavigationLocked()).toBe(false);
+
+    // Set lock in the future
+    useGraphStore.setState({ lockedUntil: Date.now() + 500 });
+    expect(useGraphStore.getState().isNavigationLocked()).toBe(true);
+
+    // Expire time lock but coordinate guard still matches lastProgrammaticTarget
+    useGraphStore.setState({
+      lockedUntil: 0,
+      lastProgrammaticTarget: { fileId: "file:src/app.ts", line: 42 },
+    });
+
+    // Matching coordinates return locked
+    expect(
+      useGraphStore.getState().isNavigationLocked("file:src/app.ts", 42),
+    ).toBe(true);
+
+    // Different line returns unlocked
+    expect(
+      useGraphStore.getState().isNavigationLocked("file:src/app.ts", 99),
+    ).toBe(false);
+
+    // Different file returns unlocked
+    expect(
+      useGraphStore.getState().isNavigationLocked("file:src/other.ts", 42),
+    ).toBe(false);
+  });
+
+  it("handles bufferDeepLink edge cases with invalid lines and empty parameters (AC-1, AC-6)", () => {
+    // Both file and symbol empty -> should not set pendingTarget
+    useGraphStore.getState().bufferDeepLink({});
+    expect(useGraphStore.getState().pendingTarget).toBeNull();
+
+    // Malformed non numeric line numbers
+    useGraphStore.getState().bufferDeepLink({
+      file: "src/index.ts",
+      line: "not-a-number",
+    });
+    expect(useGraphStore.getState().pendingTarget?.line).toBeNull();
+
+    // Negative line numbers
+    useGraphStore.getState().bufferDeepLink({
+      file: "src/index.ts",
+      line: "-5",
+    });
+    expect(useGraphStore.getState().pendingTarget?.line).toBeNull();
+
+    // Zero line number
+    useGraphStore.getState().bufferDeepLink({
+      file: "src/index.ts",
+      line: "0",
+    });
+    expect(useGraphStore.getState().pendingTarget?.line).toBeNull();
+  });
+
+  it("returns success immediately when flushing empty pending target (AC-7)", () => {
+    const result = useGraphStore.getState().flushPendingDeepLink();
+    expect(result.success).toBe(true);
+  });
+
+  it("handles pure file navigation without line or symbol coordinates (AC-2)", () => {
+    useGraphStore.getState().navigateToTarget({
+      fileId: "file:src/standalone.ts",
+      source: "canvas",
+      timestamp: Date.now(),
+    });
+
+    const state = useGraphStore.getState();
+    expect(state.activeTarget?.fileId).toBe("file:src/standalone.ts");
+    expect(state.activeTarget?.line).toBeUndefined();
+    expect(state.activeTarget?.symbolId).toBeUndefined();
+    expect(state.selectedFileId).toBe("file:src/standalone.ts");
+    expect(state.selectedNodeId).toBe("file:src/standalone.ts");
+    expect(state.lastProgrammaticTarget).toBeNull();
+  });
 });

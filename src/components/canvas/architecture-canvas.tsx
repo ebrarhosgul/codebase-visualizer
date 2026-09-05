@@ -41,7 +41,9 @@ function ArchitectureCanvasInner({
   );
 
   const [isMinimapVisible, setIsMinimapVisible] = React.useState(true);
-  const { fitView, zoomIn, zoomOut, getZoom } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getZoom, setCenter } = useReactFlow();
+  const activeTarget = useGraphStore((state) => state.activeTarget);
+  const navigateToTarget = useGraphStore((state) => state.navigateToTarget);
 
   // Compute positioned React Flow elements using pure transformation and Dagre layout
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -71,6 +73,7 @@ function ArchitectureCanvasInner({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const lastCenteredTargetKeyRef = React.useRef<string | null>(null);
 
   // Sync state whenever underlying graph is recomputed
   useEffect(() => {
@@ -78,11 +81,17 @@ function ArchitectureCanvasInner({
     setEdges(initialEdges);
 
     if (initialNodes.length > 0) {
-      // Defer fitView slightly so DOM bounding boxes have settled
-      const timer = setTimeout(() => {
-        fitView({ padding: 0.2, duration: 400 });
-      }, 50);
-      return () => clearTimeout(timer);
+      // Defer fitView slightly so DOM bounding boxes have settled, but skip if targeting a specific node
+      const hasTarget = Boolean(
+        useGraphStore.getState().activeTarget ||
+        useGraphStore.getState().pendingTarget,
+      );
+      if (!hasTarget) {
+        const timer = setTimeout(() => {
+          fitView({ padding: 0.2, duration: 400 });
+        }, 50);
+        return () => clearTimeout(timer);
+      }
     }
   }, [initialNodes, initialEdges, setNodes, setEdges, fitView]);
 
@@ -91,26 +100,98 @@ function ArchitectureCanvasInner({
     setNodes((currentNodes) =>
       currentNodes.map((n) => ({
         ...n,
-        selected: n.id === selectedNodeId,
+        selected:
+          n.id === selectedNodeId ||
+          (activeTarget != null &&
+            (n.id === activeTarget.symbolId || n.id === activeTarget.fileId)),
       })),
     );
-  }, [selectedNodeId, setNodes]);
+  }, [selectedNodeId, activeTarget, setNodes]);
 
-  // Handle node selection: synchronize selection and switch right tab to code (AC-7)
+  // Programmatically center camera when activeTarget updates from editor or url (AC-3, AC-4)
+  useEffect(() => {
+    if (!activeTarget || activeTarget.source === "canvas") {
+      return;
+    }
+
+    // Look for target node in current nodes state or layout initialNodes
+    const targetId = activeTarget.symbolId || activeTarget.fileId;
+    const targetNode =
+      nodes.find((n) => n.id === targetId) ||
+      nodes.find((n) => n.id === activeTarget.fileId) ||
+      initialNodes.find((n) => n.id === targetId) ||
+      initialNodes.find((n) => n.id === activeTarget.fileId);
+
+    if (!targetNode) {
+      return;
+    }
+
+    // If source is editor cursor, avoid jitter if target node has not changed
+    const targetKey =
+      activeTarget.source === "editor"
+        ? `editor:${targetNode.id}`
+        : `${activeTarget.source}:${targetNode.id}:${activeTarget.timestamp}`;
+
+    if (lastCenteredTargetKeyRef.current === targetKey) {
+      return;
+    }
+    lastCenteredTargetKeyRef.current = targetKey;
+
+    const anyNode = targetNode as unknown as {
+      measured?: { width: number; height: number };
+      width?: number;
+      height?: number;
+    };
+    const nodeWidth = anyNode.measured?.width ?? anyNode.width ?? 240;
+    const nodeHeight = anyNode.measured?.height ?? anyNode.height ?? 80;
+    const centerX = targetNode.position.x + nodeWidth / 2;
+    const centerY = targetNode.position.y + nodeHeight / 2;
+
+    setCenter(centerX, centerY, { zoom: 1.2, duration: 800 });
+  }, [activeTarget, nodes, initialNodes, setCenter]);
+
+  // Handle node selection: synchronize selection, navigate target, and switch right tab to code (AC-2, AC-7)
   const handleNodeClick: NodeMouseHandler = useCallback(
     (_, node) => {
       selectNode(node.id);
+      setActiveRightTab("code");
+      useWorkspaceStore.getState().setRightPanelCollapsed(false);
+      if (useWorkspaceStore.getState().isSmallScreen) {
+        useWorkspaceStore.getState().setRightDrawerOpen(true);
+      }
+
       if (node.id.startsWith("file:")) {
-        setActiveRightTab("code");
+        navigateToTarget({
+          fileId: node.id,
+          source: "canvas",
+          timestamp: Date.now(),
+        });
+      } else if (node.id.startsWith("symbol:")) {
+        const symbol = graph?.symbols[node.id];
+        if (symbol) {
+          navigateToTarget({
+            fileId: symbol.fileId,
+            symbolId: symbol.id,
+            line: symbol.range.startLine,
+            column: symbol.range.startColumn,
+            source: "canvas",
+            timestamp: Date.now(),
+          });
+        }
       }
     },
-    [selectNode, setActiveRightTab],
+    [selectNode, setActiveRightTab, navigateToTarget, graph],
   );
 
   // Handle canvas background click to clear selection
   const handlePaneClick = useCallback(() => {
     selectNode(null);
+    lastCenteredTargetKeyRef.current = null;
   }, [selectNode]);
+
+  const handleMoveStart = useCallback(() => {
+    lastCenteredTargetKeyRef.current = null;
+  }, []);
 
   // Empty or Welcome state when no graph is loaded
   if (!graph || Object.keys(graph.files).length === 0) {
@@ -172,6 +253,7 @@ function ArchitectureCanvasInner({
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
+        onMoveStart={handleMoveStart}
         nodeTypes={codebaseNodeTypes}
         minZoom={0.2}
         maxZoom={2.5}

@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
-import Editor from "@monaco-editor/react";
-import { FileCode, AlertTriangle, Code2 } from "lucide-react";
-import { Badge } from "@/components/ui";
-import { useGraphStore } from "@/stores/graph-store";
+import React, { useRef, useEffect, useCallback, useState } from "react";
+import Editor, { type OnMount } from "@monaco-editor/react";
+import { FileCode, AlertTriangle, Code2, Share2, Check } from "lucide-react";
+import { Badge, Button } from "@/components/ui";
+import { useGraphStore, type NavigationTarget } from "@/stores/graph-store";
+import type { SymbolNode } from "@/entities";
 
 /**
  * Maps a file extension or path to Monaco Editor language identifier.
@@ -52,15 +53,225 @@ export interface CodeViewerProps {
 
 /**
  * Side by side Monaco Editor component displaying source code
- * for the currently selected file node from in memory store.
+ * for the currently selected file node from in memory store,
+ * supporting bidirectional programmatic line reveal and cursor tracking.
  */
+type MonacoEditorInstance = Parameters<OnMount>[0];
+type MonacoNamespace = Parameters<OnMount>[1];
+type MonacoDecorationsCollection = ReturnType<
+  MonacoEditorInstance["createDecorationsCollection"]
+>;
+
 export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
   const fileSources = useGraphStore((state) => state.fileSources);
   const graph = useGraphStore((state) => state.graph);
+  const activeTarget = useGraphStore((state) => state.activeTarget);
+  const navigateToTarget = useGraphStore((state) => state.navigateToTarget);
+
+  const [copied, setCopied] = useState(false);
+
+  // References to Monaco editor and decoration instances
+  const editorRef = useRef<MonacoEditorInstance | null>(null);
+  const monacoRef = useRef<MonacoNamespace | null>(null);
+  const decorationsCollectionRef = useRef<MonacoDecorationsCollection | null>(
+    null,
+  );
+  const pulseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cursorDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const cursorDisposableRef = useRef<{ dispose: () => void } | null>(null);
 
   const fileNode = selectedFileId && graph ? graph.files[selectedFileId] : null;
   const sourceCode = selectedFileId ? fileSources[selectedFileId] : null;
+
+  // Programmatic reveal and pulse decoration when activeTarget updates (AC-2)
+  const revealAndHighlightLine = useCallback(
+    (target: NavigationTarget) => {
+      const editor = editorRef.current;
+      const monaco = monacoRef.current;
+      if (!editor || !monaco || target.line == null) {
+        return;
+      }
+
+      const modelLineCount =
+        typeof editor.getModel === "function"
+          ? (editor.getModel()?.getLineCount() ?? target.line)
+          : target.line;
+      const maxLines = Math.max(fileNode?.lineCount ?? 1, modelLineCount);
+      const targetLine = Math.max(1, Math.min(target.line, maxLines));
+      const targetCol = target.column ?? 1;
+
+      editor.revealLineInCenter(targetLine, monaco.editor.ScrollType.Smooth);
+      editor.setPosition({ lineNumber: targetLine, column: targetCol });
+
+      // Clean up previous pulse decorations
+      if (decorationsCollectionRef.current) {
+        decorationsCollectionRef.current.clear();
+      }
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+      }
+
+      // Create new pulse decoration on the target line
+      const range = new monaco.Range(targetLine, 1, targetLine, 1);
+      const collection = editor.createDecorationsCollection([
+        {
+          range,
+          options: {
+            isWholeLine: true,
+            className: "monaco-pulse-line",
+            overviewRuler: {
+              color: "#38bdf8",
+              position: monaco.editor.OverviewRulerLane.Full,
+            },
+          },
+        },
+      ]);
+      decorationsCollectionRef.current = collection;
+
+      // 2-second fade out timer
+      pulseTimeoutRef.current = setTimeout(() => {
+        if (decorationsCollectionRef.current) {
+          decorationsCollectionRef.current.clear();
+        }
+      }, 2000);
+    },
+    [fileNode?.lineCount],
+  );
+
+  // Subscribe to activeTarget changes to trigger reveal
+  useEffect(() => {
+    if (
+      activeTarget &&
+      activeTarget.source !== "editor" &&
+      activeTarget.fileId === selectedFileId &&
+      activeTarget.line != null
+    ) {
+      revealAndHighlightLine(activeTarget);
+    }
+  }, [activeTarget, selectedFileId, revealAndHighlightLine]);
+
+  // Handle editor mount: capture instances and wire cursor listener (AC-3)
+  const handleEditorMount: OnMount = useCallback(
+    (editor, monaco) => {
+      editorRef.current = editor;
+      monacoRef.current = monaco;
+
+      // If there's an active target pending for this file, reveal immediately
+      const currentTarget = useGraphStore.getState().activeTarget;
+      if (
+        currentTarget &&
+        currentTarget.source !== "editor" &&
+        currentTarget.fileId === selectedFileId &&
+        currentTarget.line != null
+      ) {
+        revealAndHighlightLine(currentTarget);
+      }
+
+      // Register cursor position change listener with 150ms debounce
+      cursorDisposableRef.current?.dispose();
+      cursorDisposableRef.current = editor.onDidChangeCursorPosition((e) => {
+        if (cursorDebounceRef.current) {
+          clearTimeout(cursorDebounceRef.current);
+        }
+
+        cursorDebounceRef.current = setTimeout(() => {
+          const cursorLine = e.position.lineNumber;
+          const currentFileId = useGraphStore.getState().selectedFileId;
+          const currentGraph = useGraphStore.getState().graph;
+          if (!currentFileId || !currentGraph) {
+            return;
+          }
+
+          const currentFile = currentGraph.files[currentFileId];
+          if (!currentFile) {
+            return;
+          }
+
+          // Check if reverse navigation is locked (dual-guard AC-4)
+          if (
+            useGraphStore
+              .getState()
+              .isNavigationLocked(currentFileId, cursorLine)
+          ) {
+            return;
+          }
+
+          // Identify innermost symbol where startLine <= cursorLine <= endLine
+          let innermostSymbol: SymbolNode | null = null;
+          let smallestSpan = Infinity;
+
+          for (const sId of currentFile.symbolIds) {
+            const sym = currentGraph.symbols[sId];
+            if (!sym) {
+              continue;
+            }
+            if (
+              sym.range.startLine <= cursorLine &&
+              cursorLine <= sym.range.endLine
+            ) {
+              const span = sym.range.endLine - sym.range.startLine;
+              if (span < smallestSpan) {
+                smallestSpan = span;
+                innermostSymbol = sym;
+              }
+            }
+          }
+
+          navigateToTarget({
+            fileId: currentFileId,
+            symbolId: innermostSymbol ? innermostSymbol.id : null,
+            line: cursorLine,
+            column: e.position.column,
+            source: "editor",
+            timestamp: Date.now(),
+          });
+        }, 150);
+      });
+    },
+    [selectedFileId, revealAndHighlightLine, navigateToTarget],
+  );
+
+  // Clean up timers and listeners on unmount
+  useEffect(() => {
+    return () => {
+      cursorDisposableRef.current?.dispose();
+      cursorDisposableRef.current = null;
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+      }
+      if (cursorDebounceRef.current) {
+        clearTimeout(cursorDebounceRef.current);
+      }
+    };
+  }, []);
+
+  // Copy deep link permalink to clipboard (AC-8)
+  const handleSharePermalink = useCallback(async () => {
+    if (!fileNode) {
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("file", fileNode.path);
+    if (activeTarget?.line) {
+      url.searchParams.set("line", String(activeTarget.line));
+    } else {
+      url.searchParams.delete("line");
+    }
+    if (activeTarget?.symbolId && graph?.symbols[activeTarget.symbolId]) {
+      url.searchParams.set("symbol", graph.symbols[activeTarget.symbolId].name);
+    } else {
+      url.searchParams.delete("symbol");
+    }
+
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignore clipboard write issues
+    }
+  }, [fileNode, activeTarget, graph]);
 
   if (
     !selectedFileId ||
@@ -107,6 +318,26 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSharePermalink}
+            className="h-6 px-2 text-[11px] flex items-center gap-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            title="Copy deep link permalink for this file and line"
+            aria-label="Copy deep link permalink"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3 h-3 text-emerald-400" />
+                <span className="text-emerald-400 text-[10px]">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-3 h-3" />
+                <span className="text-[10px] hidden sm:inline">Share</span>
+              </>
+            )}
+          </Button>
           <Badge variant="syntax-ts">{fileNode.extension || language}</Badge>
           <span className="text-[10px] text-[var(--text-muted)] font-mono">
             {fileNode.lineCount} lines
@@ -130,10 +361,18 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
       {/* Monaco Editor Canvas */}
       <div className="flex-1 w-full min-h-0 relative">
         <Editor
+          path={fileNode.path}
           height="100%"
           language={language}
           value={sourceCode}
           theme="vs-dark"
+          onMount={handleEditorMount}
+          loading={
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-[var(--text-muted)] bg-[var(--surface-panel)]">
+              <Code2 className="w-6 h-6 animate-pulse mb-2 text-[var(--accent-primary)]" />
+              <span className="text-xs">Loading editor...</span>
+            </div>
+          }
           options={{
             readOnly: true,
             fontSize: 12,

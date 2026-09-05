@@ -228,7 +228,9 @@ export function WorkspaceLayout({
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="flex-1 overflow-auto">{rightContent}</div>
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                {rightContent}
+              </div>
             </div>
           </div>
         )}
@@ -334,7 +336,9 @@ export function WorkspaceLayout({
               <PanelRightClose className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="flex-1 overflow-auto">{rightContent}</div>
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {rightContent}
+          </div>
         </aside>
       ),
     });
@@ -348,7 +352,7 @@ export function WorkspaceLayout({
       )}
     >
       {headerContent && (
-        <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--surface-panel)] flex items-center px-4 shrink-0 z-20">
+        <header className="min-h-12 h-auto border-b border-[var(--border-subtle)] bg-[var(--surface-panel)] flex flex-col justify-center px-4 py-1.5 shrink-0 z-20">
           {headerContent}
         </header>
       )}

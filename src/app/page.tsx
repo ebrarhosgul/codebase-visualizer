@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback, Suspense } from "react";
 import {
   Folder,
   FileCode,
@@ -14,12 +14,13 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { WorkspaceLayout } from "@/components/layout";
-import { Input, Badge, Tabs } from "@/components/ui";
+import { Input, Badge, Tabs, Toast } from "@/components/ui";
 import { ArchitectureCanvas } from "@/components/canvas";
 import { CodeViewer } from "@/components/editor";
 import { RepoSubmissionBar } from "@/components/workspace/repo-submission-bar";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useGraphStore } from "@/stores/graph-store";
+import { DeepLinkingSync } from "@/hooks/use-deep-linking";
 
 export default function Home(): React.JSX.Element {
   const [fileFilter, setFileFilter] = useState("");
@@ -33,6 +34,12 @@ export default function Home(): React.JSX.Element {
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
   const selectNode = useGraphStore((state) => state.selectNode);
+  const navigateToTarget = useGraphStore((state) => state.navigateToTarget);
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const handleDeepLinkFallback = useCallback((msg: string) => {
+    setToastMessage(msg);
+  }, []);
 
   // Filtered file list
   const filteredFiles = useMemo(() => {
@@ -158,6 +165,15 @@ export default function Home(): React.JSX.Element {
                 onClick={() => {
                   selectNode(file.id);
                   setActiveRightTab("code");
+                  useWorkspaceStore.getState().setRightPanelCollapsed(false);
+                  if (useWorkspaceStore.getState().isSmallScreen) {
+                    useWorkspaceStore.getState().setRightDrawerOpen(true);
+                  }
+                  navigateToTarget({
+                    fileId: file.id,
+                    source: "canvas",
+                    timestamp: Date.now(),
+                  });
                 }}
                 className={`flex items-center justify-between px-2 py-1.5 rounded cursor-pointer transition-colors ${
                   isSelected
@@ -170,6 +186,15 @@ export default function Home(): React.JSX.Element {
                   if (e.key === "Enter" || e.key === " ") {
                     selectNode(file.id);
                     setActiveRightTab("code");
+                    useWorkspaceStore.getState().setRightPanelCollapsed(false);
+                    if (useWorkspaceStore.getState().isSmallScreen) {
+                      useWorkspaceStore.getState().setRightDrawerOpen(true);
+                    }
+                    navigateToTarget({
+                      fileId: file.id,
+                      source: "canvas",
+                      timestamp: Date.now(),
+                    });
                   }
                 }}
                 aria-label={`File ${file.path}`}
@@ -215,12 +240,13 @@ export default function Home(): React.JSX.Element {
   const centerContent = <ArchitectureCanvas />;
 
   const rightContent = (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex-1 min-h-0 flex flex-col">
       <Tabs
         value={activeRightTab}
         onValueChange={(val) =>
           setActiveRightTab(val as "code" | "inspector" | "trace")
         }
+        className="w-full h-full flex-1 min-h-0"
         items={[
           {
             value: "code",
@@ -407,12 +433,22 @@ export default function Home(): React.JSX.Element {
   return (
     <>
       <h1 className="sr-only">Codebase Visualizer</h1>
+      <Suspense fallback={null}>
+        <DeepLinkingSync onFallback={handleDeepLinkFallback} />
+      </Suspense>
       <WorkspaceLayout
         headerContent={<RepoSubmissionBar />}
         leftContent={leftContent}
         centerContent={centerContent}
         rightContent={rightContent}
       />
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          variant="warning"
+          onClose={() => setToastMessage(null)}
+        />
+      )}
     </>
   );
 }
