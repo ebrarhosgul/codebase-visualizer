@@ -141,6 +141,103 @@ export async function fetchRepoMetadata(
 }
 
 /**
+ * Fetches the latest commit SHA for a specific branch via GitHub Commits API.
+ * Uses GET /repos/{owner}/{repo}/commits/{branch} to verify freshness without archive download.
+ */
+export async function fetchBranchCommitSha(
+  owner: string,
+  repo: string,
+  branch: string,
+  options: GitHubClientOptions = {},
+): Promise<GitHubResult<string>> {
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/${encodeURIComponent(branch)}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: buildHeaders(options.token),
+      signal: options.signal,
+    });
+
+    if (!response.ok) {
+      const reset = parseRateLimitReset(response);
+      const remaining = response.headers.get("x-ratelimit-remaining");
+
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: {
+            code: "REPO_NOT_FOUND",
+            message: `Branch "${branch}" for repository "${owner}/${repo}" was not found.`,
+          },
+        };
+      }
+
+      if (
+        (response.status === 403 || response.status === 429) &&
+        remaining === "0"
+      ) {
+        return {
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message:
+              "GitHub rate limit exceeded during commit verification. Please supply a Personal Access Token.",
+            rateLimitReset: reset,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: {
+          code: "REPO_NOT_FOUND",
+          message: `GitHub API returned status ${response.status} while fetching branch commit.`,
+          rateLimitReset: reset,
+        },
+      };
+    }
+
+    const data = (await response.json()) as { readonly sha?: string };
+    if (!data.sha || typeof data.sha !== "string") {
+      return {
+        success: false,
+        error: {
+          code: "PARSE_FAILED",
+          message: "Unable to resolve commit SHA from GitHub response.",
+        },
+      };
+    }
+
+    return {
+      success: true,
+      data: data.sha,
+    };
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return {
+        success: false,
+        error: {
+          code: "ABORTED",
+          message: "Commit verification was cancelled.",
+        },
+      };
+    }
+
+    return {
+      success: false,
+      error: {
+        code: "TIMEOUT",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Network error fetching branch commit SHA.",
+      },
+    };
+  }
+}
+
+/**
  * Downloads the repository tarball archive stream in a single request.
  * Follows GitHub 302 redirect directly to codeload archive.
  */

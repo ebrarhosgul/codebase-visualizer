@@ -3,11 +3,15 @@ import {
   parseGithubUrl,
   fetchRepoMetadata,
   fetchTarballArchive,
+  fetchBranchCommitSha,
+  GITHUB_PAT_COOKIE_NAME,
 } from "@/lib/github";
+import { decryptGithubToken } from "@/lib/github/crypto";
 import { unpackRepositoryTarball, parseRepositoryAst } from "@/lib/parser";
 import type { IngestRequest, IngestStreamEvent } from "@/types/ingestion";
 
 const INGESTION_TIMEOUT_MS = 30000; // 30 second defensive timeout
+const PROGRESS_THROTTLE_MS = 100; // Minimum 100ms interval between granular progress events (AC-4)
 
 /**
  * Encodes an IngestStreamEvent into a Server Sent Event data chunk.
@@ -19,7 +23,8 @@ function formatSseChunk(event: IngestStreamEvent): Uint8Array {
 
 /**
  * Route handler for POST /api/ingest.
- * Streams real time ingestion progress and final parsed CodebaseGraph using Server Sent Events.
+ * Streams real time ingestion progress, handles commit SHA cache hit checks,
+ * and yields final parsed CodebaseGraph using Server Sent Events.
  */
 export async function POST(req: NextRequest): Promise<Response> {
   let body: IngestRequest;
@@ -35,11 +40,25 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
   }
 
-  const { repositoryUrl, branch: explicitBranch, githubToken } = body;
+  const {
+    repositoryUrl,
+    branch: explicitBranch,
+    githubToken,
+    cachedCommitSha,
+    forceFresh,
+  } = body;
+
+  // Resolve token from encrypted httpOnly cookie first, then fallback to request body (AC-5)
+  const cookieValue = req.cookies.get(GITHUB_PAT_COOKIE_NAME)?.value;
+  const decryptedCookieToken = cookieValue
+    ? decryptGithubToken(cookieValue)
+    : null;
+  const effectiveToken = decryptedCookieToken || githubToken;
 
   const stream = new ReadableStream({
     async start(controller) {
       let isClosed = false;
+      let lastProgressEmitTime = 0;
 
       const safeEnqueue = (event: IngestStreamEvent) => {
         if (isClosed) {
@@ -106,7 +125,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         const requestedBranch = explicitBranch || urlBranch;
 
         const metaResult = await fetchRepoMetadata(owner, repo, {
-          token: githubToken,
+          token: effectiveToken,
           signal: timeoutController.signal,
         });
 
@@ -121,6 +140,44 @@ export async function POST(req: NextRequest): Promise<Response> {
 
         const repoInfo = metaResult.data;
         const targetBranch = requestedBranch || repoInfo.defaultBranch;
+
+        // Verify upstream branch head commit hash via GitHub API (AC-2)
+        const commitResult = await fetchBranchCommitSha(
+          owner,
+          repo,
+          targetBranch,
+          {
+            token: effectiveToken,
+            signal: timeoutController.signal,
+          },
+        );
+
+        if (!commitResult.success) {
+          safeEnqueue({
+            phase: "error",
+            error: commitResult.error,
+          });
+          safeClose();
+          return;
+        }
+
+        const upstreamCommitSha = commitResult.data;
+
+        // Check cache hit: if commit hash matches and not forced fresh, instruct client to hydrate (AC-2)
+        if (
+          !forceFresh &&
+          cachedCommitSha &&
+          cachedCommitSha.trim() === upstreamCommitSha.trim()
+        ) {
+          safeEnqueue({
+            phase: "complete",
+            cached: true,
+            commitSha: upstreamCommitSha,
+            message: "Repository is up to date with cached version.",
+          });
+          safeClose();
+          return;
+        }
 
         // Phase 2: Downloading archive tarball (single request, 1 rate limit point)
         safeEnqueue({
@@ -138,7 +195,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           repo,
           targetBranch,
           {
-            token: githubToken,
+            token: effectiveToken,
             signal: timeoutController.signal,
           },
         );
@@ -152,12 +209,12 @@ export async function POST(req: NextRequest): Promise<Response> {
           return;
         }
 
-        // Phase 3: In-memory tarball extraction & file prioritization
+        // Phase 3: In-memory tarball extraction & file prioritization with throttled progress (AC-4)
         safeEnqueue({
           phase: "unpacking_files",
           progress: {
             phase: "unpacking_files",
-            current: 50,
+            current: 40,
             total: 100,
             message: "Unpacking archive and prioritizing source files...",
           },
@@ -166,6 +223,25 @@ export async function POST(req: NextRequest): Promise<Response> {
         const extraction = await unpackRepositoryTarball(archiveResult.data, {
           maxFiles: 200,
           includeNonSourceFiles: true,
+          onProgress: (count, currentPath) => {
+            const now = Date.now();
+            if (now - lastProgressEmitTime >= PROGRESS_THROTTLE_MS) {
+              lastProgressEmitTime = now;
+              safeEnqueue({
+                phase: "unpacking_files",
+                progress: {
+                  phase: "unpacking_files",
+                  current: Math.min(60, 40 + Math.round((count / 200) * 20)),
+                  total: 100,
+                  message: `Unpacking file ${count}: ${currentPath}...`,
+                  detail: {
+                    currentItem: count,
+                    currentItemName: currentPath,
+                  },
+                },
+              });
+            }
+          },
         });
 
         if (extraction.files.length === 0) {
@@ -181,14 +257,18 @@ export async function POST(req: NextRequest): Promise<Response> {
           return;
         }
 
-        // Phase 4: AST parsing and dependency graph building
+        // Phase 4: AST parsing and dependency graph building with granular file counters (AC-4)
         safeEnqueue({
           phase: "parsing_ast",
           progress: {
             phase: "parsing_ast",
-            current: 75,
+            current: 65,
             total: 100,
             message: `Parsing abstract syntax tree for ${extraction.files.length} files...`,
+            detail: {
+              currentItem: 0,
+              totalItems: extraction.files.length,
+            },
           },
         });
 
@@ -197,22 +277,67 @@ export async function POST(req: NextRequest): Promise<Response> {
           {
             ...repoInfo,
             defaultBranch: targetBranch,
+            commitSha: upstreamCommitSha,
           },
           extraction.tsconfigContent,
+          (currentItem, totalItems, currentItemName) => {
+            const now = Date.now();
+            if (
+              now - lastProgressEmitTime >= PROGRESS_THROTTLE_MS ||
+              currentItem === totalItems
+            ) {
+              lastProgressEmitTime = now;
+              safeEnqueue({
+                phase: "parsing_ast",
+                progress: {
+                  phase: "parsing_ast",
+                  current: Math.min(
+                    95,
+                    65 + Math.round((currentItem / totalItems) * 30),
+                  ),
+                  total: 100,
+                  message: `Parsing TypeScript AST module ${currentItem} of ${totalItems}: ${currentItemName}...`,
+                  detail: {
+                    currentItem,
+                    totalItems,
+                    currentItemName,
+                  },
+                },
+              });
+            }
+          },
         );
+
+        const nodeCount =
+          Object.keys(parsedData.graph.files).length +
+          Object.keys(parsedData.graph.directories).length +
+          Object.keys(parsedData.graph.symbols).length;
+        const fileCount = extraction.files.length;
 
         // Phase 5: Complete
         safeEnqueue({
           phase: "complete",
+          commitSha: upstreamCommitSha,
+          fileCount,
+          nodeCount,
           progress: {
             phase: "complete",
             current: 100,
             total: 100,
-            message: `Successfully analyzed ${extraction.files.length} files.`,
+            message: `Successfully analyzed ${fileCount} files.`,
           },
           result: {
-            repository: parsedData.graph.repository,
-            graph: parsedData.graph,
+            repository: {
+              ...parsedData.graph.repository,
+              commitSha: upstreamCommitSha,
+            },
+            graph: {
+              ...parsedData.graph,
+              repository: {
+                ...parsedData.graph.repository,
+                commitSha: upstreamCommitSha,
+              },
+            },
             fileSources: parsedData.fileSources,
           },
         });

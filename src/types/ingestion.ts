@@ -13,12 +13,23 @@ export type IngestionPhase =
   | "error";
 
 /**
+ * Granular details streamed during item-by-item processing (e.g. unpacking or parsing).
+ */
+export interface IngestProgressDetail {
+  readonly currentItem: number;
+  readonly totalItems?: number;
+  readonly currentItemName?: string;
+}
+
+/**
  * Payload sent by client to initiate repository ingestion.
  */
 export interface IngestRequest {
   readonly repositoryUrl: string;
   readonly branch?: string;
   readonly githubToken?: string;
+  readonly cachedCommitSha?: string;
+  readonly forceFresh?: boolean;
 }
 
 /**
@@ -50,6 +61,7 @@ export interface IngestProgress {
   readonly current: number;
   readonly total: number;
   readonly message: string;
+  readonly detail?: IngestProgressDetail;
 }
 
 /**
@@ -69,6 +81,11 @@ export interface IngestStreamEvent {
   readonly progress?: IngestProgress;
   readonly result?: IngestResult;
   readonly error?: IngestError;
+  readonly cached?: boolean;
+  readonly commitSha?: string;
+  readonly message?: string;
+  readonly fileCount?: number;
+  readonly nodeCount?: number;
 }
 
 /**

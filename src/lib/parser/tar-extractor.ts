@@ -59,6 +59,10 @@ export function stripTarballRootFolder(rawPath: string): string {
 export interface TarExtractorOptions {
   readonly maxFiles?: number;
   readonly includeNonSourceFiles?: boolean;
+  readonly onProgress?: (
+    processedCount: number,
+    currentFilePath: string,
+  ) => void;
 }
 
 /**
@@ -77,6 +81,10 @@ export async function unpackRepositoryTarball(
     typeof maxFilesOrOptions === "object"
       ? (maxFilesOrOptions.includeNonSourceFiles ?? false)
       : false;
+  const onProgress =
+    typeof maxFilesOrOptions === "object"
+      ? maxFilesOrOptions.onProgress
+      : undefined;
 
   return new Promise<ArchiveExtractionResult>((resolve, reject) => {
     const extract = tar.extract();
@@ -156,6 +164,7 @@ export async function unpackRepositoryTarball(
             content: textContent,
             sizeBytes: fullBuffer.byteLength,
           });
+          onProgress?.(discoveredFiles.length, strippedPath);
         }
 
         next();

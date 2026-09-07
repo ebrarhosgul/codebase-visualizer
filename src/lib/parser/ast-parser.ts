@@ -497,6 +497,12 @@ function buildDirectoryHierarchy(
   return result;
 }
 
+export type AstParseProgressCallback = (
+  currentItem: number,
+  totalItems: number,
+  currentItemName: string,
+) => void;
+
 /**
  * In memory abstract syntax tree parser using ts-morph to construct
  * canonical files, directories, external stubs, and import/re-export edges.
@@ -505,6 +511,7 @@ export function parseRepositoryAst(
   files: readonly ExtractedFile[],
   repoInfo: GitHubRepoInfo,
   tsconfigContent?: string,
+  onProgress?: AstParseProgressCallback,
 ): ParsedCodebaseData {
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -535,7 +542,9 @@ export function parseRepositoryAst(
 
   const languageCounts: Record<string, number> = {};
 
-  for (const file of files) {
+  for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+    const file = files[fileIndex];
+    onProgress?.(fileIndex + 1, files.length, file.path);
     const fileId = createFileId(file.path);
     fileSources[fileId] = file.content;
 
