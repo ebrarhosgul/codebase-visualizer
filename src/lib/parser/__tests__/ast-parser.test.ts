@@ -201,4 +201,46 @@ describe("parseRepositoryAst", () => {
     expect(methodSymbol?.kind).toBe("method");
     expect(methodSymbol?.parentSymbolId).toBe(classSymbol?.id);
   });
+
+  it("invokes onProgress callback with file index, total count, and file path (covers: AC-4)", () => {
+    const files: ExtractedFile[] = [
+      {
+        path: "src/one.ts",
+        content: "export const one = 1;",
+        sizeBytes: 25,
+      },
+      {
+        path: "src/two.ts",
+        content: "export const two = 2;",
+        sizeBytes: 25,
+      },
+    ];
+
+    const progressCalls: Array<{
+      current: number;
+      total: number;
+      name: string;
+    }> = [];
+
+    parseRepositoryAst(
+      files,
+      mockRepoInfo,
+      undefined,
+      (current, total, name) => {
+        progressCalls.push({ current, total, name });
+      },
+    );
+
+    expect(progressCalls).toHaveLength(2);
+    expect(progressCalls[0]).toEqual({
+      current: 1,
+      total: 2,
+      name: "src/one.ts",
+    });
+    expect(progressCalls[1]).toEqual({
+      current: 2,
+      total: 2,
+      name: "src/two.ts",
+    });
+  });
 });

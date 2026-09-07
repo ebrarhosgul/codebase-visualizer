@@ -128,4 +128,64 @@ describe("github client", () => {
       expect(result.error.rateLimitReset).toBe(1725300000);
     }
   });
+
+  it("handles 404 branch not found during commit SHA check (covers: AC-2)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      headers: new Headers(),
+    } as unknown as Response);
+
+    const { fetchBranchCommitSha } = await import("../client");
+    const result = await fetchBranchCommitSha(
+      "owner",
+      "repo",
+      "missing-branch",
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe("REPO_NOT_FOUND");
+      expect(result.error.message).toContain("missing-branch");
+    }
+  });
+
+  it("handles response missing sha property during commit SHA check (covers: AC-2)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({}),
+    } as unknown as Response);
+
+    const { fetchBranchCommitSha } = await import("../client");
+    const result = await fetchBranchCommitSha("owner", "repo", "main");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe("PARSE_FAILED");
+    }
+  });
+
+  it("passes Authorization header when personal access token is provided (covers: AC-5)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ sha: "sha999" }),
+    } as unknown as Response);
+
+    const { fetchBranchCommitSha } = await import("../client");
+    await fetchBranchCommitSha("owner", "repo", "main", {
+      token: "ghp_customtoken1234567890",
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/commits/main"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer ghp_customtoken1234567890",
+        }),
+      }),
+    );
+  });
 });

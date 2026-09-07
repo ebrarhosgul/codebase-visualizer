@@ -908,4 +908,101 @@ describe("useGraphStore", () => {
     expect(sessionStorage.getItem("github_pat")).toBeNull();
     expect(useGraphStore.getState().hasGithubToken).toBe(true);
   });
+
+  it("checks token status via GET /api/auth/github-token (covers: AC-5)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ hasToken: true, maskedToken: "ghp_...1234" }),
+    } as unknown as Response);
+
+    await useGraphStore.getState().checkTokenStatus();
+    expect(useGraphStore.getState().hasGithubToken).toBe(true);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ hasToken: false, maskedToken: null }),
+    } as unknown as Response);
+
+    await useGraphStore.getState().checkTokenStatus();
+    expect(useGraphStore.getState().hasGithubToken).toBe(false);
+  });
+
+  it("clears token via DELETE /api/auth/github-token (covers: AC-5)", async () => {
+    useGraphStore.setState({ hasGithubToken: true });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    } as unknown as Response);
+
+    await useGraphStore.getState().clearGithubToken();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/auth/github-token",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(useGraphStore.getState().hasGithubToken).toBe(false);
+  });
+
+  it("retryAfterRateLimit closes modal and restarts pending request (covers: AC-6)", async () => {
+    const pendingRequest = {
+      repositoryUrl: "https://github.com/retry/repo",
+      branch: "main",
+    };
+
+    useGraphStore.setState({
+      rateLimitModalOpen: true,
+      pendingRateLimitedRequest: pendingRequest,
+    });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "Content-Type": "text/event-stream" }),
+      body: new ReadableStream({
+        start(controller) {
+          controller.close();
+        },
+      }),
+    } as unknown as Response);
+
+    await useGraphStore.getState().retryAfterRateLimit();
+
+    expect(useGraphStore.getState().rateLimitModalOpen).toBe(false);
+    expect(useGraphStore.getState().pendingRateLimitedRequest).toBeNull();
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/ingest",
+      expect.objectContaining({
+        body: expect.stringContaining("https://github.com/retry/repo"),
+      }),
+    );
+  });
+
+  it("updates ingestionProgress with granular details during streaming (covers: AC-4)", async () => {
+    const sseChunk =
+      'data: {"phase":"parsing_ast","progress":{"phase":"parsing_ast","current":70,"total":100,"message":"Parsing AST...","detail":{"currentItem":5,"totalItems":10,"currentItemName":"src/main.ts"}}}\n\n';
+
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(sseChunk));
+        controller.close();
+      },
+    });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "Content-Type": "text/event-stream" }),
+      body: stream,
+    } as unknown as Response);
+
+    await useGraphStore.getState().startIngestion({
+      repositoryUrl: "https://github.com/progress/repo",
+    });
+
+    const progress = useGraphStore.getState().ingestionProgress;
+    expect(progress?.detail?.currentItem).toBe(5);
+    expect(progress?.detail?.totalItems).toBe(10);
+    expect(progress?.detail?.currentItemName).toBe("src/main.ts");
+  });
 });

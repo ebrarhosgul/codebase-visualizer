@@ -95,4 +95,100 @@ describe("RateLimitDialog", () => {
       expect(retrySpy).toHaveBeenCalled();
     });
   });
+
+  it("enables Retry Now button when timer is expired and triggers retry on click (covers: AC-6)", async () => {
+    const retrySpy = vi.fn();
+    // Set reset timestamp in the past
+    useGraphStore.setState({
+      rateLimitModalOpen: true,
+      rateLimitReset: Math.floor(Date.now() / 1000) - 10,
+      retryAfterRateLimit: retrySpy,
+    });
+
+    render(<RateLimitDialog />);
+
+    const retryBtn = screen.getByRole("button", { name: "Retry Now" });
+    expect(retryBtn).not.toBeDisabled();
+
+    fireEvent.click(retryBtn);
+
+    expect(useGraphStore.getState().rateLimitModalOpen).toBe(false);
+    expect(retrySpy).toHaveBeenCalled();
+  });
+
+  it("shows validation error when attempting to submit empty token (covers: AC-6)", async () => {
+    useGraphStore.setState({
+      rateLimitModalOpen: true,
+      rateLimitReset: Math.floor(Date.now() / 1000) + 300,
+    });
+
+    render(<RateLimitDialog />);
+
+    const form = screen.getByTestId("rate-limit-token-input").closest("form");
+    expect(form).not.toBeNull();
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    await waitFor(() => {
+      expect(screen.getByTestId("rate-limit-token-error")).toHaveTextContent(
+        "Please enter a GitHub Personal Access Token",
+      );
+    });
+  });
+
+  it("closes dialog when Cancel button is clicked", () => {
+    useGraphStore.setState({
+      rateLimitModalOpen: true,
+      rateLimitReset: Math.floor(Date.now() / 1000) + 300,
+    });
+
+    render(<RateLimitDialog />);
+
+    const cancelBtn = screen.getByRole("button", { name: "Cancel" });
+    fireEvent.click(cancelBtn);
+
+    expect(useGraphStore.getState().rateLimitModalOpen).toBe(false);
+  });
+
+  it("displays server error message when token storage request fails (covers: AC-5, AC-6)", async () => {
+    useGraphStore.setState({
+      rateLimitModalOpen: true,
+      rateLimitReset: Math.floor(Date.now() / 1000) + 300,
+    });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "Invalid token permissions on GitHub" }),
+    } as unknown as Response);
+
+    render(<RateLimitDialog />);
+
+    const input = screen.getByTestId("rate-limit-token-input");
+    fireEvent.change(input, {
+      target: { value: "ghp_12345678901234567890abcdef" },
+    });
+
+    const submitBtn = screen.getByTestId("rate-limit-submit-button");
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("rate-limit-token-error")).toHaveTextContent(
+        "Invalid token permissions on GitHub",
+      );
+    });
+  });
+
+  it("uses password input type for token security against shoulder surfing (covers: AC-5)", () => {
+    useGraphStore.setState({
+      rateLimitModalOpen: true,
+      rateLimitReset: Math.floor(Date.now() / 1000) + 300,
+    });
+
+    render(<RateLimitDialog />);
+
+    const input = screen.getByTestId("rate-limit-token-input");
+    expect(input).toHaveAttribute("type", "password");
+  });
 });
