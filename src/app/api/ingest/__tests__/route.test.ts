@@ -230,4 +230,88 @@ describe("POST /api/ingest route handler", () => {
       }),
     );
   });
+
+  it("streams error event when branch commit SHA check is rate limited (covers: AC-2, AC-6)", async () => {
+    vi.mocked(github.fetchRepoMetadata).mockResolvedValue({
+      success: true,
+      data: {
+        owner: "antigravity",
+        name: "test-repo",
+        fullName: "antigravity/test-repo",
+        defaultBranch: "main",
+        commitSha: "sha123",
+      },
+    });
+
+    vi.mocked(github.fetchBranchCommitSha).mockResolvedValue({
+      success: false,
+      error: {
+        code: "RATE_LIMITED",
+        message: "GitHub rate limit exceeded during commit verification.",
+        rateLimitReset: 1725300000,
+      },
+    });
+
+    const req = new NextRequest("http://localhost:3000/api/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        repositoryUrl: "https://github.com/antigravity/test-repo",
+        cachedCommitSha: "sha123",
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const text = await res.text();
+    expect(text).toContain('"phase":"error"');
+    expect(text).toContain('"code":"RATE_LIMITED"');
+    expect(text).toContain('"rateLimitReset":1725300000');
+  });
+
+  it("streams error event when no source files are found in archive (covers: AC-4)", async () => {
+    vi.mocked(github.fetchRepoMetadata).mockResolvedValue({
+      success: true,
+      data: {
+        owner: "antigravity",
+        name: "test-repo",
+        fullName: "antigravity/test-repo",
+        defaultBranch: "main",
+        commitSha: "sha-fresh",
+      },
+    });
+
+    vi.mocked(github.fetchBranchCommitSha).mockResolvedValue({
+      success: true,
+      data: "sha-fresh",
+    });
+
+    vi.mocked(github.fetchTarballArchive).mockResolvedValue({
+      success: true,
+      data: new ArrayBuffer(10),
+    });
+
+    vi.mocked(parser.unpackRepositoryTarball).mockResolvedValue({
+      files: [],
+      totalFilesFound: 0,
+      wasCapped: false,
+    });
+
+    const req = new NextRequest("http://localhost:3000/api/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        repositoryUrl: "https://github.com/antigravity/test-repo",
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const text = await res.text();
+    expect(text).toContain('"phase":"error"');
+    expect(text).toContain('"code":"PARSE_FAILED"');
+    expect(text).toContain("No TypeScript or JavaScript source files found");
+  });
 });

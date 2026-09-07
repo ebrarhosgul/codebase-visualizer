@@ -235,6 +235,71 @@ describe("RepoSubmissionBar", () => {
     });
     fireEvent.click(closeBtn);
 
-    expect(screen.queryByTestId("ingestion-complete-banner"));
+    expect(
+      screen.queryByTestId("ingestion-complete-banner"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("toggles aria-expanded attribute on token button when opened and closed", () => {
+    render(<RepoSubmissionBar />);
+
+    const tokenToggleBtn = screen.getByRole("button", {
+      name: "Configure GitHub Personal Access Token",
+    });
+    expect(tokenToggleBtn).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(tokenToggleBtn);
+    expect(tokenToggleBtn).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(tokenToggleBtn);
+    expect(tokenToggleBtn).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("displays Active In Cookie badge and allows clearing token via Clear button (covers: AC-5)", async () => {
+    const clearSpy = vi.fn();
+    useGraphStore.setState({
+      hasGithubToken: true,
+      clearGithubToken: clearSpy,
+    });
+
+    render(<RepoSubmissionBar />);
+
+    const tokenToggleBtn = screen.getByRole("button", {
+      name: "Configure GitHub Personal Access Token",
+    });
+    expect(screen.getByText("Token set")).toBeInTheDocument();
+
+    fireEvent.click(tokenToggleBtn);
+
+    expect(screen.getByText("Active In Cookie")).toBeInTheDocument();
+
+    const clearBtn = screen.getByRole("button", { name: "Clear" });
+    expect(clearBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(clearBtn);
+    });
+    expect(clearSpy).toHaveBeenCalled();
+  });
+
+  it("shows error when entering invalid token prefix in drawer form (covers: AC-5)", async () => {
+    render(<RepoSubmissionBar />);
+
+    const tokenToggleBtn = screen.getByRole("button", {
+      name: "Configure GitHub Personal Access Token",
+    });
+    fireEvent.click(tokenToggleBtn);
+
+    const tokenInput = screen.getByPlaceholderText("ghp_... or github_pat_...");
+    fireEvent.change(tokenInput, {
+      target: { value: "invalid_prefix_token" },
+    });
+
+    const saveBtn = screen.getByRole("button", { name: "Save Token" });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Invalid token prefix/i)).toBeInTheDocument();
+    });
   });
 });

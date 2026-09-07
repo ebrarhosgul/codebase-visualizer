@@ -56,4 +56,25 @@ describe("GitHub token crypto utilities", () => {
     const tampered = `${iv}:${tag.slice(0, -2)}00:${cipher}`;
     expect(decryptGithubToken(tampered)).toBeNull();
   });
+
+  it("trims whitespace when encrypting token (covers: AC-5)", () => {
+    const token = "  ghp_1234567890abcdef123456  ";
+    const encrypted = encryptGithubToken(token);
+    const decrypted = decryptGithubToken(encrypted);
+    expect(decrypted).toBe("ghp_1234567890abcdef123456");
+  });
+
+  it("encrypts and decrypts with custom COOKIE_ENCRYPTION_KEY (covers: AC-5)", () => {
+    const originalEnv = process.env.COOKIE_ENCRYPTION_KEY;
+    try {
+      process.env.COOKIE_ENCRYPTION_KEY =
+        "custom-test-secret-key-for-encryption-test";
+      const token = "ghp_custom_env_test_token_123456";
+      const encrypted = encryptGithubToken(token);
+      const decrypted = decryptGithubToken(encrypted);
+      expect(decrypted).toBe(token);
+    } finally {
+      process.env.COOKIE_ENCRYPTION_KEY = originalEnv;
+    }
+  });
 });

@@ -131,4 +131,51 @@ describe("/api/auth/github-token Route Handler", () => {
     expect(cookie?.value).toBe("");
     expect(cookie?.maxAge).toBe(0);
   });
+
+  it("handles malformed JSON body with status 400 (covers: AC-5)", async () => {
+    const req = new NextRequest("http://localhost:3000/api/auth/github-token", {
+      method: "POST",
+      body: "not-json-content",
+    });
+
+    const res = await tokenPost(req);
+    expect(res.status).toBe(400);
+
+    const json = (await res.json()) as { success: boolean; error: string };
+    expect(json.success).toBe(false);
+    expect(json.error).toContain("Invalid JSON request body");
+  });
+
+  it("returns hasToken: false when cookie contains invalid or tampered ciphertext (covers: AC-5)", async () => {
+    const req = new NextRequest("http://localhost:3000/api/auth/github-token", {
+      method: "GET",
+      headers: {
+        cookie: `${GITHUB_PAT_COOKIE_NAME}=invalid:tampered:ciphertext`,
+      },
+    });
+
+    const res = await tokenGet(req);
+    expect(res.status).toBe(200);
+
+    const json = (await res.json()) as {
+      hasToken: boolean;
+      maskedToken: string | null;
+    };
+    expect(json.hasToken).toBe(false);
+    expect(json.maskedToken).toBeNull();
+  });
+
+  it("never exposes raw token in response body for security (covers: AC-5)", async () => {
+    const rawSecretToken = "ghp_supersecretneverleakmetoclient12345";
+    const req = new NextRequest("http://localhost:3000/api/auth/github-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: rawSecretToken }),
+    });
+
+    const res = await tokenPost(req);
+    const bodyText = await res.text();
+    expect(bodyText).not.toContain(rawSecretToken);
+    expect(bodyText).toContain("ghp_...2345");
+  });
 });

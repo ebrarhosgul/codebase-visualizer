@@ -10,6 +10,7 @@ import {
   getAllCachedRepositorySummaries,
   openDatabase,
   STORE_NAME,
+  MAX_CACHE_BYTES,
   type CachedRepositoryRecord,
 } from "../indexed-db";
 import type { CodebaseGraph } from "@/entities";
@@ -375,6 +376,95 @@ describe("IndexedDB storage helper", () => {
       expect(mockIdb.storeData.size).toBe(2);
       await clearAllCachedRepositories();
       expect(mockIdb.storeData.size).toBe(0);
+    });
+
+    it("evicts oldest records when total volume exceeds MAX_CACHE_BYTES (covers: AC-7)", async () => {
+      const graph = createMockGraph();
+
+      // Seed 2 repositories where each has large byteSize (total exceeds MAX_CACHE_BYTES)
+      const firstByteSize = Math.floor(MAX_CACHE_BYTES * 0.65);
+      const secondByteSize = Math.floor(MAX_CACHE_BYTES * 0.45);
+      mockIdb.storeData.set("test/first:main", {
+        id: "test/first:main",
+        repoKey: "test/first",
+        owner: "test",
+        repo: "first",
+        branch: "main",
+        commitSha: "sha-first",
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        graph,
+        fileSources: {},
+        nodeCount: 1,
+        edgeCount: 0,
+        fileCount: 1,
+        byteSize: firstByteSize,
+        createdAt: 1000,
+        lastAccessedAt: 1000,
+      });
+
+      mockIdb.storeData.set("test/second:main", {
+        id: "test/second:main",
+        repoKey: "test/second",
+        owner: "test",
+        repo: "second",
+        branch: "main",
+        commitSha: "sha-second",
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        graph,
+        fileSources: {},
+        nodeCount: 1,
+        edgeCount: 0,
+        fileCount: 1,
+        byteSize: secondByteSize,
+        createdAt: 2000,
+        lastAccessedAt: 2000,
+      });
+
+      expect(mockIdb.storeData.size).toBe(2);
+
+      // Save third repository with 100MB; total with second and third is 200MB <= 300MB,
+      // so first (160MB, oldest) must be evicted to stay within 300MB quota
+      await saveCachedRepository({
+        owner: "test",
+        repo: "third",
+        branch: "main",
+        commitSha: "sha-third",
+        graph,
+        fileSources: {},
+      });
+
+      // Oldest repository test/first:main should be evicted due to byte quota
+      expect(mockIdb.storeData.has("test/first:main")).toBe(false);
+      expect(mockIdb.storeData.has("test/second:main")).toBe(true);
+      expect(mockIdb.storeData.has("test/third:main")).toBe(true);
+    });
+
+    it("updates existing repository record without creating duplicates (covers: AC-1)", async () => {
+      const graph = createMockGraph();
+      await saveCachedRepository({
+        owner: "update",
+        repo: "repo",
+        branch: "main",
+        commitSha: "sha-v1",
+        graph,
+        fileSources: { "file:index.ts": "v1" },
+      });
+
+      expect(mockIdb.storeData.size).toBe(1);
+
+      await saveCachedRepository({
+        owner: "update",
+        repo: "repo",
+        branch: "main",
+        commitSha: "sha-v2",
+        graph,
+        fileSources: { "file:index.ts": "v2" },
+      });
+
+      expect(mockIdb.storeData.size).toBe(1);
+      const updated = await getCachedRepository("update", "repo", "main");
+      expect(updated?.commitSha).toBe("sha-v2");
+      expect(updated?.fileSources["file:index.ts"]).toBe("v2");
     });
   });
 });

@@ -59,4 +59,38 @@ describe("tar-extractor", () => {
     expect(result.files[0]?.path).toBe("src/index.ts");
     expect(result.files[0]?.content).toBe('console.log("hello world");');
   });
+
+  it("invokes onProgress callback during unpacking (covers: AC-4)", async () => {
+    const pack = tar.pack();
+
+    pack.entry(
+      { name: "test-repo-abc123/src/alpha.ts" },
+      "export const a = 1;",
+    );
+    pack.entry({ name: "test-repo-abc123/src/beta.ts" }, "export const b = 2;");
+    pack.finalize();
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of pack) {
+      chunks.push(chunk as Buffer);
+    }
+    const gzippedBuffer = gzipSync(Buffer.concat(chunks));
+    const arrayBuffer = gzippedBuffer.buffer.slice(
+      gzippedBuffer.byteOffset,
+      gzippedBuffer.byteOffset + gzippedBuffer.byteLength,
+    );
+
+    const progressCalls: Array<{ count: number; path: string }> = [];
+    const result = await unpackRepositoryTarball(arrayBuffer, {
+      maxFiles: 10,
+      onProgress: (count, currentPath) => {
+        progressCalls.push({ count, path: currentPath });
+      },
+    });
+
+    expect(result.files.length).toBe(2);
+    expect(progressCalls.length).toBeGreaterThanOrEqual(2);
+    expect(progressCalls[0]?.path).toContain("alpha.ts");
+    expect(progressCalls[1]?.path).toContain("beta.ts");
+  });
 });
