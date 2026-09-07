@@ -86,4 +86,46 @@ describe("github client", () => {
       expect(result.data.byteLength).toBe(3);
     }
   });
+
+  it("fetches branch commit SHA successfully (covers: AC-2)", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({
+        sha: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      }),
+    } as unknown as Response);
+
+    const { fetchBranchCommitSha } = await import("../client");
+    const result = await fetchBranchCommitSha("owner", "repo", "main");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBe(
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      );
+    }
+  });
+
+  it("handles rate limits during branch commit SHA check (covers: AC-2, AC-6)", async () => {
+    const headers = new Headers({
+      "x-ratelimit-remaining": "0",
+      "x-ratelimit-reset": "1725300000",
+    });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: "Forbidden",
+      headers,
+    } as unknown as Response);
+
+    const { fetchBranchCommitSha } = await import("../client");
+    const result = await fetchBranchCommitSha("owner", "repo", "main");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe("RATE_LIMITED");
+      expect(result.error.rateLimitReset).toBe(1725300000);
+    }
+  });
 });

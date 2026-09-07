@@ -19,7 +19,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 6 | Bidirectional graph and code deep linking | Slice 2 | done |
 | 7 | Architectural filtering and layer inspection | Slice 3 | done |
 | 8 | Semantic AI query and path tracing | Slice 4 | done |
-| 9 | Client cache and ingestion streaming | Slice 5 | planned |
+| 9 | Client cache and ingestion streaming | Slice 5 | in-progress |
 
 ## Foundations
 
@@ -128,10 +128,18 @@ spec [0008](../specs/0008-semantic-ai-query-and-path-tracing/index.md) · code i
 
 ## Slice 5: Client cache and ingestion streaming
 
-### 9. Client cache and ingestion streaming · needs a decision
+### 9. Client cache and ingestion streaming · in-progress
 Add client session caching for parsed graphs to eliminate redundant network fetches, stream real time progress during repository ingestion, and handle GitHub rate limits smoothly with optional personal access token input.
 **Done when:** previously analyzed repositories open instantly from session storage, ingestion displays progress stages, and rate limit errors offer friendly token entry.
-- [ ] Design it (spec): `/architect client cache and ingestion streaming`
+spec [0009](../specs/0009-client-cache-and-ingestion-streaming/index.md) · code in `src/`
+- [x] Design it (spec): `/architect client cache and ingestion streaming`
+- [x] Build it: `/develop client cache and ingestion streaming`
+  - [x] IndexedDB storage layer: native typed database wrapper, schema validation, and atomic LRU eviction (AC-1, AC-7, AC-9)
+  - [x] Upstream freshness verification & cache hit streaming: `/api/ingest` commit SHA query, cache hit SSE event, and 100ms progress throttle (AC-2, AC-4)
+  - [x] Encrypted cookie token security: `/api/auth/github-token` route with AES 256 GCM encryption and legacy token migration (AC-5)
+  - [x] Rate limit modal & UI streaming indicators: accessible countdown dialog with auto retry, granular file counters, and force re ingest trigger (AC-3, AC-6, AC-8)
+- [x] Verify it: `/check verify client cache and ingestion streaming`
+- [ ] Test it: `/test client cache and ingestion streaming`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
@@ -141,6 +149,7 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - Code editing and pull requests: in browser editing, automated refactoring, and git write operations · needs a decision
 - Keyboard shortcut navigation: quick slash key for canvas filter search and escape to reset filters · from spec 0007
 - Vector embeddings: semantic code snippet search and embedding index for large repositories · from spec 0008
+- Web Worker local parsing: client side AST extraction on user uploaded local zip files · from spec 0009
 
 ## Legend
 

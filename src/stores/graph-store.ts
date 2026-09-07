@@ -17,6 +17,12 @@ import {
   type ArchitecturalLayerId,
   classifyLayerForPath,
 } from "@/graph/layers";
+import { parseGithubUrl } from "@/lib/github";
+import {
+  getCachedRepository,
+  saveCachedRepository,
+  type CachedRepositoryRecord,
+} from "@/lib/storage";
 
 export type NavigationSource = "canvas" | "editor" | "url" | "search" | "tree";
 
@@ -79,11 +85,24 @@ export interface GraphStoreState
   readonly isIngesting: boolean;
   readonly fallbackNotification: string | null;
   readonly hoveredNodeId: string | null;
+  readonly isCacheHit: boolean;
+  readonly offlineFallback: boolean;
+  readonly offlineLastSynced: number | null;
+  readonly rateLimitModalOpen: boolean;
+  readonly rateLimitReset: number | null;
+  readonly pendingRateLimitedRequest: IngestRequest | null;
+  readonly hasGithubToken: boolean;
 }
 
 export interface GraphStoreActions {
   readonly startIngestion: (request: IngestRequest) => Promise<void>;
   readonly cancelIngestion: () => void;
+  readonly forceReingest: () => Promise<void>;
+  readonly setRateLimitModalOpen: (open: boolean) => void;
+  readonly retryAfterRateLimit: () => Promise<void>;
+  readonly migrateLegacyToken: () => Promise<void>;
+  readonly checkTokenStatus: () => Promise<void>;
+  readonly clearGithubToken: () => Promise<void>;
   readonly selectNode: (nodeId: string | null) => void;
   readonly setHoveredNodeId: (nodeId: string | null) => void;
   readonly setGraph: (
@@ -138,6 +157,13 @@ const initialState: GraphStoreState = {
   activeStepIndex: null,
   highlightedNodeIds: Object.freeze([]),
   highlightedEdgeIds: Object.freeze([]),
+  isCacheHit: false,
+  offlineFallback: false,
+  offlineLastSynced: null,
+  rateLimitModalOpen: false,
+  rateLimitReset: null,
+  pendingRateLimitedRequest: null,
+  hasGithubToken: false,
 };
 
 let activeAbortController: AbortController | null = null;
@@ -158,6 +184,9 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       isIngesting: true,
       ingestionPhase: "validating",
       ingestionError: null,
+      isCacheHit: false,
+      offlineFallback: false,
+      offlineLastSynced: null,
       ingestionProgress: {
         phase: "validating",
         current: 0,
@@ -166,13 +195,41 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       },
     });
 
+    // Check local IndexedDB cache before network call (AC-1, AC-2)
+    const parsed = parseGithubUrl(request.repositoryUrl);
+    const owner = parsed.success ? parsed.data.owner : "";
+    const repo = parsed.success ? parsed.data.repo : "";
+    const targetBranch =
+      request.branch ||
+      (parsed.success ? parsed.data.branch : undefined) ||
+      "main";
+
+    let localCachedRecord: CachedRepositoryRecord | null = null;
+    if (parsed.success && !request.forceFresh) {
+      try {
+        localCachedRecord = await getCachedRepository(
+          owner,
+          repo,
+          targetBranch,
+        );
+      } catch {
+        localCachedRecord = null;
+      }
+    }
+
+    const enhancedRequest: IngestRequest = {
+      ...request,
+      cachedCommitSha: localCachedRecord?.commitSha ?? request.cachedCommitSha,
+    };
+
     try {
       const response = await fetch("/api/ingest", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(request),
+        credentials: "include",
+        body: JSON.stringify(enhancedRequest),
         signal: abortController.signal,
       });
 
@@ -185,15 +242,48 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
           const jsonErr = (await response.json()) as {
             code?: string;
             message?: string;
+            rateLimitReset?: number;
           };
           if (jsonErr.message) {
             errorPayload = {
               code: (jsonErr.code as IngestError["code"]) || "PARSE_FAILED",
               message: jsonErr.message,
+              rateLimitReset: jsonErr.rateLimitReset,
             };
           }
         } catch {
           // Use default error payload
+        }
+
+        if (errorPayload.code === "RATE_LIMITED") {
+          set({
+            rateLimitModalOpen: true,
+            rateLimitReset: errorPayload.rateLimitReset ?? null,
+            pendingRateLimitedRequest: request,
+          });
+        }
+
+        // Offline fallback check on API failure (AC-8)
+        if (localCachedRecord) {
+          set({
+            isIngesting: false,
+            ingestionPhase: "complete",
+            repository: localCachedRecord.graph.repository,
+            graph: localCachedRecord.graph,
+            fileSources: Object.freeze(localCachedRecord.fileSources),
+            isCacheHit: true,
+            offlineFallback: true,
+            offlineLastSynced: localCachedRecord.lastAccessedAt,
+            ingestionProgress: {
+              phase: "complete",
+              current: 100,
+              total: 100,
+              message:
+                "GitHub API unreachable. Loaded from local offline cache.",
+            },
+          });
+          get().flushPendingDeepLink();
+          return;
         }
 
         set({
@@ -245,6 +335,13 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
             const event = JSON.parse(jsonPayload) as IngestStreamEvent;
 
             if (event.phase === "error") {
+              if (event.error?.code === "RATE_LIMITED") {
+                set({
+                  rateLimitModalOpen: true,
+                  rateLimitReset: event.error.rateLimitReset ?? null,
+                  pendingRateLimitedRequest: request,
+                });
+              }
               set({
                 isIngesting: false,
                 ingestionPhase: "error",
@@ -253,13 +350,57 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
                   message: "Repository ingestion encountered an error.",
                 },
               });
+            } else if (event.phase === "complete" && event.cached === true) {
+              // Cache hit from upstream commit verification (AC-1, AC-2)
+              const recordToHydrate =
+                localCachedRecord ||
+                (parsed.success
+                  ? await getCachedRepository(owner, repo, targetBranch)
+                  : null);
+
+              if (recordToHydrate) {
+                set({
+                  isIngesting: false,
+                  ingestionPhase: "complete",
+                  repository: recordToHydrate.graph.repository,
+                  graph: recordToHydrate.graph,
+                  fileSources: Object.freeze(recordToHydrate.fileSources),
+                  isCacheHit: true,
+                  offlineFallback: false,
+                  offlineLastSynced: null,
+                  ingestionProgress: {
+                    phase: "complete",
+                    current: 100,
+                    total: 100,
+                    message: "Loaded from client cache (commit verified).",
+                  },
+                  activeTrace: null,
+                  activeStepIndex: null,
+                  highlightedNodeIds: Object.freeze([]),
+                  highlightedEdgeIds: Object.freeze([]),
+                });
+                get().flushPendingDeepLink();
+              } else {
+                // If record unexpectedly absent, re-trigger fresh fetch
+                await get().startIngestion({
+                  ...request,
+                  forceFresh: true,
+                });
+              }
             } else if (event.phase === "complete" && event.result) {
+              const resultGraph = event.result.graph;
+              const resultFileSources = event.result.fileSources;
+              const resultRepo = event.result.repository;
+
               set({
                 isIngesting: false,
                 ingestionPhase: "complete",
-                repository: event.result.repository,
-                graph: event.result.graph,
-                fileSources: Object.freeze(event.result.fileSources),
+                repository: resultRepo,
+                graph: resultGraph,
+                fileSources: Object.freeze(resultFileSources),
+                isCacheHit: false,
+                offlineFallback: false,
+                offlineLastSynced: null,
                 ingestionProgress: event.progress ?? null,
                 activeTrace: null,
                 activeStepIndex: null,
@@ -267,6 +408,20 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
                 highlightedEdgeIds: Object.freeze([]),
               });
               get().flushPendingDeepLink();
+
+              // Save to IndexedDB asynchronously with LRU eviction (AC-1, AC-7)
+              if (parsed.success) {
+                saveCachedRepository({
+                  owner,
+                  repo,
+                  branch: targetBranch,
+                  commitSha: event.commitSha || resultRepo.commitSha,
+                  graph: resultGraph,
+                  fileSources: resultFileSources,
+                }).catch(() => {
+                  // Tolerate storage failure in private modes
+                });
+              }
             } else {
               set({
                 ingestionPhase: event.phase,
@@ -284,6 +439,28 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
           isIngesting: false,
           ingestionPhase: "idle",
         });
+        return;
+      }
+
+      // Offline fallback on network disconnection (AC-8)
+      if (localCachedRecord) {
+        set({
+          isIngesting: false,
+          ingestionPhase: "complete",
+          repository: localCachedRecord.graph.repository,
+          graph: localCachedRecord.graph,
+          fileSources: Object.freeze(localCachedRecord.fileSources),
+          isCacheHit: true,
+          offlineFallback: true,
+          offlineLastSynced: localCachedRecord.lastAccessedAt,
+          ingestionProgress: {
+            phase: "complete",
+            current: 100,
+            total: 100,
+            message: "Network offline. Loaded from local offline cache.",
+          },
+        });
+        get().flushPendingDeepLink();
         return;
       }
 
@@ -314,6 +491,86 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       isIngesting: false,
       ingestionPhase: "idle",
     });
+  },
+
+  forceReingest: async (): Promise<void> => {
+    const repo = get().repository;
+    if (!repo) {
+      return;
+    }
+    const url = `https://github.com/${repo.fullName}`;
+    await get().startIngestion({
+      repositoryUrl: url,
+      branch: repo.defaultBranch,
+      forceFresh: true,
+    });
+  },
+
+  setRateLimitModalOpen: (open: boolean): void => {
+    set({ rateLimitModalOpen: open });
+  },
+
+  retryAfterRateLimit: async (): Promise<void> => {
+    const pending = get().pendingRateLimitedRequest;
+    set({
+      rateLimitModalOpen: false,
+      pendingRateLimitedRequest: null,
+    });
+    if (pending) {
+      await get().startIngestion(pending);
+    }
+  },
+
+  migrateLegacyToken: async (): Promise<void> => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      const legacy = sessionStorage.getItem("github_pat");
+      if (legacy && legacy.trim().length > 0) {
+        const res = await fetch("/api/auth/github-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: legacy.trim() }),
+          credentials: "include",
+        });
+        if (res.ok) {
+          sessionStorage.removeItem("github_pat");
+          set({ hasGithubToken: true });
+          return;
+        }
+      }
+    } catch {
+      // Ignore sessionStorage access or network errors
+    }
+    await get().checkTokenStatus();
+  },
+
+  checkTokenStatus: async (): Promise<void> => {
+    try {
+      const res = await fetch("/api/auth/github-token", {
+        method: "GET",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { hasToken?: boolean };
+        set({ hasGithubToken: Boolean(data.hasToken) });
+      }
+    } catch {
+      // Keep current status
+    }
+  },
+
+  clearGithubToken: async (): Promise<void> => {
+    try {
+      await fetch("/api/auth/github-token", {
+        method: "DELETE",
+        credentials: "include",
+      });
+      set({ hasGithubToken: false });
+    } catch {
+      // Keep current status
+    }
   },
 
   selectNode: (nodeId: string | null): void => {
@@ -761,6 +1018,9 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       activeAbortController.abort();
       activeAbortController = null;
     }
-    set(initialState);
+    set({
+      ...initialState,
+      hasGithubToken: get().hasGithubToken,
+    });
   },
 }));

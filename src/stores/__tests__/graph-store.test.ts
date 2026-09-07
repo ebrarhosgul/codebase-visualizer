@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { useGraphStore } from "../graph-store";
 import type { CodebaseGraph } from "@/entities";
+import * as storage from "@/lib/storage";
+
+vi.mock("@/lib/storage", async () => {
+  const actual = await vi.importActual<typeof storage>("@/lib/storage");
+  return {
+    ...actual,
+    getCachedRepository: vi.fn().mockResolvedValue(null),
+    saveCachedRepository: vi.fn().mockResolvedValue(null),
+  };
+});
 
 describe("useGraphStore", () => {
   const originalFetch = global.fetch;
@@ -679,5 +689,223 @@ describe("useGraphStore", () => {
     store.reset();
     expect(useGraphStore.getState().activeTrace).toBeNull();
     expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
+  });
+
+  it("hydrates from client IndexedDB cache on cache_hit SSE event (covers: AC-1, AC-2)", async () => {
+    const cachedGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:cached/repo",
+        owner: "cached",
+        name: "repo",
+        fullName: "cached/repo",
+        defaultBranch: "main",
+        commitSha: "sha-cached-123",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 5,
+        totalSymbols: 2,
+        languages: { typescript: 5 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {},
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    vi.mocked(storage.getCachedRepository).mockResolvedValue({
+      id: "cached/repo:main",
+      repoKey: "cached/repo",
+      owner: "cached",
+      repo: "repo",
+      branch: "main",
+      commitSha: "sha-cached-123",
+      schemaVersion: 1,
+      graph: cachedGraph,
+      fileSources: { "file:index.ts": "export const cached = true;" },
+      nodeCount: 5,
+      edgeCount: 2,
+      fileCount: 1,
+      byteSize: 500,
+      createdAt: Date.now(),
+      lastAccessedAt: Date.now(),
+    });
+
+    const sseChunk =
+      'data: {"phase":"complete","cached":true,"commitSha":"sha-cached-123","message":"Repository is up to date"}\n\n';
+
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(sseChunk));
+        controller.close();
+      },
+    });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "Content-Type": "text/event-stream" }),
+      body: stream,
+    } as unknown as Response);
+
+    await useGraphStore.getState().startIngestion({
+      repositoryUrl: "https://github.com/cached/repo",
+    });
+
+    const state = useGraphStore.getState();
+    expect(state.isIngesting).toBe(false);
+    expect(state.ingestionPhase).toBe("complete");
+    expect(state.isCacheHit).toBe(true);
+    expect(state.offlineFallback).toBe(false);
+    expect(state.repository?.fullName).toBe("cached/repo");
+    expect(state.fileSources["file:index.ts"]).toBe(
+      "export const cached = true;",
+    );
+  });
+
+  it("falls back to local offline cache when network request fails (covers: AC-8)", async () => {
+    const cachedGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:offline/repo",
+        owner: "offline",
+        name: "repo",
+        fullName: "offline/repo",
+        defaultBranch: "main",
+        commitSha: "offline-sha",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {},
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    vi.mocked(storage.getCachedRepository).mockResolvedValue({
+      id: "offline/repo:main",
+      repoKey: "offline/repo",
+      owner: "offline",
+      repo: "repo",
+      branch: "main",
+      commitSha: "offline-sha",
+      schemaVersion: 1,
+      graph: cachedGraph,
+      fileSources: { "file:app.ts": "const offline = true;" },
+      nodeCount: 1,
+      edgeCount: 0,
+      fileCount: 1,
+      byteSize: 300,
+      createdAt: 1000,
+      lastAccessedAt: 2000,
+    });
+
+    // Simulate network disconnection
+    global.fetch = vi.fn().mockRejectedValue(new Error("Failed to fetch"));
+
+    await useGraphStore.getState().startIngestion({
+      repositoryUrl: "https://github.com/offline/repo",
+    });
+
+    const state = useGraphStore.getState();
+    expect(state.isIngesting).toBe(false);
+    expect(state.ingestionPhase).toBe("complete");
+    expect(state.isCacheHit).toBe(true);
+    expect(state.offlineFallback).toBe(true);
+    expect(state.offlineLastSynced).toBe(2000);
+    expect(state.repository?.fullName).toBe("offline/repo");
+  });
+
+  it("opens rate limit recovery modal on 403 / 429 response (covers: AC-6)", async () => {
+    vi.mocked(storage.getCachedRepository).mockResolvedValue(null);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        code: "RATE_LIMITED",
+        message: "API rate limit exceeded.",
+        rateLimitReset: 1725310000,
+      }),
+    } as unknown as Response);
+
+    await useGraphStore.getState().startIngestion({
+      repositoryUrl: "https://github.com/ratelimit/repo",
+    });
+
+    const state = useGraphStore.getState();
+    expect(state.rateLimitModalOpen).toBe(true);
+    expect(state.rateLimitReset).toBe(1725310000);
+    expect(state.pendingRateLimitedRequest?.repositoryUrl).toBe(
+      "https://github.com/ratelimit/repo",
+    );
+
+    // Can close modal
+    useGraphStore.getState().setRateLimitModalOpen(false);
+    expect(useGraphStore.getState().rateLimitModalOpen).toBe(false);
+  });
+
+  it("forceReingest bypasses cache with forceFresh: true (covers: AC-3)", async () => {
+    useGraphStore.setState({
+      repository: {
+        id: "repo:facebook/react",
+        owner: "facebook",
+        name: "react",
+        fullName: "facebook/react",
+        defaultBranch: "main",
+        commitSha: "sha-1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: {},
+        schemaVersion: 1,
+      },
+    });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "Content-Type": "text/event-stream" }),
+      body: new ReadableStream({
+        start(controller) {
+          controller.close();
+        },
+      }),
+    } as unknown as Response);
+
+    await useGraphStore.getState().forceReingest();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/ingest",
+      expect.objectContaining({
+        body: expect.stringContaining('"forceFresh":true'),
+      }),
+    );
+  });
+
+  it("migrates legacy sessionStorage token to httpOnly cookie endpoint (covers: AC-5)", async () => {
+    sessionStorage.setItem("github_pat", "ghp_legacy_token_1234567890");
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, maskedToken: "ghp_...7890" }),
+    } as unknown as Response);
+
+    await useGraphStore.getState().migrateLegacyToken();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/auth/github-token",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ token: "ghp_legacy_token_1234567890" }),
+      }),
+    );
+    expect(sessionStorage.getItem("github_pat")).toBeNull();
+    expect(useGraphStore.getState().hasGithubToken).toBe(true);
   });
 });

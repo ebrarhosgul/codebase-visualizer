@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { POST } from "../route";
 import * as github from "@/lib/github";
+import { encryptGithubToken } from "@/lib/github/crypto";
 import * as parser from "@/lib/parser";
 
 vi.mock("@/lib/github", async () => {
@@ -9,6 +10,7 @@ vi.mock("@/lib/github", async () => {
   return {
     ...actual,
     fetchRepoMetadata: vi.fn(),
+    fetchBranchCommitSha: vi.fn(),
     fetchTarballArchive: vi.fn(),
   };
 });
@@ -56,7 +58,45 @@ describe("POST /api/ingest route handler", () => {
     expect(text).toContain('"code":"INVALID_URL"');
   });
 
-  it("streams full SSE progression through complete phase", async () => {
+  it("streams cache_hit event and terminates immediately when commit hash matches (covers: AC-2)", async () => {
+    vi.mocked(github.fetchRepoMetadata).mockResolvedValue({
+      success: true,
+      data: {
+        owner: "antigravity",
+        name: "test-repo",
+        fullName: "antigravity/test-repo",
+        defaultBranch: "main",
+        commitSha: "commit-sha-40-chars-1234567890abcdef1234",
+      },
+    });
+
+    vi.mocked(github.fetchBranchCommitSha).mockResolvedValue({
+      success: true,
+      data: "commit-sha-40-chars-1234567890abcdef1234",
+    });
+
+    const req = new NextRequest("http://localhost:3000/api/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        repositoryUrl: "https://github.com/antigravity/test-repo",
+        cachedCommitSha: "commit-sha-40-chars-1234567890abcdef1234",
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const text = await res.text();
+    expect(text).toContain('"cached":true');
+    expect(text).toContain(
+      '"commitSha":"commit-sha-40-chars-1234567890abcdef1234"',
+    );
+    // Archive should not be downloaded when cache hits (AC-2, zero bytes downloaded)
+    expect(github.fetchTarballArchive).not.toHaveBeenCalled();
+  });
+
+  it("bypasses cache hit when forceFresh is true (covers: AC-3)", async () => {
     vi.mocked(github.fetchRepoMetadata).mockResolvedValue({
       success: true,
       data: {
@@ -66,6 +106,11 @@ describe("POST /api/ingest route handler", () => {
         defaultBranch: "main",
         commitSha: "sha123",
       },
+    });
+
+    vi.mocked(github.fetchBranchCommitSha).mockResolvedValue({
+      success: true,
+      data: "sha123",
     });
 
     vi.mocked(github.fetchTarballArchive).mockResolvedValue({
@@ -117,6 +162,8 @@ describe("POST /api/ingest route handler", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         repositoryUrl: "https://github.com/antigravity/test-repo",
+        cachedCommitSha: "sha123",
+        forceFresh: true,
       }),
     });
 
@@ -124,11 +171,63 @@ describe("POST /api/ingest route handler", () => {
     expect(res.status).toBe(200);
 
     const text = await res.text();
-    expect(text).toContain('"phase":"validating"');
-    expect(text).toContain('"phase":"downloading_archive"');
-    expect(text).toContain('"phase":"unpacking_files"');
-    expect(text).toContain('"phase":"parsing_ast"');
+    // fetchTarballArchive SHOULD have been called because forceFresh was true
+    expect(github.fetchTarballArchive).toHaveBeenCalled();
     expect(text).toContain('"phase":"complete"');
-    expect(text).toContain('"result":');
+    expect(text).not.toContain('"cached":true');
+  });
+
+  it("reads token from encrypted httpOnly cookie (covers: AC-5)", async () => {
+    const rawToken = "ghp_secure_cookie_token_1234567890";
+    const encrypted = encryptGithubToken(rawToken);
+
+    vi.mocked(github.fetchRepoMetadata).mockResolvedValue({
+      success: true,
+      data: {
+        owner: "antigravity",
+        name: "test-repo",
+        fullName: "antigravity/test-repo",
+        defaultBranch: "main",
+        commitSha: "sha123",
+      },
+    });
+
+    vi.mocked(github.fetchBranchCommitSha).mockResolvedValue({
+      success: true,
+      data: "sha123",
+    });
+
+    vi.mocked(github.fetchTarballArchive).mockResolvedValue({
+      success: true,
+      data: new ArrayBuffer(10),
+    });
+
+    vi.mocked(parser.unpackRepositoryTarball).mockResolvedValue({
+      files: [],
+      totalFilesFound: 0,
+      wasCapped: false,
+    });
+
+    const req = new NextRequest("http://localhost:3000/api/ingest", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        cookie: `${github.GITHUB_PAT_COOKIE_NAME}=${encrypted}`,
+      },
+      body: JSON.stringify({
+        repositoryUrl: "https://github.com/antigravity/test-repo",
+      }),
+    });
+
+    await POST(req);
+
+    // fetchRepoMetadata should receive decrypted token
+    expect(github.fetchRepoMetadata).toHaveBeenCalledWith(
+      "antigravity",
+      "test-repo",
+      expect.objectContaining({
+        token: rawToken,
+      }),
+    );
   });
 });
