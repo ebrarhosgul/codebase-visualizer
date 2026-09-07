@@ -46,6 +46,10 @@ function ArchitectureCanvasInner({
   const searchQuery = useGraphStore((state) => state.searchQuery);
   const hideExternal = useGraphStore((state) => state.hideExternal);
   const resetAllFilters = useGraphStore((state) => state.resetAllFilters);
+  const activeTrace = useGraphStore((state) => state.activeTrace);
+  const activeStepIndex = useGraphStore((state) => state.activeStepIndex);
+  const highlightedNodeIds = useGraphStore((state) => state.highlightedNodeIds);
+  const highlightedEdgeIds = useGraphStore((state) => state.highlightedEdgeIds);
   const setActiveRightTab = useWorkspaceStore(
     (state) => state.setActiveRightTab,
   );
@@ -167,6 +171,12 @@ function ArchitectureCanvasInner({
   // Sync node selection, active folder container, and hover/connection visual states
   useEffect(() => {
     const isHighlightActive = Boolean(highlightNodeId);
+    const isTraceActive = Boolean(activeTrace);
+    const traceNodeSet = new Set(highlightedNodeIds);
+    const activeStepNodeId =
+      activeTrace && activeStepIndex !== null && activeStepIndex >= 0
+        ? (activeTrace.stepNodeIds[activeStepIndex] ?? null)
+        : null;
 
     setNodes((currentNodes) =>
       currentNodes.map((n) => {
@@ -176,6 +186,7 @@ function ArchitectureCanvasInner({
           const childIds = entity?.childFileIds ?? [];
           const hasActiveChild = childIds.some(
             (id) =>
+              (isTraceActive && traceNodeSet.has(id)) ||
               id === highlightNodeId ||
               id === selectedNodeId ||
               id === activeTarget?.fileId ||
@@ -187,6 +198,23 @@ function ArchitectureCanvasInner({
               ...n.data,
               hasActiveChild,
               isHighlighted: hasActiveChild,
+            },
+          };
+        }
+
+        if (isTraceActive) {
+          const isTraceNode = traceNodeSet.has(n.id);
+          const isStepFocused = activeStepNodeId === n.id;
+          const isSelected = n.id === selectedNodeId || isStepFocused;
+
+          return {
+            ...n,
+            selected: isSelected,
+            data: {
+              ...n.data,
+              isHovered: isStepFocused || hoveredNodeId === n.id,
+              isConnected: isTraceNode,
+              isDimmed: !isTraceNode,
             },
           };
         }
@@ -216,15 +244,56 @@ function ArchitectureCanvasInner({
     highlightNodeId,
     connectedNodeIds,
     hoveredNodeId,
+    activeTrace,
+    activeStepIndex,
+    highlightedNodeIds,
     setNodes,
   ]);
 
-  // Sync edge visual states (highlighting connected imports/importers with arrows, dimming others)
+  // Sync edge visual states (highlighting connected imports/importers or active trace path)
   useEffect(() => {
     const isHighlightActive = Boolean(highlightNodeId);
+    const isTraceActive = Boolean(activeTrace);
+    const traceEdgeSet = new Set(highlightedEdgeIds);
 
     setEdges((currentEdges) =>
       currentEdges.map((e) => {
+        if (isTraceActive) {
+          if (traceEdgeSet.has(e.id)) {
+            return {
+              ...e,
+              animated: true,
+              style: {
+                stroke: "var(--accent-primary)",
+                strokeWidth: 3,
+                filter: "drop-shadow(0 0 6px rgba(59, 130, 246, 0.7))",
+                opacity: 1,
+              },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: "var(--accent-primary)",
+                width: 16,
+                height: 16,
+              },
+            };
+          }
+          return {
+            ...e,
+            animated: false,
+            style: {
+              stroke: "var(--border-subtle)",
+              strokeWidth: 1,
+              opacity: 0.12,
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: "var(--border-subtle)",
+              width: 10,
+              height: 10,
+            },
+          };
+        }
+
         const isOutgoing = outgoingEdgeIds.has(e.id);
         const isIncoming = incomingEdgeIds.has(e.id);
 
@@ -298,7 +367,14 @@ function ArchitectureCanvasInner({
         };
       }),
     );
-  }, [highlightNodeId, outgoingEdgeIds, incomingEdgeIds, setEdges]);
+  }, [
+    highlightNodeId,
+    outgoingEdgeIds,
+    incomingEdgeIds,
+    activeTrace,
+    highlightedEdgeIds,
+    setEdges,
+  ]);
 
   // Programmatically center camera when activeTarget updates from editor, tree, or url (AC-3, AC-4)
   useEffect(() => {

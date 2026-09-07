@@ -18,7 +18,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 5 | Walking skeleton loop | Slice 1 | in-progress |
 | 6 | Bidirectional graph and code deep linking | Slice 2 | done |
 | 7 | Architectural filtering and layer inspection | Slice 3 | done |
-| 8 | Semantic AI query and path tracing | Slice 4 | planned |
+| 8 | Semantic AI query and path tracing | Slice 4 | done |
 | 9 | Client cache and ingestion streaming | Slice 5 | planned |
 
 ## Foundations
@@ -112,10 +112,19 @@ spec [0007](../specs/0007-architectural-filtering-and-layer-inspection/index.md)
 
 ## Slice 4: Semantic AI query and path tracing
 
-### 8. Semantic AI query and path tracing · needs a decision
+### 8. Semantic AI query and path tracing · done
 Enable natural language questions about codebase architecture with optional bring your own API key, generating answers that highlight both exact source lines and visual dependency paths on the graph.
 **Done when:** users can ask natural language questions, receive accurate architectural answers, and see both code snippets and graph traversal paths highlighted together.
-- [ ] Design it (spec): `/architect semantic AI query and path tracing`
+spec [0008](../specs/0008-semantic-ai-query-and-path-tracing/index.md) · code in `src/`
+- [x] Design it (spec): `/architect semantic AI query and path tracing`
+- [x] Build it: `/develop semantic AI query and path tracing`
+  - [x] Active trace state & canvas path glow: Zustand trace slice and React Flow glowing edge markers (AC-5)
+  - [x] Deterministic graph path validation: pure BFS chain validator and closest common ancestor calculator (AC-4, AC-7)
+  - [x] Provider interface & zero cost demo mock: AIProvider abstraction and canned demo repository responses (AC-2, AC-3)
+  - [x] Streaming SSE route & encrypted BYOK cookie: /api/ai/query stream and AES-256-GCM cookie exchange (AC-1, AC-3)
+  - [x] Trace panel UI & dual action navigation: interactive Trace tab, suggested prompt pills, and Monaco line jump (AC-1, AC-6)
+- [x] Verify it: `/check verify semantic AI query and path tracing`
+- [x] Test it: `/test semantic AI query and path tracing`
 
 ## Slice 5: Client cache and ingestion streaming
 
@@ -131,6 +140,7 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - Graph export: export architecture maps as SVG, PNG, or JSON graph data · needs a decision
 - Code editing and pull requests: in browser editing, automated refactoring, and git write operations · needs a decision
 - Keyboard shortcut navigation: quick slash key for canvas filter search and escape to reset filters · from spec 0007
+- Vector embeddings: semantic code snippet search and embedding index for large repositories · from spec 0008
 
 ## Legend
 

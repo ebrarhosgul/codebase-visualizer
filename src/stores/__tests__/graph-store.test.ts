@@ -622,4 +622,62 @@ describe("useGraphStore", () => {
     store.revealNode("ext:lodash");
     expect(useGraphStore.getState().hideExternal).toBe(false);
   });
+
+  it("manages active trace state and focused trace steps (covers: AC-5)", () => {
+    const mockTrace = {
+      id: "trace:file:a.ts->file:c.ts",
+      sourceNodeId: "file:a.ts",
+      targetNodeId: "file:c.ts",
+      stepNodeIds: ["file:a.ts", "file:b.ts", "file:c.ts"],
+      stepEdgeIds: ["edge:a->b", "edge:b->c"],
+      hopCount: 2,
+      rationale: "Import chain",
+      createdAt: new Date().toISOString(),
+    };
+
+    const store = useGraphStore.getState();
+    store.setActiveTrace(mockTrace);
+
+    const activeState = useGraphStore.getState();
+    expect(activeState.activeTrace).toEqual(mockTrace);
+    expect(activeState.activeStepIndex).toBeNull();
+    expect(activeState.highlightedNodeIds).toEqual(mockTrace.stepNodeIds);
+    expect(activeState.highlightedEdgeIds).toEqual(mockTrace.stepEdgeIds);
+
+    // Focus step 1 ("file:b.ts")
+    store.focusTraceStep(1);
+    expect(useGraphStore.getState().activeStepIndex).toBe(1);
+    expect(useGraphStore.getState().selectedNodeId).toBe("file:b.ts");
+
+    // Invalid step index resets activeStepIndex
+    store.focusTraceStep(99);
+    expect(useGraphStore.getState().activeStepIndex).toBeNull();
+
+    // Negative step index resets activeStepIndex
+    store.focusTraceStep(-1);
+    expect(useGraphStore.getState().activeStepIndex).toBeNull();
+
+    // Setting active trace to null clears trace state
+    store.setActiveTrace(mockTrace);
+    expect(useGraphStore.getState().activeTrace).not.toBeNull();
+    store.setActiveTrace(null);
+    expect(useGraphStore.getState().activeTrace).toBeNull();
+    expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
+    expect(useGraphStore.getState().highlightedEdgeIds).toEqual([]);
+
+    // Clear trace
+    store.setActiveTrace(mockTrace);
+    store.clearTrace();
+    const clearedState = useGraphStore.getState();
+    expect(clearedState.activeTrace).toBeNull();
+    expect(clearedState.activeStepIndex).toBeNull();
+    expect(clearedState.highlightedNodeIds).toEqual([]);
+    expect(clearedState.highlightedEdgeIds).toEqual([]);
+
+    // Store reset also wipes active trace state
+    store.setActiveTrace(mockTrace);
+    store.reset();
+    expect(useGraphStore.getState().activeTrace).toBeNull();
+    expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
+  });
 });

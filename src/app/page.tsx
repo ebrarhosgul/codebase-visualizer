@@ -8,6 +8,7 @@ import { ArchitectureCanvas } from "@/components/canvas";
 import { CodeViewer } from "@/components/editor";
 import { RepoSubmissionBar } from "@/components/workspace/repo-submission-bar";
 import { FolderTree, NodeInspector } from "@/components/workspace";
+import { TracePanel } from "@/components/trace/trace-panel";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useGraphStore } from "@/stores/graph-store";
 import { DeepLinkingSync } from "@/hooks/use-deep-linking";
@@ -159,16 +160,7 @@ export default function Home(): React.JSX.Element {
                 <span>Trace</span>
               </span>
             ),
-            content: (
-              <div className="p-4 text-xs text-[var(--text-secondary)] space-y-3">
-                <div className="text-xs font-semibold text-[var(--text-primary)]">
-                  Path Query
-                </div>
-                <p className="text-[11px] text-[var(--text-muted)]">
-                  Semantic path tracer will be available in Slice 4.
-                </p>
-              </div>
-            ),
+            content: <TracePanel />,
           },
         ]}
       />

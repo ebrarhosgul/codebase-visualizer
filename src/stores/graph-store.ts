@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   type Repository,
   type CodebaseGraph,
+  type PathTrace,
   createFileId,
   createSymbolId,
 } from "@/entities";
@@ -58,7 +59,15 @@ export interface GraphFilterState {
   readonly hideExternal: boolean;
 }
 
-export interface GraphStoreState extends DeepLinkState, GraphFilterState {
+export interface ActiveTraceState {
+  readonly activeTrace: PathTrace | null;
+  readonly activeStepIndex: number | null;
+  readonly highlightedNodeIds: readonly string[];
+  readonly highlightedEdgeIds: readonly string[];
+}
+
+export interface GraphStoreState
+  extends DeepLinkState, GraphFilterState, ActiveTraceState {
   readonly repository: Repository | null;
   readonly graph: CodebaseGraph | null;
   readonly fileSources: Readonly<Record<string, string>>;
@@ -97,6 +106,9 @@ export interface GraphStoreActions {
   readonly toggleHideExternal: () => void;
   readonly resetAllFilters: () => void;
   readonly revealNode: (nodeId: string) => void;
+  readonly setActiveTrace: (trace: PathTrace | null) => void;
+  readonly focusTraceStep: (stepIndex: number | null) => void;
+  readonly clearTrace: () => void;
   readonly reset: () => void;
 }
 
@@ -122,6 +134,10 @@ const initialState: GraphStoreState = {
   collapsedFolderIds: Object.freeze([]),
   searchQuery: "",
   hideExternal: false,
+  activeTrace: null,
+  activeStepIndex: null,
+  highlightedNodeIds: Object.freeze([]),
+  highlightedEdgeIds: Object.freeze([]),
 };
 
 let activeAbortController: AbortController | null = null;
@@ -245,6 +261,10 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
                 graph: event.result.graph,
                 fileSources: Object.freeze(event.result.fileSources),
                 ingestionProgress: event.progress ?? null,
+                activeTrace: null,
+                activeStepIndex: null,
+                highlightedNodeIds: Object.freeze([]),
+                highlightedEdgeIds: Object.freeze([]),
               });
               get().flushPendingDeepLink();
             } else {
@@ -364,6 +384,10 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       ingestionPhase: "complete",
       isIngesting: false,
       ingestionError: null,
+      activeTrace: null,
+      activeStepIndex: null,
+      highlightedNodeIds: Object.freeze([]),
+      highlightedEdgeIds: Object.freeze([]),
     });
     get().flushPendingDeepLink();
   },
@@ -685,6 +709,51 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     });
 
     state.selectNode(nodeId);
+  },
+
+  setActiveTrace: (trace: PathTrace | null): void => {
+    if (!trace) {
+      set({
+        activeTrace: null,
+        activeStepIndex: null,
+        highlightedNodeIds: Object.freeze([]),
+        highlightedEdgeIds: Object.freeze([]),
+      });
+      return;
+    }
+    set({
+      activeTrace: trace,
+      activeStepIndex: null,
+      highlightedNodeIds: trace.stepNodeIds,
+      highlightedEdgeIds: trace.stepEdgeIds,
+    });
+  },
+
+  focusTraceStep: (stepIndex: number | null): void => {
+    const { activeTrace } = get();
+    if (
+      !activeTrace ||
+      stepIndex === null ||
+      stepIndex < 0 ||
+      stepIndex >= activeTrace.stepNodeIds.length
+    ) {
+      set({ activeStepIndex: null });
+      return;
+    }
+    const targetNodeId = activeTrace.stepNodeIds[stepIndex];
+    set({ activeStepIndex: stepIndex });
+    if (targetNodeId) {
+      get().revealNode(targetNodeId);
+    }
+  },
+
+  clearTrace: (): void => {
+    set({
+      activeTrace: null,
+      activeStepIndex: null,
+      highlightedNodeIds: Object.freeze([]),
+      highlightedEdgeIds: Object.freeze([]),
+    });
   },
 
   reset: (): void => {
