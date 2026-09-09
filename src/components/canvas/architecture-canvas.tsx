@@ -23,6 +23,7 @@ import { toReactFlowElements } from "@/graph/adapters/react-flow-adapter";
 import { computeDagreLayout } from "@/graph/layout/dagre-layout";
 import { useGraphStore } from "@/stores/graph-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { cn } from "@/lib/utils";
 import type { CodebaseReactFlowNode, CodebaseReactFlowEdge } from "@/graph";
 
 export interface ArchitectureCanvasProps {
@@ -50,9 +51,17 @@ function ArchitectureCanvasInner({
   const activeStepIndex = useGraphStore((state) => state.activeStepIndex);
   const highlightedNodeIds = useGraphStore((state) => state.highlightedNodeIds);
   const highlightedEdgeIds = useGraphStore((state) => state.highlightedEdgeIds);
+  const isSmallScreen = useWorkspaceStore((state) => state.isSmallScreen);
+  const isLeftCollapsed = useWorkspaceStore(
+    (state) => state.isLeftSidebarCollapsed,
+  );
+  const isRightCollapsed = useWorkspaceStore(
+    (state) => state.isRightPanelCollapsed,
+  );
   const setActiveRightTab = useWorkspaceStore(
     (state) => state.setActiveRightTab,
   );
+  const theme = useWorkspaceStore((state) => state.theme);
 
   const [isMinimapVisible, setIsMinimapVisible] = React.useState(true);
   const [isFollowCursorActive, setIsFollowCursorActive] = React.useState(true);
@@ -92,9 +101,14 @@ function ArchitectureCanvasInner({
     const styledEdges = positioned.edges.map((edge) => ({
       ...edge,
       type: "smoothstep",
+      style: {
+        stroke: "#475569",
+        strokeWidth: 1.5,
+        opacity: 0.6,
+      },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: "var(--border-focus)",
+        color: "#64748b",
         width: 12,
         height: 12,
       },
@@ -352,10 +366,10 @@ function ArchitectureCanvasInner({
           if (traceEdgeSet.has(e.id)) {
             if (
               e.animated === true &&
-              e.style?.stroke === "var(--accent-primary)" &&
+              e.style?.stroke === "#38bdf8" &&
               e.style?.strokeWidth === 3 &&
               e.style?.opacity === 1 &&
-              getMarkerColor(e.markerEnd) === "var(--accent-primary)"
+              getMarkerColor(e.markerEnd) === "#38bdf8"
             ) {
               return e;
             }
@@ -364,14 +378,14 @@ function ArchitectureCanvasInner({
               ...e,
               animated: true,
               style: {
-                stroke: "var(--accent-primary)",
+                stroke: "#38bdf8",
                 strokeWidth: 3,
-                filter: "drop-shadow(0 0 6px rgba(59, 130, 246, 0.7))",
+                filter: "drop-shadow(0 0 6px rgba(56, 189, 248, 0.75))",
                 opacity: 1,
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                color: "var(--accent-primary)",
+                color: "#38bdf8",
                 width: 16,
                 height: 16,
               },
@@ -379,10 +393,10 @@ function ArchitectureCanvasInner({
           }
           if (
             e.animated === false &&
-            e.style?.stroke === "var(--border-subtle)" &&
+            e.style?.stroke === "#1e293b" &&
             e.style?.strokeWidth === 1 &&
-            e.style?.opacity === 0.12 &&
-            getMarkerColor(e.markerEnd) === "var(--border-subtle)"
+            e.style?.opacity === 0.15 &&
+            getMarkerColor(e.markerEnd) === "#334155"
           ) {
             return e;
           }
@@ -391,30 +405,32 @@ function ArchitectureCanvasInner({
             ...e,
             animated: false,
             style: {
-              stroke: "var(--border-subtle)",
+              stroke: "#1e293b",
               strokeWidth: 1,
-              opacity: 0.12,
+              opacity: 0.15,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: "var(--border-subtle)",
+              color: "#334155",
               width: 10,
               height: 10,
             },
           };
         }
 
-        const isOutgoing = outgoingEdgeIds.has(e.id);
-        const isIncoming = incomingEdgeIds.has(e.id);
+        const isOutgoing =
+          e.source === highlightNodeId || outgoingEdgeIds.has(e.id);
+        const isIncoming =
+          e.target === highlightNodeId || incomingEdgeIds.has(e.id);
 
         if (isHighlightActive) {
           if (isOutgoing) {
             if (
               e.animated === true &&
-              e.style?.stroke === "var(--accent-primary)" &&
-              e.style?.strokeWidth === 2.5 &&
+              e.style?.stroke === "#38bdf8" &&
+              e.style?.strokeWidth === 3 &&
               e.style?.opacity === 1 &&
-              getMarkerColor(e.markerEnd) === "var(--accent-primary)"
+              getMarkerColor(e.markerEnd) === "#38bdf8"
             ) {
               return e;
             }
@@ -423,25 +439,26 @@ function ArchitectureCanvasInner({
               ...e,
               animated: true,
               style: {
-                stroke: "var(--accent-primary)",
-                strokeWidth: 2.5,
+                stroke: "#38bdf8",
+                strokeWidth: 3,
+                filter: "drop-shadow(0 0 6px rgba(56, 189, 248, 0.75))",
                 opacity: 1,
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                color: "var(--accent-primary)",
-                width: 14,
-                height: 14,
+                color: "#38bdf8",
+                width: 16,
+                height: 16,
               },
             };
           }
           if (isIncoming) {
             if (
               e.animated === true &&
-              e.style?.stroke === "var(--syntax-ts)" &&
+              e.style?.stroke === "#a78bfa" &&
               e.style?.strokeWidth === 2.5 &&
               e.style?.opacity === 1 &&
-              getMarkerColor(e.markerEnd) === "var(--syntax-ts)"
+              getMarkerColor(e.markerEnd) === "#a78bfa"
             ) {
               return e;
             }
@@ -450,13 +467,14 @@ function ArchitectureCanvasInner({
               ...e,
               animated: true,
               style: {
-                stroke: "var(--syntax-ts)",
+                stroke: "#a78bfa",
                 strokeWidth: 2.5,
+                filter: "drop-shadow(0 0 6px rgba(167, 139, 250, 0.75))",
                 opacity: 1,
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                color: "var(--syntax-ts)",
+                color: "#a78bfa",
                 width: 14,
                 height: 14,
               },
@@ -464,10 +482,10 @@ function ArchitectureCanvasInner({
           }
           if (
             e.animated === false &&
-            e.style?.stroke === "var(--border-subtle)" &&
+            e.style?.stroke === "#1e293b" &&
             e.style?.strokeWidth === 1 &&
-            e.style?.opacity === 0.12 &&
-            getMarkerColor(e.markerEnd) === "var(--border-subtle)"
+            e.style?.opacity === 0.2 &&
+            getMarkerColor(e.markerEnd) === "#334155"
           ) {
             return e;
           }
@@ -476,13 +494,13 @@ function ArchitectureCanvasInner({
             ...e,
             animated: false,
             style: {
-              stroke: "var(--border-subtle)",
+              stroke: "#1e293b",
               strokeWidth: 1,
-              opacity: 0.12,
+              opacity: 0.2,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: "var(--border-subtle)",
+              color: "#334155",
               width: 10,
               height: 10,
             },
@@ -492,10 +510,10 @@ function ArchitectureCanvasInner({
         // Default idle edge state
         if (
           e.animated === false &&
-          e.style?.stroke === "var(--border-focus)" &&
+          e.style?.stroke === "#475569" &&
           e.style?.strokeWidth === 1.5 &&
-          e.style?.opacity === 0.4 &&
-          getMarkerColor(e.markerEnd) === "var(--border-focus)"
+          e.style?.opacity === 0.6 &&
+          getMarkerColor(e.markerEnd) === "#64748b"
         ) {
           return e;
         }
@@ -504,13 +522,13 @@ function ArchitectureCanvasInner({
           ...e,
           animated: false,
           style: {
-            stroke: "var(--border-focus)",
+            stroke: "#475569",
             strokeWidth: 1.5,
-            opacity: 0.4,
+            opacity: 0.6,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "var(--border-focus)",
+            color: "#64748b",
             width: 12,
             height: 12,
           },
@@ -696,8 +714,15 @@ function ArchitectureCanvasInner({
         className={`relative w-full h-full bg-[var(--surface-canvas)] flex flex-col ${className ?? ""}`}
         data-testid="canvas-filtered-empty-state"
       >
-        <div className="absolute top-3 left-4 right-16 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 z-20 max-w-[calc(100%-120px)] sm:max-w-[calc(100%-180px)]">
-          <LayerFilterBar />
+        <div
+          className={cn(
+            "absolute top-3 z-20 pointer-events-none flex items-start max-w-[calc(100%-24px)]",
+            !isSmallScreen && isLeftCollapsed ? "left-12" : "left-3",
+          )}
+        >
+          <div className="pointer-events-auto min-w-0 max-w-full">
+            <LayerFilterBar />
+          </div>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
@@ -736,28 +761,38 @@ function ArchitectureCanvasInner({
       className={`relative w-full h-full bg-[var(--surface-canvas)] ${className ?? ""}`}
       data-testid="architecture-canvas"
     >
-      {/* Floating Layer Filter Bar (AC-2) */}
-      <div className="absolute top-3 left-4 right-16 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 z-20 max-w-[calc(100%-120px)] sm:max-w-[calc(100%-180px)]">
-        <LayerFilterBar />
-      </div>
+      {/* Floating Controls Bar (Layer Filters & Canvas Zoom Controls) */}
+      <div
+        className={cn(
+          "absolute top-3 z-20 pointer-events-none flex items-start justify-between gap-3",
+          !isSmallScreen && isLeftCollapsed ? "left-12" : "left-3",
+          !isSmallScreen && isRightCollapsed ? "right-12" : "right-3",
+        )}
+      >
+        <div className="pointer-events-auto min-w-0 max-w-full">
+          <LayerFilterBar />
+        </div>
 
-      {/* Floating Toolbar Controls */}
-      <div className="absolute top-3 right-3 z-20">
-        <GraphControlsToolbar
-          onZoomIn={() => zoomIn({ duration: 200 })}
-          onZoomOut={() => zoomOut({ duration: 200 })}
-          onFitView={() => fitView({ padding: 0.2, duration: 300 })}
-          isMinimapVisible={isMinimapVisible}
-          onToggleMinimap={() => setIsMinimapVisible(!isMinimapVisible)}
-          isFollowCursorActive={isFollowCursorActive}
-          onToggleFollowCursor={() => setIsFollowCursorActive((prev) => !prev)}
-          currentZoom={getZoom ? Math.round(getZoom() * 10) / 10 : 1.0}
-        />
+        <div className="pointer-events-auto shrink-0">
+          <GraphControlsToolbar
+            onZoomIn={() => zoomIn({ duration: 200 })}
+            onZoomOut={() => zoomOut({ duration: 200 })}
+            onFitView={() => fitView({ padding: 0.2, duration: 300 })}
+            isMinimapVisible={isMinimapVisible}
+            onToggleMinimap={() => setIsMinimapVisible(!isMinimapVisible)}
+            isFollowCursorActive={isFollowCursorActive}
+            onToggleFollowCursor={() =>
+              setIsFollowCursorActive((prev) => !prev)
+            }
+            currentZoom={getZoom ? Math.round(getZoom() * 10) / 10 : 1.0}
+          />
+        </div>
       </div>
 
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        colorMode={theme === "light" ? "light" : "dark"}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
@@ -772,7 +807,13 @@ function ArchitectureCanvasInner({
         defaultEdgeOptions={{
           type: "smoothstep",
           animated: false,
-          style: { stroke: "var(--border-focus)", strokeWidth: 1.5 },
+          style: { stroke: "#475569", strokeWidth: 1.5, opacity: 0.6 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#64748b",
+            width: 12,
+            height: 12,
+          },
         }}
         proOptions={{ hideAttribution: true }}
       >

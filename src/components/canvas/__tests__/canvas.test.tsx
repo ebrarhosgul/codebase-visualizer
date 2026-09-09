@@ -7,10 +7,25 @@ import { GraphControlsToolbar } from "../graph-controls-toolbar";
 import { getMinimapNodeColor } from "../custom-minimap";
 import type { NodeProps } from "@xyflow/react";
 import type { CodebaseReactFlowNode } from "@/graph";
+import type { FileNode, SymbolNode } from "@/entities";
 
 function renderWithProvider(ui: React.ReactElement) {
   return render(<ReactFlowProvider>{ui}</ReactFlowProvider>);
 }
+
+const mockFileEntity: FileNode = {
+  id: "file:src/index.ts",
+  path: "src/index.ts",
+  name: "index.ts",
+  extension: "ts",
+  language: "typescript",
+  sizeBytes: 3400,
+  lineCount: 120,
+  directoryId: "dir:src",
+  symbolIds: ["symbol:src/index.ts#main"],
+  importIds: [],
+  exportIds: [],
+};
 
 describe("FileNodeCard", () => {
   const baseNodeProps: NodeProps<CodebaseReactFlowNode> = {
@@ -18,19 +33,7 @@ describe("FileNodeCard", () => {
     data: {
       entityType: "file",
       label: "index.ts",
-      entity: {
-        id: "file:src/index.ts",
-        path: "src/index.ts",
-        name: "index.ts",
-        extension: "ts",
-        language: "typescript",
-        sizeBytes: 3400,
-        lineCount: 120,
-        directoryId: "dir:src",
-        symbolIds: ["symbol:src/index.ts#main"],
-        importIds: [],
-        exportIds: [],
-      },
+      entity: mockFileEntity,
     },
     selected: false,
     type: "file",
@@ -92,7 +95,68 @@ describe("FileNodeCard", () => {
     expect(screen.getAllByText("src")).toHaveLength(2);
     expect(screen.getByText("dir")).toBeInTheDocument();
   });
+
+  it("enforces fixed 240px width and truncates long labels without overflowing", () => {
+    const longNameProps: NodeProps<CodebaseReactFlowNode> = {
+      ...baseNodeProps,
+      id: "file:src/very-long-feature-component-controller-name-that-would-overflow.tsx",
+      data: {
+        entityType: "file",
+        label:
+          "very-long-feature-component-controller-name-that-would-overflow.tsx",
+        entity: {
+          ...mockFileEntity,
+          name: "very-long-feature-component-controller-name-that-would-overflow.tsx",
+          path: "src/very-long-feature-component-controller-name-that-would-overflow.tsx",
+        },
+      },
+    };
+
+    const { container } = renderWithProvider(
+      <FileNodeCard {...longNameProps} />,
+    );
+    const card = container.querySelector("[role='article']");
+    expect(card?.className).toContain("w-[240px]");
+    expect(card?.className).toContain("max-w-[240px]");
+
+    const titleEl = screen.getByRole("heading", { level: 4 });
+    expect(titleEl.className).toContain("truncate");
+    expect(titleEl).toHaveAttribute(
+      "title",
+      "very-long-feature-component-controller-name-that-would-overflow.tsx",
+    );
+  });
 });
+
+const mockSymbolEntity: SymbolNode = {
+  id: "symbol:src/index.ts#buildGraph",
+  fileId: "file:src/index.ts",
+  parentSymbolId: null,
+  name: "buildGraph",
+  kind: "function",
+  range: {
+    startOffset: 0,
+    endOffset: 50,
+    startLine: 1,
+    startColumn: 1,
+    endLine: 5,
+    endColumn: 2,
+  },
+  selectionRange: {
+    startOffset: 0,
+    endOffset: 10,
+    startLine: 1,
+    startColumn: 1,
+    endLine: 1,
+    endColumn: 11,
+  },
+  isExported: true,
+  isDefaultExport: false,
+  signature: "export function buildGraph(): CodebaseGraph",
+  documentation: "Builds graph",
+  visibility: "public",
+  childSymbolIds: [],
+};
 
 describe("SymbolNodeCard", () => {
   const symbolProps: NodeProps<CodebaseReactFlowNode> = {
@@ -100,35 +164,7 @@ describe("SymbolNodeCard", () => {
     data: {
       entityType: "symbol",
       label: "buildGraph",
-      entity: {
-        id: "symbol:src/index.ts#buildGraph",
-        fileId: "file:src/index.ts",
-        parentSymbolId: null,
-        name: "buildGraph",
-        kind: "function",
-        range: {
-          startOffset: 0,
-          endOffset: 50,
-          startLine: 1,
-          startColumn: 1,
-          endLine: 5,
-          endColumn: 2,
-        },
-        selectionRange: {
-          startOffset: 0,
-          endOffset: 10,
-          startLine: 1,
-          startColumn: 1,
-          endLine: 1,
-          endColumn: 11,
-        },
-        isExported: true,
-        isDefaultExport: false,
-        signature: "export function buildGraph(): CodebaseGraph",
-        documentation: "Builds graph",
-        visibility: "public",
-        childSymbolIds: [],
-      },
+      entity: mockSymbolEntity,
     },
     selected: false,
     type: "symbol",
@@ -147,6 +183,30 @@ describe("SymbolNodeCard", () => {
     expect(screen.getByText("buildGraph")).toBeInTheDocument();
     expect(screen.getByText("function")).toBeInTheDocument();
     expect(screen.getByText("public")).toBeInTheDocument();
+  });
+
+  it("enforces fixed 240px width and truncates long symbol names", () => {
+    const longSymbolProps: NodeProps<CodebaseReactFlowNode> = {
+      ...symbolProps,
+      data: {
+        entityType: "symbol",
+        label: "useExtremelyLongCustomHookWithMultipleGenericsAndStateHandlers",
+        entity: {
+          ...mockSymbolEntity,
+          name: "useExtremelyLongCustomHookWithMultipleGenericsAndStateHandlers",
+        },
+      },
+    };
+
+    const { container } = renderWithProvider(
+      <SymbolNodeCard {...longSymbolProps} />,
+    );
+    const card = container.querySelector("[role='article']");
+    expect(card?.className).toContain("w-[240px]");
+    expect(card?.className).toContain("max-w-[240px]");
+
+    const titleEl = screen.getByRole("heading", { level: 4 });
+    expect(titleEl.className).toContain("truncate");
   });
 });
 

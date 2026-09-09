@@ -59,25 +59,25 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
       role="article"
       aria-label={`Symbol node: ${symbol.name} (${kind})`}
       className={cn(
-        "relative rounded-lg p-3 min-w-[200px] max-w-[300px] select-none transition-all shadow-md",
+        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-all shadow-md",
         "bg-[var(--surface-card)] border",
         selected
           ? "border-[var(--border-focus)] ring-2 ring-[var(--border-focus)] shadow-lg"
-          : "border-[var(--border-default)] hover:border-[var(--text-muted)]",
+          : "border-[var(--border-default)] hover:border-[var(--border-focus)]",
       )}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="w-2 h-2 bg-[var(--syntax-fn)] border border-[var(--surface-card)]"
+        className="w-2.5 h-2.5 !bg-[var(--syntax-fn)] border-2 border-[var(--surface-card)] rounded-full -left-[5px]"
       />
 
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1 rounded-md bg-[var(--surface-panel-secondary)] shrink-0 text-[var(--syntax-fn)]">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="p-1 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] shrink-0 text-[var(--syntax-fn)]">
             <Icon className="w-3.5 h-3.5" aria-hidden="true" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h4
               className="text-xs font-mono font-semibold text-[var(--text-primary)] truncate"
               title={symbol.name}
@@ -89,7 +89,7 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
             </p>
           </div>
         </div>
-        <Badge variant={badgeVariant} className="shrink-0">
+        <Badge variant={badgeVariant} className="shrink-0 text-[10px]">
           {kind}
         </Badge>
       </div>
@@ -106,7 +106,7 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
       <Handle
         type="source"
         position={Position.Right}
-        className="w-2 h-2 bg-[var(--syntax-fn)] border border-[var(--surface-card)]"
+        className="w-2.5 h-2.5 !bg-[var(--syntax-fn)] border-2 border-[var(--surface-card)] rounded-full -right-[5px]"
       />
     </div>
   );

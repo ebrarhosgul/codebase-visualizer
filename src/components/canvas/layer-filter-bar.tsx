@@ -177,7 +177,7 @@ export function LayerFilterBar({
     <nav
       aria-label="Architectural filter and canvas controls"
       className={cn(
-        "flex items-center gap-2 max-w-full overflow-x-auto p-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-panel)]/90 backdrop-blur-md shadow-lg select-none",
+        "flex items-center gap-2 max-w-full overflow-x-auto overflow-y-hidden p-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-panel)]/90 backdrop-blur-md shadow-lg select-none",
         className,
       )}
       data-testid="layer-filter-bar"
