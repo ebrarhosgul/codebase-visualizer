@@ -73,28 +73,28 @@ export const FileNodeCard = React.memo(function FileNodeCard({
       role="article"
       aria-label={`${entityType} node: ${label}`}
       className={cn(
-        "relative rounded-lg p-3 min-w-[220px] max-w-[320px] select-none transition-all duration-200 shadow-md",
+        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-all duration-200 shadow-md",
         "bg-[var(--surface-card)] border",
         selected || isHovered
           ? "border-[var(--accent-primary)] ring-2 ring-[var(--accent-primary)] shadow-lg shadow-[var(--accent-primary)]/20 scale-[1.02] z-20"
           : isConnected
             ? "border-[var(--border-focus)] ring-1 ring-[var(--border-focus)] shadow-sm"
-            : "border-[var(--border-default)] hover:border-[var(--text-muted)]",
+            : "border-[var(--border-default)] hover:border-[var(--border-focus)]",
         isDimmed && !selected && !isHovered && !isConnected && "opacity-30",
       )}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="w-2 h-2 bg-[var(--accent-primary)] border border-[var(--surface-card)]"
+        className="w-2.5 h-2.5 !bg-[var(--accent-primary)] border-2 border-[var(--surface-card)] rounded-full -left-[5px]"
       />
 
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1.5 rounded-md bg-[var(--surface-panel-secondary)] shrink-0 text-[var(--accent-primary)]">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="p-1.5 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] shrink-0 text-[var(--accent-primary)]">
             <Icon className="w-4 h-4" aria-hidden="true" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h4
               className="text-xs font-semibold text-[var(--text-primary)] truncate"
               title={label}
@@ -111,7 +111,10 @@ export const FileNodeCard = React.memo(function FileNodeCard({
             )}
           </div>
         </div>
-        <Badge variant={badgeVariant} className="shrink-0">
+        <Badge
+          variant={badgeVariant}
+          className="shrink-0 text-[10px] font-mono"
+        >
           {badgeLabel}
         </Badge>
       </div>
@@ -157,7 +160,7 @@ export const FileNodeCard = React.memo(function FileNodeCard({
       <Handle
         type="source"
         position={Position.Right}
-        className="w-2 h-2 bg-[var(--accent-primary)] border border-[var(--surface-card)]"
+        className="w-2.5 h-2.5 !bg-[var(--accent-primary)] border-2 border-[var(--surface-card)] rounded-full -right-[5px]"
       />
     </div>
   );

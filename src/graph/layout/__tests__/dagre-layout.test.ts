@@ -413,4 +413,53 @@ describe("computeDagreLayout", () => {
     expect(folderGroup).toBeDefined();
     expect(folderGroup?.id).toBe("folder-group:src/components");
   });
+
+  it("ensures child cards in folder group remain strictly within container width bounds", () => {
+    const nodes: CodebaseReactFlowNode[] = [];
+    for (let i = 0; i < 7; i++) {
+      const filePath = `src/very_long_file_name_specifier_number_${i}.tsx`;
+      nodes.push({
+        id: `file:${filePath}`,
+        type: "file",
+        position: { x: 0, y: 0 },
+        data: {
+          entityType: "file",
+          label: `very_long_file_name_specifier_number_${i}.tsx`,
+          entity: {
+            id: `file:${filePath}`,
+            path: filePath,
+            name: `very_long_file_name_specifier_number_${i}.tsx`,
+            extension: ".tsx",
+            language: "typescript",
+            sizeBytes: 100,
+            lineCount: 10,
+            directoryId: "dir:src",
+            symbolIds: [],
+            importIds: [],
+            exportIds: [],
+          },
+        },
+      });
+    }
+
+    const laidOut = computeDagreLayout(
+      { nodes: Object.freeze(nodes), edges: Object.freeze([]) },
+      { direction: "LR", groupByFolder: true, nodeWidth: 240 },
+    );
+
+    const folderNode = laidOut.nodes.find((n) => n.type === "folderGroup");
+    expect(folderNode).toBeDefined();
+    const folderWidth = Number(folderNode?.style?.width ?? 0);
+    const folderLeft = folderNode?.position.x ?? 0;
+
+    const childNodes = laidOut.nodes.filter((n) => n.type === "file");
+    expect(childNodes.length).toBe(7);
+
+    for (const child of childNodes) {
+      expect(child.position.x).toBeGreaterThanOrEqual(folderLeft);
+      expect(child.position.x + 240).toBeLessThanOrEqual(
+        folderLeft + folderWidth,
+      );
+    }
+  });
 });

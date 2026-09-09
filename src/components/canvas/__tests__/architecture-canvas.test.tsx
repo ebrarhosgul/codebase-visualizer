@@ -2,17 +2,26 @@ import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ArchitectureCanvas } from "../architecture-canvas";
 import { useGraphStore } from "@/stores/graph-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 import type { CodebaseGraph } from "@/entities";
+
+import type { ReactFlowProps, Edge } from "@xyflow/react";
 
 const mockSetCenter = vi.fn();
 const mockFitView = vi.fn();
 const mockZoomIn = vi.fn();
 const mockZoomOut = vi.fn();
 
+let capturedReactFlowProps: ReactFlowProps | null = null;
+
 vi.mock("@xyflow/react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@xyflow/react")>();
   return {
     ...actual,
+    ReactFlow: (props: ReactFlowProps) => {
+      capturedReactFlowProps = props;
+      return <actual.ReactFlow {...props} />;
+    },
     useReactFlow: () => ({
       fitView: mockFitView,
       zoomIn: mockZoomIn,
@@ -26,6 +35,8 @@ vi.mock("@xyflow/react", async (importOriginal) => {
 describe("ArchitectureCanvas", () => {
   beforeEach(() => {
     useGraphStore.getState().reset();
+    useWorkspaceStore.getState().resetLayout();
+    capturedReactFlowProps = null;
     mockSetCenter.mockClear();
     mockFitView.mockClear();
     mockZoomIn.mockClear();
@@ -575,6 +586,85 @@ describe("ArchitectureCanvas", () => {
     expect(screen.getByTestId("layer-filter-bar")).toBeInTheDocument();
   });
 
+  it("coordinates LayerFilterBar and GraphControlsToolbar in a shared flex container to prevent overlap", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/components/button.tsx": {
+          id: "file:src/components/button.tsx",
+          path: "src/components/button.tsx",
+          name: "button.tsx",
+          extension: ".tsx",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src/components",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    const { rerender } = render(<ArchitectureCanvas />);
+
+    const nav = screen.getByRole("navigation", {
+      name: "Architectural filter and canvas controls",
+    });
+    const toolbar = screen.getByRole("toolbar", {
+      name: "Canvas zoom and view controls",
+    });
+
+    expect(nav).toBeInTheDocument();
+    expect(toolbar).toBeInTheDocument();
+
+    // Verify both are housed in a shared flex container preventing horizontal overlap
+    const controlsContainer = nav.closest(".pointer-events-none");
+    expect(controlsContainer).toBeInTheDocument();
+    expect(controlsContainer).toHaveClass("flex", "justify-between", "gap-3");
+    expect(controlsContainer).toContainElement(toolbar);
+
+    // Toolbar wrapper must not shrink
+    const toolbarWrapper = toolbar.parentElement;
+    expect(toolbarWrapper).toHaveClass("shrink-0");
+
+    // Nav wrapper must have min-w-0 to allow flex shrinking and scroll containment
+    const navWrapper = nav.parentElement;
+    expect(navWrapper).toHaveClass("min-w-0");
+
+    // When right panel collapses, container adjusts right margin to avoid expand toggle button
+    act(() => {
+      useWorkspaceStore.getState().setRightPanelCollapsed(true);
+    });
+    rerender(<ArchitectureCanvas />);
+    expect(controlsContainer).toHaveClass("right-12");
+
+    // When left sidebar collapses, container adjusts left margin to avoid expand toggle button
+    act(() => {
+      useWorkspaceStore.getState().setLeftSidebarCollapsed(true);
+    });
+    rerender(<ArchitectureCanvas />);
+    expect(controlsContainer).toHaveClass("left-12");
+  });
+
   it("preserves graph responsiveness and updates selection without unmounting canvas elements", () => {
     const mockGraph = {
       schemaVersion: 1,
@@ -651,5 +741,169 @@ describe("ArchitectureCanvas", () => {
     });
 
     expect(useGraphStore.getState().hoveredNodeId).toBe("file:src/b.ts");
+  });
+
+  it("applies high contrast hex colors and marker configuration to active outgoing and incoming edges", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 4,
+        totalSymbols: 0,
+        languages: { typescript: 4 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/a.ts": {
+          id: "file:src/a.ts",
+          path: "src/a.ts",
+          name: "a.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+        "file:src/b.ts": {
+          id: "file:src/b.ts",
+          path: "src/b.ts",
+          name: "b.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+        "file:src/c.ts": {
+          id: "file:src/c.ts",
+          path: "src/c.ts",
+          name: "c.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+        "file:src/d.ts": {
+          id: "file:src/d.ts",
+          path: "src/d.ts",
+          name: "d.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {
+        "edge:a-b": {
+          id: "edge:file:src/a.ts->file:src/b.ts:file_import",
+          sourceId: "file:src/a.ts",
+          targetId: "file:src/b.ts",
+          kind: "file_import",
+          weight: 1,
+          isExternal: false,
+        },
+        "edge:c-d": {
+          id: "edge:file:src/c.ts->file:src/d.ts:file_import",
+          sourceId: "file:src/c.ts",
+          targetId: "file:src/d.ts",
+          kind: "file_import",
+          weight: 1,
+          isExternal: false,
+        },
+      },
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    // 1. Initial idle edge state
+    expect(capturedReactFlowProps).not.toBeNull();
+    const idleEdges = (capturedReactFlowProps?.edges ?? []) as Edge[];
+    const idleEdgeAB = idleEdges.find(
+      (e: Edge) => e.source === "file:src/a.ts",
+    );
+    expect(idleEdgeAB).toBeDefined();
+    expect(idleEdgeAB?.style?.stroke).toBe("#475569");
+    const idleMarker = idleEdgeAB?.markerEnd as { color?: string } | undefined;
+    expect(idleMarker?.color).toBe("#64748b");
+    // Ensure marker colors use valid hex without CSS var syntax that corrupts SVG marker URLs
+    expect(idleMarker?.color).not.toContain("var(");
+
+    // ReactFlow should receive the colorMode property
+    expect(capturedReactFlowProps?.colorMode).toBeDefined();
+
+    // 2. Select node A: edge A->B becomes active outgoing
+    act(() => {
+      useGraphStore.getState().selectNode("file:src/a.ts");
+    });
+
+    const activeEdgesA = (capturedReactFlowProps?.edges ?? []) as Edge[];
+    const outgoingEdge = activeEdgesA.find(
+      (e: Edge) => e.source === "file:src/a.ts",
+    );
+    const dimmedEdge = activeEdgesA.find(
+      (e: Edge) => e.source === "file:src/c.ts",
+    );
+
+    expect(outgoingEdge).toBeDefined();
+    expect(outgoingEdge?.animated).toBe(true);
+    expect(outgoingEdge?.style?.stroke).toBe("#38bdf8");
+    expect(outgoingEdge?.style?.strokeWidth).toBe(3);
+    expect(outgoingEdge?.style?.opacity).toBe(1);
+    expect(outgoingEdge?.style?.filter).toContain("drop-shadow");
+    const outgoingMarker = outgoingEdge?.markerEnd as
+      { color?: string } | undefined;
+    expect(outgoingMarker?.color).toBe("#38bdf8");
+    expect(outgoingMarker?.color).not.toContain("var(");
+
+    expect(dimmedEdge).toBeDefined();
+    expect(dimmedEdge?.animated).toBe(false);
+    expect(dimmedEdge?.style?.stroke).toBe("#1e293b");
+    expect(dimmedEdge?.style?.opacity).toBe(0.2);
+    const dimmedMarker = dimmedEdge?.markerEnd as
+      { color?: string } | undefined;
+    expect(dimmedMarker?.color).toBe("#334155");
+
+    // 3. Select node B: edge A->B becomes active incoming
+    act(() => {
+      useGraphStore.getState().selectNode("file:src/b.ts");
+    });
+
+    const activeEdgesB = (capturedReactFlowProps?.edges ?? []) as Edge[];
+    const incomingEdge = activeEdgesB.find(
+      (e: Edge) => e.target === "file:src/b.ts",
+    );
+    expect(incomingEdge).toBeDefined();
+    expect(incomingEdge?.animated).toBe(true);
+    expect(incomingEdge?.style?.stroke).toBe("#a78bfa");
+    expect(incomingEdge?.style?.strokeWidth).toBe(2.5);
+    expect(incomingEdge?.style?.opacity).toBe(1);
+    const incomingMarker = incomingEdge?.markerEnd as
+      { color?: string } | undefined;
+    expect(incomingMarker?.color).toBe("#a78bfa");
+    expect(incomingMarker?.color).not.toContain("var(");
   });
 });

@@ -5,8 +5,8 @@ import type {
   CodebaseReactFlowEdge,
 } from "../adapters/react-flow-adapter";
 
-export const DEFAULT_NODE_WIDTH = 220 as const;
-export const DEFAULT_NODE_HEIGHT = 72 as const;
+export const DEFAULT_NODE_WIDTH = 240 as const;
+export const DEFAULT_NODE_HEIGHT = 80 as const;
 export const DEFAULT_NODE_SEPARATION = 60 as const;
 export const DEFAULT_RANK_SEPARATION = 80 as const;
 
