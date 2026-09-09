@@ -20,6 +20,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 7 | Architectural filtering and layer inspection | Slice 3 | done |
 | 8 | Semantic AI query and path tracing | Slice 4 | done |
 | 9 | Client cache and ingestion streaming | Slice 5 | done |
+| 10 | AI service stabilization and fallback notices | Slice 6 | in-progress |
 
 ## Foundations
 
@@ -141,6 +142,21 @@ spec [0009](../specs/0009-client-cache-and-ingestion-streaming/index.md) · code
 - [x] Verify it: `/check verify client cache and ingestion streaming`
 - [x] Test it: `/test client cache and ingestion streaming`
 
+## Slice 6: AI service stabilization and fallback notices
+
+### 10. AI service stabilization and fallback notices · in-progress
+Harden Demo and BYOK AI modes against rate limits, missing keys, and provider outages, replacing raw error dumps with actionable fallback notices.
+**Done when:** users receive helpful fallback notices with one click recovery options when queries fail, raw provider error dumps are sanitized, and Demo mode operates reliably across offline states.
+spec [0010](../specs/0010-ai-service-stabilization-and-fallback-notices/index.md) · code in `src/`
+- [x] Design it (spec): `/architect AI service stabilization and fallback notices`
+- [ ] Build it: `/develop AI service stabilization and fallback notices`
+  - [ ] Isomorphic error classification & typed SSE schemas: pure classification function and safe domain codes (AC-1, AC-4)
+  - [ ] Client stream hook & fallback notice card: arg caching, stream error handling, and accessible UI card (AC-1, AC-2)
+  - [ ] Actionable recovery controls: countdown timer, auto retry toggle, and modal triggers (AC-2, AC-3)
+  - [ ] Credential redaction & offline demo execution: regex token scrubbing and zero network browser runtime (AC-4, AC-5)
+- [ ] Verify it: `/check verify AI service stabilization and fallback notices`
+- [ ] Test it: `/test AI service stabilization and fallback notices`
+
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
 - User accounts and authentication: sign in, personal repository dashboard, and cloud sync · needs a decision
@@ -150,6 +166,7 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - Keyboard shortcut navigation: quick slash key for canvas filter search and escape to reset filters · from spec 0007
 - Vector embeddings: semantic code snippet search and embedding index for large repositories · from spec 0008
 - Web Worker local parsing: client side AST extraction on user uploaded local zip files · from spec 0009
+- Upstream telemetry and analytics: telemetry logging for categorized AI provider errors · from spec 0010
 
 ## Legend
 
