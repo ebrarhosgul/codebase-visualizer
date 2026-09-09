@@ -11,11 +11,11 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 | # | Feature | Phase | Status |
 |---|---------|-------|--------|
-| 1 | Stack & architecture | Foundation | in-progress |
-| 2 | Coding standards & tooling | Foundation | in-progress |
+| 1 | Stack & architecture | Foundation | done |
+| 2 | Coding standards & tooling | Foundation | done |
 | 3 | Graph and repository data model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | done |
-| 5 | Walking skeleton loop | Slice 1 | in-progress |
+| 5 | Walking skeleton loop | Slice 1 | done |
 | 6 | Bidirectional graph and code deep linking | Slice 2 | done |
 | 7 | Architectural filtering and layer inspection | Slice 3 | done |
 | 8 | Semantic AI query and path tracing | Slice 4 | done |
@@ -23,20 +23,20 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## Foundations
 
-### 1. Stack & architecture · in-progress
+### 1. Stack & architecture · done
 Decide the framework, core graph engine, and parser runtime, then scaffold a runnable project so every later slice builds on real structure.
 **Done when:** the stack is recorded in a spec and the scaffold boots locally and passes build.
 spec [0001](../specs/0001-stack-and-architecture/index.md) · code in `src/`
 - [x] Decide the stack (spec): `/architect stack & architecture`
 - [x] Scaffold from the decision: `/develop stack & architecture`
-- [ ] Smoke check it runs: `/test`
+- [x] Smoke check it runs: `/test`
 
-### 2. Coding standards & tooling · in-progress
+### 2. Coding standards & tooling · done
 Capture conventions, then install linting, formatting, and pre commit quality checks from the real scaffolded project.
 **Done when:** root `AGENTS.md` reflects the real stack, and lint and format checks run clean.
 - [x] Capture conventions + tooling choices: `/audit`
 - [x] Install the tooling: `/develop tooling`
-- [ ] Check it runs clean: `/test`
+- [x] Check it runs clean: `/test`
 
 ### 3. Graph and repository data model · done
 Define core domain entities for repositories, files, abstract syntax tree nodes, import relationships, function calls, and query path responses.
@@ -66,7 +66,7 @@ spec [0004](../specs/0004-design-system-and-ui-foundation/index.md) · code in `
 
 ## Slice 1: Walking skeleton loop
 
-### 5. Walking skeleton loop · in-progress
+### 5. Walking skeleton loop · done
 The thinnest end to end slice: accept a public GitHub URL, parse TypeScript and JavaScript files into basic nodes and dependency edges, render an interactive canvas, and display source code side by side when selecting a node.
 **Done when:** a user can submit a public GitHub repository, watch the graph render, click a file node, and view the raw code in a side panel.
 spec [0005](../specs/0005-walking-skeleton-loop/index.md) · code in `src/`
@@ -76,8 +76,8 @@ spec [0005](../specs/0005-walking-skeleton-loop/index.md) · code in `src/`
   - [x] In memory AST parsing: ts-morph virtual file system extracting canonical files, directories, external stubs, and import edges (AC-3, AC-4)
   - [x] Graph state & layout calculation: Zustand useGraphStore and client Dagre hierarchical layout utility (AC-5, AC-8)
   - [x] Canvas rendering & Monaco code inspection: React Flow interactive canvas with custom node cards and dynamically mounted Monaco Editor in split view (AC-6, AC-7, AC-8)
-- [ ] Verify it: `/check verify walking skeleton loop`
-- [ ] Test it: `/test walking skeleton loop`
+- [x] Verify it: `/check verify walking skeleton loop`
+- [x] Test it: `/test walking skeleton loop`
 
 ## Slice 2: Bidirectional graph and code deep linking
 

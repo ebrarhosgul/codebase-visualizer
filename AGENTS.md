@@ -26,6 +26,9 @@ npm run build
 # Lint
 npm run lint
 
+# Typecheck
+npm run typecheck
+
 # Test
 npm test
 ```
@@ -70,6 +73,7 @@ MCP servers: none connected
 
 ## Context files
 
-<!-- Nested AGENTS.md files are listed here as they are created -->
+- [src/graph/AGENTS.md](src/graph/AGENTS.md): Graph traversal, layer taxonomy, filtering, and visual layout adapters
+- [src/lib/parser/AGENTS.md](src/lib/parser/AGENTS.md): In memory repository extraction and abstract syntax tree parsing
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
