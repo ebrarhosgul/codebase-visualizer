@@ -41,7 +41,7 @@ function getSymbolIcon(kind: SymbolKind) {
 /**
  * Custom React Flow card node representing symbol declarations.
  */
-export function SymbolNodeCard({
+export const SymbolNodeCard = React.memo(function SymbolNodeCard({
   data,
   selected,
 }: NodeProps<CodebaseReactFlowNode>): React.JSX.Element {
@@ -110,4 +110,4 @@ export function SymbolNodeCard({
       />
     </div>
   );
-}
+});

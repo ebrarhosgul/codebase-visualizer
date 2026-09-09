@@ -21,7 +21,9 @@ export interface FolderGroupNodeData {
  * Highlights when an enclosed file is selected, hovered, or active in editor.
  * Offers interactive collapse button and double-click trigger to collapse folder.
  */
-export function FolderGroupNode({ data }: NodeProps): React.JSX.Element {
+export const FolderGroupNode = React.memo(function FolderGroupNode({
+  data,
+}: NodeProps): React.JSX.Element {
   const folderData = data as unknown as FolderGroupNodeData;
   const label = folderData.label || "folder";
   const fileCount = folderData.fileCount ?? 0;
@@ -101,4 +103,4 @@ export function FolderGroupNode({ data }: NodeProps): React.JSX.Element {
       </div>
     </div>
   );
-}
+});

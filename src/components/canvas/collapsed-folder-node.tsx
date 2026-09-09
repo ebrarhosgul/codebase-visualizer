@@ -30,7 +30,7 @@ export interface CollapsedFolderNodeData {
  * Shows dominant layer badge, file count, external incoming/outgoing counters,
  * and allows expanding back to individual files via chevron button or double-click.
  */
-export function CollapsedFolderNode({
+export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
   id,
   data,
   selected,
@@ -158,4 +158,4 @@ export function CollapsedFolderNode({
       />
     </div>
   );
-}
+});
