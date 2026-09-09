@@ -222,4 +222,94 @@ describe("TracePanel", () => {
     expect(useGraphStore.getState().activeStepIndex).toBe(1);
     expect(useGraphStore.getState().selectedNodeId).toBe("file:src/api.ts");
   });
+
+  it("renders FallbackNoticeCard and preserves partial streamed text on error", () => {
+    const existingThread = [
+      {
+        id: "msg:user_1",
+        threadId: "test/app",
+        role: "user",
+        content: "Explain auth flow",
+        status: "complete",
+        citations: [],
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "msg:assistant_1",
+        threadId: "test/app",
+        role: "assistant",
+        content:
+          "Here is the partial architecture explanation before failure...",
+        status: "error",
+        errorMessage: "The upstream provider is unavailable.",
+        fallbackNotice: {
+          code: "provider_outage",
+          title: "Provider Service Outage",
+          message: "The upstream provider is unavailable.",
+          suggestedAction: "switch_demo",
+        },
+        citations: [],
+        isPathVerified: false,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    // Check that partial text remains visible
+    expect(
+      screen.getByText(
+        "Here is the partial architecture explanation before failure...",
+      ),
+    ).toBeInTheDocument();
+
+    // Check that FallbackNoticeCard mounts
+    expect(screen.getByTestId("fallback-notice-card")).toBeInTheDocument();
+    expect(screen.getByText("Provider Service Outage")).toBeInTheDocument();
+    expect(
+      screen.getByText("The upstream provider is unavailable."),
+    ).toBeInTheDocument();
+  });
+
+  it("opens key settings dialog when clicking Open Key Settings on auth error notice", () => {
+    const existingThread = [
+      {
+        id: "msg:assistant_auth",
+        threadId: "test/app",
+        role: "assistant",
+        content: "",
+        status: "error",
+        errorMessage: "API key is required.",
+        fallbackNotice: {
+          code: "auth_error",
+          title: "API Key Required",
+          message: "Please configure your API key.",
+          suggestedAction: "open_keys",
+        },
+        citations: [],
+        isPathVerified: false,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    const openKeysBtn = screen.getByRole("button", {
+      name: /open key settings/i,
+    });
+    fireEvent.click(openKeysBtn);
+
+    expect(screen.getByText("Bring Your Own Key (BYOK)")).toBeInTheDocument();
+  });
 });

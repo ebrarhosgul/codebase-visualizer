@@ -20,8 +20,14 @@ import {
   AlertTriangle,
   ArrowRight,
 } from "lucide-react";
-import type { AiProviderId, AiQueryMessage, CitationRef } from "@/lib/ai/types";
+import type {
+  AiFallbackNotice,
+  AiProviderId,
+  AiQueryMessage,
+  CitationRef,
+} from "@/lib/ai/types";
 import type { PathTrace } from "@/entities";
+import { FallbackNoticeCard } from "./fallback-notice-card";
 
 const SUGGESTED_PROMPTS = [
   "How do stores connect to canvas?",
@@ -104,58 +110,87 @@ export function TracePanel(): React.JSX.Element {
     setActiveRightTab("code");
   };
 
-  const handleSend = async (queryText?: string) => {
-    const textToSend = (queryText || prompt).trim();
-    if (!textToSend || isStreaming || !graph || !repository) {
+  const executeAssistantQuery = async (
+    textToSend: string,
+    targetAssistantMsgId?: string,
+    demoOverride?: boolean,
+  ) => {
+    if (!textToSend || !graph || !repository) {
       return;
     }
 
+    abortQuery();
     setWarningMessage(null);
-    const userMsg: AiQueryMessage = {
-      id: `msg:${Date.now()}_user`,
-      threadId: repoKey,
-      role: "user",
-      content: textToSend,
-      status: "complete",
-      citations: Object.freeze([]),
-      isPathVerified: true,
-      createdAt: new Date().toISOString(),
-    };
 
-    const assistantMsgId = `msg:${Date.now()}_assistant`;
-    const assistantMsg: AiQueryMessage = {
-      id: assistantMsgId,
-      threadId: repoKey,
-      role: "assistant",
-      content: "",
-      status: "streaming",
-      citations: Object.freeze([]),
-      isPathVerified: true,
-      createdAt: new Date().toISOString(),
-    };
+    const activeDemo = demoOverride ?? isDemoMode;
+    const assistantMsgId =
+      targetAssistantMsgId ?? `msg:${Date.now()}_assistant`;
 
-    const nextMessages = [...messages, userMsg, assistantMsg];
-    saveMessages(nextMessages);
-    setPrompt("");
+    let activeMessages: AiQueryMessage[];
+
+    if (!targetAssistantMsgId) {
+      const userMsg: AiQueryMessage = {
+        id: `msg:${Date.now()}_user`,
+        threadId: repoKey,
+        role: "user",
+        content: textToSend,
+        status: "complete",
+        citations: Object.freeze([]),
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      const assistantMsg: AiQueryMessage = {
+        id: assistantMsgId,
+        threadId: repoKey,
+        role: "assistant",
+        content: "",
+        status: "streaming",
+        citations: Object.freeze([]),
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      activeMessages = [...messages, userMsg, assistantMsg];
+      saveMessages(activeMessages);
+      setPrompt("");
+    } else {
+      activeMessages = messages.map((m) =>
+        m.id === assistantMsgId
+          ? {
+              ...m,
+              content: "",
+              status: "streaming",
+              errorMessage: null,
+              fallbackNotice: null,
+              pathTrace: null,
+              citations: Object.freeze([]),
+            }
+          : m,
+      );
+      saveMessages(activeMessages);
+    }
 
     const contextSummary = buildTopologyContextSummary(graph, textToSend, {
-      tokenBudget: isDemoMode ? 10000 : 20000,
+      tokenBudget: activeDemo ? 10000 : 20000,
     });
 
     let currentText = "";
     let receivedTrace: PathTrace | null = null;
     let receivedCitations: readonly CitationRef[] = [];
     let receivedWarning: string | null = null;
+    let receivedNotice: AiFallbackNotice | null = null;
+    let receivedError: string | null = null;
 
     await streamQuery({
       repository,
       graph,
       contextSummary,
-      messages: nextMessages.map((m) => ({
+      messages: activeMessages.map((m) => ({
         role: m.role,
         content: m.content,
       })),
-      isDemo: isDemoMode,
+      isDemo: activeDemo,
       provider: selectedProvider,
       onTextChunk: (chunk) => {
         currentText += chunk;
@@ -196,10 +231,27 @@ export function TracePanel(): React.JSX.Element {
         );
       },
       onError: (error) => {
+        receivedError = error;
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMsgId
               ? { ...m, status: "error", errorMessage: error }
+              : m,
+          ),
+        );
+      },
+      onErrorNotice: (notice) => {
+        receivedNotice = notice;
+        receivedError = notice.message;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMsgId
+              ? {
+                  ...m,
+                  status: "error",
+                  errorMessage: notice.message,
+                  fallbackNotice: notice,
+                }
               : m,
           ),
         );
@@ -210,9 +262,12 @@ export function TracePanel(): React.JSX.Element {
             m.id === assistantMsgId
               ? {
                   ...m,
-                  status: (m.status === "error" ? "error" : "complete") as
-                    "error" | "complete",
+                  status: (receivedError || m.status === "error"
+                    ? "error"
+                    : "complete") as "error" | "complete",
                   content: currentText,
+                  errorMessage: receivedError ?? m.errorMessage,
+                  fallbackNotice: receivedNotice ?? m.fallbackNotice,
                   pathTrace: receivedTrace,
                   citations: receivedCitations,
                   isPathVerified: !receivedWarning,
@@ -223,13 +278,40 @@ export function TracePanel(): React.JSX.Element {
             try {
               sessionStorage.setItem(storageKey, JSON.stringify(finalMessages));
             } catch {
-              // Ignore sessionStorage errors
+              // Ignore sessionStorage quota errors
             }
           }
           return finalMessages;
         });
       },
     });
+  };
+
+  const handleSend = async (queryText?: string) => {
+    const textToSend = (queryText || prompt).trim();
+    if (!textToSend || isStreaming || !graph || !repository) {
+      return;
+    }
+    await executeAssistantQuery(textToSend);
+  };
+
+  const handleSwitchToDemoAndRetry = (assistantMsgId: string) => {
+    setIsDemoMode(true);
+    const msgIndex = messages.findIndex((m) => m.id === assistantMsgId);
+    const prevUserMsg = [...messages.slice(0, msgIndex)]
+      .reverse()
+      .find((m) => m.role === "user");
+    const userText = prevUserMsg?.content || "Explain repository architecture";
+    void executeAssistantQuery(userText, assistantMsgId, true);
+  };
+
+  const handleRetryMessage = (assistantMsgId: string) => {
+    const msgIndex = messages.findIndex((m) => m.id === assistantMsgId);
+    const prevUserMsg = [...messages.slice(0, msgIndex)]
+      .reverse()
+      .find((m) => m.role === "user");
+    const userText = prevUserMsg?.content || "Explain repository architecture";
+    void executeAssistantQuery(userText, assistantMsgId);
   };
 
   const handleClearChat = () => {
@@ -375,11 +457,24 @@ export function TracePanel(): React.JSX.Element {
                   )}
                 </div>
 
-                {/* Error notice */}
-                {msg.status === "error" && msg.errorMessage && (
-                  <div className="mt-2 p-2 rounded bg-red-500/10 border border-red-500/30 text-red-300 text-[11px]">
-                    {msg.errorMessage}
-                  </div>
+                {/* Fallback Notice Card (AC-2, AC-3) */}
+                {msg.status === "error" && (
+                  <FallbackNoticeCard
+                    notice={
+                      msg.fallbackNotice ?? {
+                        code: "unknown",
+                        title: "AI Service Notice",
+                        message:
+                          msg.errorMessage ||
+                          "An unexpected error occurred while processing the AI query.",
+                        suggestedAction: "retry",
+                      }
+                    }
+                    onSwitchToDemo={() => handleSwitchToDemoAndRetry(msg.id)}
+                    onOpenKeySettings={() => setIsKeyDialogOpen(true)}
+                    onRetry={() => handleRetryMessage(msg.id)}
+                    isRetrying={isStreaming}
+                  />
                 )}
 
                 {/* Path Trace summary card (AC-5) */}

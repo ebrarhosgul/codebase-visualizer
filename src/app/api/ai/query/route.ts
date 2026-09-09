@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { decryptApiKey, AI_KEY_COOKIE_NAME } from "@/lib/ai/crypto";
 import { getAIProvider } from "@/lib/ai/provider-registry";
 import { checkRateLimit } from "@/lib/ai/rate-limiter";
+import { classifyError, sanitizeErrorMessage } from "@/lib/ai/error-classifier";
 import type {
   AIRequestContext,
   AIStreamEvent,
@@ -71,15 +72,25 @@ export async function POST(req: NextRequest): Promise<Response> {
   const rateLimitResult = checkRateLimit(clientIp, isDemo);
 
   if (!rateLimitResult.isAllowed) {
+    const retrySeconds = rateLimitResult.retryAfterSeconds ?? 30;
+    const notice = classifyError({
+      status: 429,
+      retryAfterSeconds: retrySeconds,
+      provider,
+    });
     return new Response(
       JSON.stringify({
-        error: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfterSeconds} seconds before sending another query.`,
+        error: `Rate limit exceeded. Please wait ${retrySeconds} seconds before sending another query.`,
+        code: notice.code,
+        suggestedAction: notice.suggestedAction,
+        retryAfterSeconds: notice.retryAfterSeconds,
+        fallbackNotice: notice,
       }),
       {
         status: 429,
         headers: {
           "Content-Type": "application/json",
-          "Retry-After": String(rateLimitResult.retryAfterSeconds ?? 30),
+          "Retry-After": String(retrySeconds),
         },
       },
     );
@@ -106,10 +117,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
 
     if (!apiKey) {
+      const notice = classifyError({
+        status: 401,
+        message:
+          "No API key provided for selected provider. Please enter your API key in Key Settings or switch to Demo Mode.",
+        provider,
+      });
       return new Response(
         JSON.stringify({
-          error:
-            "No API key provided for selected provider. Please enter your API key in Key Settings or switch to Demo Mode.",
+          error: notice.message,
+          code: notice.code,
+          suggestedAction: notice.suggestedAction,
+          fallbackNotice: notice,
         }),
         { status: 401, headers: { "Content-Type": "application/json" } },
       );
@@ -173,16 +192,43 @@ export async function POST(req: NextRequest): Promise<Response> {
 
         for await (const event of eventGenerator) {
           if (req.signal.aborted || isClosed) break;
-          safeEnqueue(event);
+          if (event.type === "error") {
+            const sanitized = sanitizeErrorMessage(event.error);
+            const notice = classifyError({
+              message: sanitized,
+              provider,
+            });
+            safeEnqueue({
+              type: "error",
+              error: notice.message,
+              code: notice.code,
+              suggestedAction: notice.suggestedAction,
+              retryAfterSeconds: notice.retryAfterSeconds,
+              fallbackNotice: notice,
+            });
+          } else {
+            safeEnqueue(event);
+          }
         }
       } catch (err: unknown) {
         if (!req.signal.aborted && !isClosed) {
+          const rawMessage =
+            err instanceof Error
+              ? err.message
+              : "Internal error processing AI query.";
+          const sanitized = sanitizeErrorMessage(rawMessage);
+          const notice = classifyError({
+            error: err,
+            message: sanitized,
+            provider,
+          });
           safeEnqueue({
             type: "error",
-            error:
-              err instanceof Error
-                ? err.message
-                : "Internal error processing AI query.",
+            error: notice.message,
+            code: notice.code,
+            suggestedAction: notice.suggestedAction,
+            retryAfterSeconds: notice.retryAfterSeconds,
+            fallbackNotice: notice,
           });
         }
       } finally {

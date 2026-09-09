@@ -141,6 +141,16 @@ describe("AI API Routes", () => {
 
         const res = await queryPost(req);
         expect(res.status).toBe(401);
+        const json = (await res.json()) as {
+          error: string;
+          code: string;
+          suggestedAction: string;
+          fallbackNotice: { code: string; suggestedAction: string };
+        };
+        expect(json.code).toBe("auth_error");
+        expect(json.suggestedAction).toBe("open_keys");
+        expect(json.fallbackNotice).toBeDefined();
+        expect(json.fallbackNotice.code).toBe("auth_error");
       } finally {
         if (originalKey) {
           process.env.GEMINI_API_KEY = originalKey;
@@ -213,6 +223,22 @@ describe("AI API Routes", () => {
       const blockedRes = await queryPost(blockedReq);
       expect(blockedRes.status).toBe(429);
       expect(blockedRes.headers.get("Retry-After")).toBeDefined();
+
+      const json = (await blockedRes.json()) as {
+        error: string;
+        code: string;
+        suggestedAction: string;
+        fallbackNotice: {
+          code: string;
+          suggestedAction: string;
+          retryAfterSeconds: number;
+        };
+      };
+      expect(json.code).toBe("rate_limit");
+      expect(json.suggestedAction).toBe("switch_demo");
+      expect(json.fallbackNotice).toBeDefined();
+      expect(json.fallbackNotice.code).toBe("rate_limit");
+      expect(json.fallbackNotice.retryAfterSeconds).toBeDefined();
     });
   });
 });

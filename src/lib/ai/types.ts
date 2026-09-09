@@ -21,6 +21,24 @@ export interface CitationRef {
 
 export type MessageStatus = "idle" | "streaming" | "complete" | "error";
 
+export type AiFallbackCode =
+  | "rate_limit"
+  | "auth_error"
+  | "provider_outage"
+  | "network_timeout"
+  | "unknown";
+
+export type AiFallbackAction = "switch_demo" | "open_keys" | "retry" | "none";
+
+export interface AiFallbackNotice {
+  readonly code: AiFallbackCode;
+  readonly title: string;
+  readonly message: string;
+  readonly suggestedAction: AiFallbackAction;
+  readonly retryAfterSeconds?: number;
+  readonly provider?: AiProviderId | "demo";
+}
+
 export interface AiQueryMessage {
   readonly id: string;
   readonly threadId: string;
@@ -28,6 +46,7 @@ export interface AiQueryMessage {
   readonly content: string;
   readonly status: MessageStatus;
   readonly errorMessage?: string | null;
+  readonly fallbackNotice?: AiFallbackNotice | null;
   readonly pathTrace?: PathTrace | null;
   readonly citations: readonly CitationRef[];
   readonly isPathVerified: boolean;
@@ -48,7 +67,14 @@ export type AIStreamEvent =
   | { readonly type: "trace"; readonly trace: PathTrace }
   | { readonly type: "citations"; readonly citations: readonly CitationRef[] }
   | { readonly type: "warning"; readonly message: string }
-  | { readonly type: "error"; readonly error: string }
+  | {
+      readonly type: "error";
+      readonly error: string;
+      readonly code?: AiFallbackCode;
+      readonly suggestedAction?: AiFallbackAction;
+      readonly retryAfterSeconds?: number;
+      readonly fallbackNotice?: AiFallbackNotice;
+    }
   | { readonly type: "done" };
 
 export interface AIRequestContext {
