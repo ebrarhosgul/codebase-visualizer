@@ -1,7 +1,7 @@
 # 0010. AI Service Stabilization and Fallback Notices
 
 **Date**: 2026-09-09
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -93,30 +93,30 @@ We introduce an isomorphic pure function module (`src/lib/ai/error-classifier.ts
 
 Ordered per Tracer Bullet approach (thin end to end thread through every layer first, then thickened with recovery controls, sanitization, and offline guards):
 
-1. **Isomorphic error classification & typed SSE schemas** (`src/lib/ai/types.ts`, `src/lib/ai/error-classifier.ts`):
+1. [x] **Isomorphic error classification & typed SSE schemas** (`src/lib/ai/types.ts`, `src/lib/ai/error-classifier.ts`):
    - Define `AiFallbackNotice`, `AiFallbackCode`, and `AiFallbackAction` types.
    - Implement `classifyError` pure function to map status codes, error strings, and client fetch `TypeError`s to safe domain codes.
    - Extend `AIStreamEvent` error payload and update `/api/ai/query` route to emit structured JSON and SSE error chunks.
    - Satisfies: **AC-1**, **AC-4**.
 
-2. **Client stream hook and fallback card primitive** (`src/hooks/use-ai-query-stream.ts`, `src/components/trace/fallback-notice-card.tsx`):
+2. [x] **Client stream hook and fallback card primitive** (`src/hooks/use-ai-query-stream.ts`, `src/components/trace/fallback-notice-card.tsx`):
    - Update `useAiQueryStream` to cache arguments in `lastQueryOptionsRef` and parse structured errors, dispatching `onErrorNotice` callback.
    - Build `FallbackNoticeCard` component with accessible alert roles, status badge, sanitized description, and recovery button slots.
    - Mount `FallbackNoticeCard` in `TracePanel` beneath message content, preserving partial text.
    - Satisfies: **AC-1**, **AC-2**.
 
-3. **Interactive recovery triggers & countdown mechanic** (`src/components/trace/fallback-notice-card.tsx`, `src/components/trace/trace-panel.tsx`):
+3. [x] **Interactive recovery triggers & countdown mechanic** (`src/components/trace/fallback-notice-card.tsx`, `src/components/trace/trace-panel.tsx`):
    - Implement countdown timer with auto retry checkbox for rate limit notices.
    - Add one click action handlers: switch to demo mode with auto re submission, open `KeySettingsDialog`, and manual retry.
    - Guard against concurrent clicks by aborting previous stream controllers before initiating new queries.
    - Satisfies: **AC-2**, **AC-3**.
 
-4. **Credential redaction & client offline demo execution** (`src/lib/ai/error-classifier.ts`, `src/hooks/use-ai-query-stream.ts`, `src/components/trace/trace-panel.tsx`):
+4. [x] **Credential redaction & client offline demo execution** (`src/lib/ai/error-classifier.ts`, `src/hooks/use-ai-query-stream.ts`, `src/components/trace/trace-panel.tsx`):
    - Add regex scrubbing for API keys, bearer tokens, and internal stack frames.
    - Route offline demo queries directly to `DemoAIProvider` in client memory when `navigator.onLine === false` or when falling back from a network error.
    - Satisfies: **AC-4**, **AC-5**.
 
-5. **Automated test suite & verification** (`src/lib/ai/__tests__/error-classifier.test.ts`, `src/app/api/ai/__tests__/routes.test.ts`, `src/hooks/__tests__/use-ai-query-stream.test.ts`, `src/components/trace/__tests__/trace-panel.test.tsx`):
+5. [x] **Automated test suite & verification** (`src/lib/ai/__tests__/error-classifier.test.ts`, `src/app/api/ai/__tests__/routes.test.ts`, `src/hooks/__tests__/use-ai-query-stream.test.ts`, `src/components/trace/__tests__/trace-panel.test.tsx`):
    - Unit test isomorphic error classification and credential scrubbing.
    - Integration test route handler rate limit and error responses.
    - Component test `FallbackNoticeCard` rendering, countdown timer, and recovery action dispatchers.

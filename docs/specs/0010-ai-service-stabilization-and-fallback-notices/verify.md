@@ -16,17 +16,17 @@ _Steps derived from spec 0010 acceptance criteria and value sourcing guarantees.
 
 ## Value sourcing checks
 
-- [ ] Inspect `/api/ai/query` response on rate limit → response body is structured JSON with `code: "rate_limit"`, `suggestedAction: "switch_demo"`, and numeric `retryAfterSeconds`
-- [ ] Inspect SSE stream error chunk on mid stream failure → payload is typed JSON containing `type: "error"`, sanitized `error` message, and `fallbackNotice` metadata
+- [x] Inspect `/api/ai/query` response on rate limit → response body is structured JSON with `code: "rate_limit"`, `suggestedAction: "switch_demo"`, and numeric `retryAfterSeconds`
+- [x] Inspect SSE stream error chunk on mid stream failure → payload is typed JSON containing `type: "error"`, sanitized `error` message, and `fallbackNotice` metadata
 - [ ] Inspect browser sessionStorage under `cv:thread:{repoFullName}` → verifies `fallbackNotice` entity is persisted inside message object and rehydrates after page refresh
-- [ ] Inspect upstream provider error logs → confirms regex filter in `sanitizeErrorMessage` removes strings matching API key and Bearer token formats before client delivery
+- [x] Inspect upstream provider error logs → confirms regex filter in `sanitizeErrorMessage` removes strings matching API key and Bearer token formats before client delivery
 
 ## Commands
 
-- [ ] `npm run typecheck` → strict TypeScript checks pass across extended AI types, error classifier module, stream hook, and fallback components → AC-1, AC-4
-- [ ] `npm run lint` → passes with zero lint warnings across all new components, routes, and utilities → AC-1, AC-2
-- [ ] `npm test` → Vitest suite passes all unit and integration tests for error classification, credential redaction, stream error parsing, and fallback notice UI → AC-1, AC-2, AC-3, AC-4, AC-5
-- [ ] `npm run build` → Next.js production build succeeds with clean server routes and client bundles → AC-1, AC-5
+- [x] `npm run typecheck` → strict TypeScript checks pass across extended AI types, error classifier module, stream hook, and fallback components → AC-1, AC-4
+- [x] `npm run lint` → passes with zero lint warnings across all new components, routes, and utilities → AC-1, AC-2
+- [x] `npm test` → Vitest suite passes all unit and integration tests for error classification, credential redaction, stream error parsing, and fallback notice UI → AC-1, AC-2, AC-3, AC-4, AC-5
+- [x] `npm run build` → Next.js production build succeeds with clean server routes and client bundles → AC-1, AC-5
 
 ## Acceptance criteria coverage
 

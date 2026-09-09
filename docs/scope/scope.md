@@ -147,13 +147,13 @@ spec [0009](../specs/0009-client-cache-and-ingestion-streaming/index.md) · code
 ### 10. AI service stabilization and fallback notices · in-progress
 Harden Demo and BYOK AI modes against rate limits, missing keys, and provider outages, replacing raw error dumps with actionable fallback notices.
 **Done when:** users receive helpful fallback notices with one click recovery options when queries fail, raw provider error dumps are sanitized, and Demo mode operates reliably across offline states.
-spec [0010](../specs/0010-ai-service-stabilization-and-fallback-notices/index.md) · code in `src/`
+spec [0010](../specs/0010-ai-service-stabilization-and-fallback-notices/index.md) · code in `src/lib/ai/`, `src/hooks/`, `src/components/trace/`
 - [x] Design it (spec): `/architect AI service stabilization and fallback notices`
-- [ ] Build it: `/develop AI service stabilization and fallback notices`
-  - [ ] Isomorphic error classification & typed SSE schemas: pure classification function and safe domain codes (AC-1, AC-4)
-  - [ ] Client stream hook & fallback notice card: arg caching, stream error handling, and accessible UI card (AC-1, AC-2)
-  - [ ] Actionable recovery controls: countdown timer, auto retry toggle, and modal triggers (AC-2, AC-3)
-  - [ ] Credential redaction & offline demo execution: regex token scrubbing and zero network browser runtime (AC-4, AC-5)
+- [x] Build it: `/develop AI service stabilization and fallback notices`
+  - [x] Isomorphic error classification & typed SSE schemas: pure classification function and safe domain codes (AC-1, AC-4)
+  - [x] Client stream hook & fallback notice card: arg caching, stream error handling, and accessible UI card (AC-1, AC-2)
+  - [x] Actionable recovery controls: countdown timer, auto retry toggle, and modal triggers (AC-2, AC-3)
+  - [x] Credential redaction & offline demo execution: regex token scrubbing and zero network browser runtime (AC-4, AC-5)
 - [ ] Verify it: `/check verify AI service stabilization and fallback notices`
 - [ ] Test it: `/test AI service stabilization and fallback notices`
 
