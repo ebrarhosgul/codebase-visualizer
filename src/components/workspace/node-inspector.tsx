@@ -48,35 +48,37 @@ export function NodeInspector({
     (state) => state.setActiveRightTab,
   );
 
-  // Determine if active selection is currently visible on the filtered canvas
-  const isVisibleOnCanvas = useMemo(() => {
-    if (!graph || !selectedNodeId) return false;
+  // Memoize filtered graph independently from selectedNodeId to avoid re-filtering on click
+  const filteredGraph = useMemo(() => {
+    if (!graph) return null;
 
-    const filtered = filterAndAggregateGraph(graph, {
+    return filterAndAggregateGraph(graph, {
       selectedLayers,
       collapsedFolderIds,
       searchQuery,
       hideExternal,
     });
+  }, [graph, selectedLayers, collapsedFolderIds, searchQuery, hideExternal]);
+
+  // Determine if active selection is currently visible on the filtered canvas
+  const isVisibleOnCanvas = useMemo(() => {
+    if (!graph || !selectedNodeId || !filteredGraph) return false;
 
     return (
-      filtered.visibleFiles.some((f) => f.id === selectedNodeId) ||
-      filtered.collapsedFolders.some((f) => f.directoryId === selectedNodeId) ||
-      filtered.visibleExternalModules.some((e) => e.id === selectedNodeId) ||
-      filtered.visibleDirectories.some((d) => d.id === selectedNodeId) ||
+      filteredGraph.visibleFiles.some((f) => f.id === selectedNodeId) ||
+      filteredGraph.collapsedFolders.some(
+        (f) => f.directoryId === selectedNodeId,
+      ) ||
+      filteredGraph.visibleExternalModules.some(
+        (e) => e.id === selectedNodeId,
+      ) ||
+      filteredGraph.visibleDirectories.some((d) => d.id === selectedNodeId) ||
       (selectedNodeId.startsWith("symbol:") &&
-        filtered.visibleFiles.some(
+        filteredGraph.visibleFiles.some(
           (f) => f.id === graph.symbols[selectedNodeId]?.fileId,
         ))
     );
-  }, [
-    graph,
-    selectedNodeId,
-    selectedLayers,
-    collapsedFolderIds,
-    searchQuery,
-    hideExternal,
-  ]);
+  }, [graph, selectedNodeId, filteredGraph]);
 
   const detail = useMemo(() => {
     return getNodeInspectionDetail(graph, selectedNodeId, isVisibleOnCanvas);

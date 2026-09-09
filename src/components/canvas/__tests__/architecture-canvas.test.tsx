@@ -574,4 +574,82 @@ describe("ArchitectureCanvas", () => {
 
     expect(screen.getByTestId("layer-filter-bar")).toBeInTheDocument();
   });
+
+  it("preserves graph responsiveness and updates selection without unmounting canvas elements", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 2,
+        totalSymbols: 0,
+        languages: { typescript: 2 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/a.ts": {
+          id: "file:src/a.ts",
+          path: "src/a.ts",
+          name: "a.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+        "file:src/b.ts": {
+          id: "file:src/b.ts",
+          path: "src/b.ts",
+          name: "b.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {
+        "edge:a-b": {
+          id: "edge:a-b",
+          sourceId: "file:src/a.ts",
+          targetId: "file:src/b.ts",
+          kind: "file_import",
+          weight: 1,
+          isExternal: false,
+        },
+      },
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    expect(screen.getByTestId("architecture-canvas")).toBeInTheDocument();
+
+    act(() => {
+      useGraphStore.getState().selectNode("file:src/a.ts");
+    });
+
+    expect(useGraphStore.getState().selectedNodeId).toBe("file:src/a.ts");
+    expect(useGraphStore.getState().activeTarget?.fileId).toBe("file:src/a.ts");
+
+    act(() => {
+      useGraphStore.getState().setHoveredNodeId("file:src/b.ts");
+    });
+
+    expect(useGraphStore.getState().hoveredNodeId).toBe("file:src/b.ts");
+  });
 });

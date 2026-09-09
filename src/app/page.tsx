@@ -26,7 +26,6 @@ export default function Home(): React.JSX.Element {
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
   const selectNode = useGraphStore((state) => state.selectNode);
   const setHoveredNodeId = useGraphStore((state) => state.setHoveredNodeId);
-  const navigateToTarget = useGraphStore((state) => state.navigateToTarget);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const handleDeepLinkFallback = useCallback((msg: string) => {
@@ -46,13 +45,8 @@ export default function Home(): React.JSX.Element {
       if (useWorkspaceStore.getState().isSmallScreen) {
         useWorkspaceStore.getState().setRightDrawerOpen(true);
       }
-      navigateToTarget({
-        fileId,
-        source: "canvas",
-        timestamp: Date.now(),
-      });
     },
-    [selectNode, setActiveRightTab, navigateToTarget],
+    [selectNode, setActiveRightTab],
   );
 
   const leftContent = (

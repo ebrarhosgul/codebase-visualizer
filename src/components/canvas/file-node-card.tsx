@@ -34,7 +34,7 @@ function getFileExtension(name: string): string {
 /**
  * Custom React Flow card node representing files, directories, and external modules.
  */
-export function FileNodeCard({
+export const FileNodeCard = React.memo(function FileNodeCard({
   data,
   selected,
 }: NodeProps<CodebaseReactFlowNode>): React.JSX.Element {
@@ -161,4 +161,4 @@ export function FileNodeCard({
       />
     </div>
   );
-}
+});

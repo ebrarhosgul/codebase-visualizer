@@ -59,7 +59,6 @@ function ArchitectureCanvasInner({
   const { fitView, zoomIn, zoomOut, getZoom, setCenter, getViewport } =
     useReactFlow();
   const activeTarget = useGraphStore((state) => state.activeTarget);
-  const navigateToTarget = useGraphStore((state) => state.navigateToTarget);
 
   // Compute positioned React Flow elements using pure transformation and Dagre layout with compound folders
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -110,12 +109,57 @@ function ArchitectureCanvasInner({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const lastCenteredTargetKeyRef = React.useRef<string | null>(null);
+  const nodesRef = React.useRef(nodes);
+  nodesRef.current = nodes;
 
   // Active target for dependency highlighting (hover takes visual priority, falling back to selection/target)
   const highlightNodeId =
     hoveredNodeId ||
     selectedNodeId ||
     (activeTarget ? activeTarget.symbolId || activeTarget.fileId : null);
+
+  // Pre-index graph edges by source and target for O(degree) lookup instead of O(E) full scan
+  const edgeIndex = useMemo(() => {
+    if (!graph) {
+      return {
+        outgoingByNode: new Map<
+          string,
+          Array<{ id: string; targetId: string }>
+        >(),
+        incomingByNode: new Map<
+          string,
+          Array<{ id: string; sourceId: string }>
+        >(),
+      };
+    }
+
+    const outgoingByNode = new Map<
+      string,
+      Array<{ id: string; targetId: string }>
+    >();
+    const incomingByNode = new Map<
+      string,
+      Array<{ id: string; sourceId: string }>
+    >();
+
+    for (const edge of Object.values(graph.edges)) {
+      let outList = outgoingByNode.get(edge.sourceId);
+      if (!outList) {
+        outList = [];
+        outgoingByNode.set(edge.sourceId, outList);
+      }
+      outList.push({ id: edge.id, targetId: edge.targetId });
+
+      let inList = incomingByNode.get(edge.targetId);
+      if (!inList) {
+        inList = [];
+        incomingByNode.set(edge.targetId, inList);
+      }
+      inList.push({ id: edge.id, sourceId: edge.sourceId });
+    }
+
+    return { outgoingByNode, incomingByNode };
+  }, [graph]);
 
   // Compute connected incoming and outgoing node/edge sets for current highlight target
   const { connectedNodeIds, outgoingEdgeIds, incomingEdgeIds } = useMemo(() => {
@@ -131,12 +175,17 @@ function ArchitectureCanvasInner({
     const outgoingEdges = new Set<string>();
     const incomingEdges = new Set<string>();
 
-    for (const edge of Object.values(graph.edges)) {
-      if (edge.sourceId === highlightNodeId) {
+    const outList = edgeIndex.outgoingByNode.get(highlightNodeId);
+    if (outList) {
+      for (const edge of outList) {
         connectedNodes.add(edge.targetId);
         outgoingEdges.add(edge.id);
       }
-      if (edge.targetId === highlightNodeId) {
+    }
+
+    const inList = edgeIndex.incomingByNode.get(highlightNodeId);
+    if (inList) {
+      for (const edge of inList) {
         connectedNodes.add(edge.sourceId);
         incomingEdges.add(edge.id);
       }
@@ -147,7 +196,7 @@ function ArchitectureCanvasInner({
       outgoingEdgeIds: outgoingEdges,
       incomingEdgeIds: incomingEdges,
     };
-  }, [highlightNodeId, graph]);
+  }, [highlightNodeId, graph, edgeIndex]);
 
   // Sync state whenever underlying graph is recomputed
   useEffect(() => {
@@ -178,8 +227,9 @@ function ArchitectureCanvasInner({
         ? (activeTrace.stepNodeIds[activeStepIndex] ?? null)
         : null;
 
-    setNodes((currentNodes) =>
-      currentNodes.map((n) => {
+    setNodes((currentNodes) => {
+      let changed = false;
+      const nextNodes = currentNodes.map((n) => {
         if (n.type === "folderGroup") {
           const entity = n.data?.entity as
             { childFileIds?: readonly string[] } | undefined;
@@ -192,6 +242,13 @@ function ArchitectureCanvasInner({
               id === activeTarget?.fileId ||
               id === activeTarget?.symbolId,
           );
+          if (
+            n.data?.hasActiveChild === hasActiveChild &&
+            n.data?.isHighlighted === hasActiveChild
+          ) {
+            return n;
+          }
+          changed = true;
           return {
             ...n,
             data: {
@@ -206,15 +263,27 @@ function ArchitectureCanvasInner({
           const isTraceNode = traceNodeSet.has(n.id);
           const isStepFocused = activeStepNodeId === n.id;
           const isSelected = n.id === selectedNodeId || isStepFocused;
+          const isHovered = isStepFocused || hoveredNodeId === n.id;
+          const isConnected = isTraceNode;
+          const isDimmed = !isTraceNode;
 
+          if (
+            n.selected === isSelected &&
+            n.data?.isHovered === isHovered &&
+            n.data?.isConnected === isConnected &&
+            n.data?.isDimmed === isDimmed
+          ) {
+            return n;
+          }
+          changed = true;
           return {
             ...n,
             selected: isSelected,
             data: {
               ...n.data,
-              isHovered: isStepFocused || hoveredNodeId === n.id,
-              isConnected: isTraceNode,
-              isDimmed: !isTraceNode,
+              isHovered,
+              isConnected,
+              isDimmed,
             },
           };
         }
@@ -225,19 +294,32 @@ function ArchitectureCanvasInner({
           n.id === selectedNodeId ||
           (activeTarget != null &&
             (n.id === activeTarget.symbolId || n.id === activeTarget.fileId));
+        const isHovered = isTarget && hoveredNodeId === n.id;
+        const isDimmed = isHighlightActive && !isTarget && !isConnected;
 
+        if (
+          n.selected === isSelected &&
+          n.data?.isHovered === isHovered &&
+          n.data?.isConnected === isConnected &&
+          n.data?.isDimmed === isDimmed
+        ) {
+          return n;
+        }
+        changed = true;
         return {
           ...n,
           selected: isSelected,
           data: {
             ...n.data,
-            isHovered: isTarget && hoveredNodeId === n.id,
+            isHovered,
             isConnected,
-            isDimmed: isHighlightActive && !isTarget && !isConnected,
+            isDimmed,
           },
         };
-      }),
-    );
+      });
+
+      return changed ? nextNodes : currentNodes;
+    });
   }, [
     selectedNodeId,
     activeTarget,
@@ -256,10 +338,28 @@ function ArchitectureCanvasInner({
     const isTraceActive = Boolean(activeTrace);
     const traceEdgeSet = new Set(highlightedEdgeIds);
 
-    setEdges((currentEdges) =>
-      currentEdges.map((e) => {
+    const getMarkerColor = (marker: unknown): string | undefined => {
+      if (typeof marker === "object" && marker !== null && "color" in marker) {
+        return (marker as { color?: string }).color;
+      }
+      return undefined;
+    };
+
+    setEdges((currentEdges) => {
+      let changed = false;
+      const nextEdges = currentEdges.map((e) => {
         if (isTraceActive) {
           if (traceEdgeSet.has(e.id)) {
+            if (
+              e.animated === true &&
+              e.style?.stroke === "var(--accent-primary)" &&
+              e.style?.strokeWidth === 3 &&
+              e.style?.opacity === 1 &&
+              getMarkerColor(e.markerEnd) === "var(--accent-primary)"
+            ) {
+              return e;
+            }
+            changed = true;
             return {
               ...e,
               animated: true,
@@ -277,6 +377,16 @@ function ArchitectureCanvasInner({
               },
             };
           }
+          if (
+            e.animated === false &&
+            e.style?.stroke === "var(--border-subtle)" &&
+            e.style?.strokeWidth === 1 &&
+            e.style?.opacity === 0.12 &&
+            getMarkerColor(e.markerEnd) === "var(--border-subtle)"
+          ) {
+            return e;
+          }
+          changed = true;
           return {
             ...e,
             animated: false,
@@ -299,6 +409,16 @@ function ArchitectureCanvasInner({
 
         if (isHighlightActive) {
           if (isOutgoing) {
+            if (
+              e.animated === true &&
+              e.style?.stroke === "var(--accent-primary)" &&
+              e.style?.strokeWidth === 2.5 &&
+              e.style?.opacity === 1 &&
+              getMarkerColor(e.markerEnd) === "var(--accent-primary)"
+            ) {
+              return e;
+            }
+            changed = true;
             return {
               ...e,
               animated: true,
@@ -316,6 +436,16 @@ function ArchitectureCanvasInner({
             };
           }
           if (isIncoming) {
+            if (
+              e.animated === true &&
+              e.style?.stroke === "var(--syntax-ts)" &&
+              e.style?.strokeWidth === 2.5 &&
+              e.style?.opacity === 1 &&
+              getMarkerColor(e.markerEnd) === "var(--syntax-ts)"
+            ) {
+              return e;
+            }
+            changed = true;
             return {
               ...e,
               animated: true,
@@ -332,6 +462,16 @@ function ArchitectureCanvasInner({
               },
             };
           }
+          if (
+            e.animated === false &&
+            e.style?.stroke === "var(--border-subtle)" &&
+            e.style?.strokeWidth === 1 &&
+            e.style?.opacity === 0.12 &&
+            getMarkerColor(e.markerEnd) === "var(--border-subtle)"
+          ) {
+            return e;
+          }
+          changed = true;
           return {
             ...e,
             animated: false,
@@ -350,6 +490,16 @@ function ArchitectureCanvasInner({
         }
 
         // Default idle edge state
+        if (
+          e.animated === false &&
+          e.style?.stroke === "var(--border-focus)" &&
+          e.style?.strokeWidth === 1.5 &&
+          e.style?.opacity === 0.4 &&
+          getMarkerColor(e.markerEnd) === "var(--border-focus)"
+        ) {
+          return e;
+        }
+        changed = true;
         return {
           ...e,
           animated: false,
@@ -365,8 +515,10 @@ function ArchitectureCanvasInner({
             height: 12,
           },
         };
-      }),
-    );
+      });
+
+      return changed ? nextEdges : currentEdges;
+    });
   }, [
     highlightNodeId,
     outgoingEdgeIds,
@@ -382,13 +534,13 @@ function ArchitectureCanvasInner({
       return;
     }
 
-    // Look for target node in current nodes state or layout initialNodes
+    // Look for target node in layout initialNodes or current nodes
     const targetId = activeTarget.symbolId || activeTarget.fileId;
     const targetNode =
-      nodes.find((n) => n.id === targetId) ||
-      nodes.find((n) => n.id === activeTarget.fileId) ||
       initialNodes.find((n) => n.id === targetId) ||
-      initialNodes.find((n) => n.id === activeTarget.fileId);
+      initialNodes.find((n) => n.id === activeTarget.fileId) ||
+      nodesRef.current.find((n) => n.id === targetId) ||
+      nodesRef.current.find((n) => n.id === activeTarget.fileId);
 
     if (!targetNode) {
       return;
@@ -458,7 +610,6 @@ function ArchitectureCanvasInner({
     setCenter(centerX, centerY, { zoom: 1.2, duration: 800 });
   }, [
     activeTarget,
-    nodes,
     initialNodes,
     setCenter,
     getZoom,
@@ -475,28 +626,8 @@ function ArchitectureCanvasInner({
       if (useWorkspaceStore.getState().isSmallScreen) {
         useWorkspaceStore.getState().setRightDrawerOpen(true);
       }
-
-      if (node.id.startsWith("file:")) {
-        navigateToTarget({
-          fileId: node.id,
-          source: "canvas",
-          timestamp: Date.now(),
-        });
-      } else if (node.id.startsWith("symbol:")) {
-        const symbol = graph?.symbols[node.id];
-        if (symbol) {
-          navigateToTarget({
-            fileId: symbol.fileId,
-            symbolId: symbol.id,
-            line: symbol.range.startLine,
-            column: symbol.range.startColumn,
-            source: "canvas",
-            timestamp: Date.now(),
-          });
-        }
-      }
     },
-    [selectNode, setActiveRightTab, navigateToTarget, graph],
+    [selectNode, setActiveRightTab],
   );
 
   // Handle canvas background click to clear selection
@@ -637,6 +768,7 @@ function ArchitectureCanvasInner({
         nodeTypes={codebaseNodeTypes}
         minZoom={0.2}
         maxZoom={2.5}
+        onlyRenderVisibleElements={true}
         defaultEdgeOptions={{
           type: "smoothstep",
           animated: false,
@@ -659,7 +791,7 @@ function ArchitectureCanvasInner({
 /**
  * Public ArchitectureCanvas wrapped in ReactFlowProvider.
  */
-export function ArchitectureCanvas(
+export const ArchitectureCanvas = React.memo(function ArchitectureCanvas(
   props: ArchitectureCanvasProps,
 ): React.JSX.Element {
   return (
@@ -667,4 +799,4 @@ export function ArchitectureCanvas(
       <ArchitectureCanvasInner {...props} />
     </ReactFlowProvider>
   );
-}
+});

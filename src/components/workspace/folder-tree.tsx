@@ -335,7 +335,7 @@ function buildTree(
 /**
  * VS Code-style hierarchical folder tree component.
  */
-export function FolderTree({
+export const FolderTree = React.memo(function FolderTree({
   files,
   selectedFileId,
   onSelectFile,
@@ -627,4 +627,4 @@ export function FolderTree({
       </div>
     </div>
   );
-}
+});
