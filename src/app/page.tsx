@@ -50,9 +50,9 @@ export default function Home(): React.JSX.Element {
   );
 
   const leftContent = (
-    <div className="p-3 flex flex-col gap-3 h-full">
+    <div className="p-4 flex flex-col gap-4 h-full bg-[var(--surface-panel)]">
       {/* Active Repository Metadata Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-panel-secondary)] px-2.5 py-2">
         <div className="flex items-center gap-2 min-w-0">
           <GitBranch className="w-4 h-4 text-[var(--accent-primary)] shrink-0" />
           <span
@@ -75,7 +75,7 @@ export default function Home(): React.JSX.Element {
 
       {/* Language Breakdown Badges if repository loaded */}
       {repository && Object.keys(repository.languages).length > 0 && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5">
           {Object.entries(repository.languages).map(([lang, count]) => (
             <Badge
               key={lang}

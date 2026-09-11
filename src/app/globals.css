@@ -3,27 +3,27 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #090d16;
-  --foreground: #f8fafc;
+  --background: #080d1c;
+  --foreground: #f7f9fc;
 
-  --surface-canvas: #090d16;
-  --surface-panel: #0f172a;
-  --surface-panel-secondary: #1e293b;
-  --surface-card: #141e33;
-  --surface-hover: rgba(255, 255, 255, 0.05);
-  --surface-active: rgba(255, 255, 255, 0.1);
+  --surface-canvas: #080b14;
+  --surface-panel: #0d1629;
+  --surface-panel-secondary: #111d33;
+  --surface-card: #16233c;
+  --surface-hover: rgba(148, 163, 184, 0.08);
+  --surface-active: rgba(56, 189, 248, 0.12);
 
-  --border-subtle: #1e293b;
-  --border-default: #334155;
-  --border-focus: #38bdf8;
+  --border-subtle: #1b2a43;
+  --border-default: #30425e;
+  --border-focus: #42c5f5;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #f7f9fc;
+  --text-secondary: #a3b2c9;
+  --text-muted: #71829d;
 
-  --accent-primary: #38bdf8;
-  --accent-primary-hover: #0ea5e9;
-  --accent-primary-foreground: #090d16;
+  --accent-primary: #42c5f5;
+  --accent-primary-hover: #22aee8;
+  --accent-primary-foreground: #07101f;
 
   --status-success: #10b981;
   --status-warning: #f59e0b;
@@ -114,6 +114,33 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow: hidden;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent-primary) 28%, transparent);
+  color: var(--text-primary);
+}
+
+* {
+  scrollbar-color: var(--border-default) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
 }
 
 /* Accessible focus ring utilities */

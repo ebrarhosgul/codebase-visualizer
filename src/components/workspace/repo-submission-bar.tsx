@@ -184,16 +184,16 @@ export function RepoSubmissionBar({
 
   return (
     <div
-      className={`w-full flex flex-col gap-2 ${className ?? ""}`}
+      className={`w-full flex flex-col gap-2.5 ${className ?? ""}`}
       data-testid="repo-submission-bar"
     >
-      <div className="w-full flex items-center justify-between gap-3">
+      <div className="w-full flex items-center justify-between gap-4">
         {/* Logo and Brand */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="w-6 h-6 rounded bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] flex items-center justify-center">
+          <div className="size-8 rounded-lg bg-[var(--surface-active)] border border-[var(--accent-primary)]/30 flex items-center justify-center shadow-sm">
             <GitFork className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
           </div>
-          <span className="text-xs font-bold tracking-tight text-[var(--text-primary)] hidden sm:inline">
+          <span className="text-sm font-semibold tracking-tight text-[var(--text-primary)] hidden sm:inline">
             Codebase Visualizer
           </span>
         </div>
@@ -201,7 +201,7 @@ export function RepoSubmissionBar({
         {/* Input Controls Form */}
         <form
           onSubmit={handleSubmit}
-          className="flex-1 flex items-center gap-2 max-w-2xl min-w-0"
+          className="flex-1 flex items-center gap-2 max-w-3xl min-w-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-panel-secondary)]/70 p-1.5"
         >
           <div className="flex-1 min-w-0">
             <Input

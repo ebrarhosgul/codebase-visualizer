@@ -121,12 +121,12 @@ export function WorkspaceLayout({
     return (
       <div
         className={cn(
-          "relative w-screen h-screen overflow-hidden flex flex-col bg-[var(--surface-canvas)]",
+          "relative w-screen h-screen overflow-hidden flex flex-col bg-[var(--surface-canvas)] text-[var(--text-primary)]",
           className,
         )}
       >
         {/* Mobile quick action bar */}
-        <header className="h-11 px-3 border-b border-[var(--border-subtle)] bg-[var(--surface-panel)] flex items-center justify-between shrink-0 z-20">
+        <header className="h-12 px-3 border-b border-[var(--border-default)] bg-[var(--surface-panel)] flex items-center justify-between shrink-0 z-20 shadow-sm">
           <button
             type="button"
             onClick={() => setLeftDrawerOpen(true)}
@@ -155,7 +155,7 @@ export function WorkspaceLayout({
         </header>
 
         {headerContent && (
-          <div className="p-2 border-b border-[var(--border-subtle)] bg-[var(--surface-panel-secondary)] shrink-0 z-10">
+          <div className="p-2.5 border-b border-[var(--border-default)] bg-[var(--surface-panel-secondary)] shrink-0 z-10">
             {headerContent}
           </div>
         )}
@@ -250,7 +250,7 @@ export function WorkspaceLayout({
       ariaLabel: "Repository file navigation",
       content: (
         <aside className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-r border-[var(--border-subtle)]">
-          <div className="h-9 px-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
+          <div className="h-10 px-3 border-b border-[var(--border-default)] bg-[var(--surface-panel-secondary)]/40 flex items-center justify-between shrink-0">
             <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">
               Explorer
             </span>
@@ -323,7 +323,7 @@ export function WorkspaceLayout({
       ariaLabel: "Code and symbol inspector",
       content: (
         <aside className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-l border-[var(--border-subtle)]">
-          <div className="h-9 px-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
+          <div className="h-10 px-3 border-b border-[var(--border-default)] bg-[var(--surface-panel-secondary)]/40 flex items-center justify-between shrink-0">
             <span className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">
               Inspector
             </span>
@@ -352,7 +352,7 @@ export function WorkspaceLayout({
       )}
     >
       {headerContent && (
-        <header className="min-h-12 h-auto border-b border-[var(--border-subtle)] bg-[var(--surface-panel)] flex flex-col justify-center px-4 py-1.5 shrink-0 z-20">
+        <header className="min-h-14 h-auto border-b border-[var(--border-default)] bg-[var(--surface-panel)] flex flex-col justify-center px-4 py-2 shrink-0 z-20 shadow-sm">
           {headerContent}
         </header>
       )}

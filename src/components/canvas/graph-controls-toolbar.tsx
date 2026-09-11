@@ -51,7 +51,7 @@ export function GraphControlsToolbar({
       role="toolbar"
       aria-label="Canvas zoom and view controls"
       className={cn(
-        "flex items-center gap-1 p-1 rounded-lg select-none shadow-lg transition-all",
+        "flex items-center gap-1 p-1.5 rounded-xl select-none shadow-xl shadow-black/20 transition-all",
         "bg-[var(--surface-panel)] border border-[var(--border-default)]",
         className,
       )}
