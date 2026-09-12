@@ -39,6 +39,24 @@ Answer architectural questions clearly and accurately based on this context:
 ${context.contextSummary}`,
     };
 
+    const validMessages = messages.filter(
+      (m) => m.content && m.content.trim().length > 0,
+    );
+    while (
+      validMessages.length > 0 &&
+      validMessages[validMessages.length - 1].role === "assistant"
+    ) {
+      validMessages.pop();
+    }
+
+    if (validMessages.length === 0) {
+      yield {
+        type: "error",
+        error: "No valid user message provided to OpenAI API.",
+      };
+      return;
+    }
+
     let response: Response;
     try {
       response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -50,7 +68,7 @@ ${context.contextSummary}`,
         body: JSON.stringify({
           model: "gpt-4o-mini",
           stream: true,
-          messages: [systemMessage, ...messages],
+          messages: [systemMessage, ...validMessages],
         }),
         signal,
       });

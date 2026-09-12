@@ -312,4 +312,239 @@ describe("TracePanel", () => {
 
     expect(screen.getByText("Bring Your Own Key (BYOK)")).toBeInTheDocument();
   });
+
+  it("initializes in BYOK mode when /api/ai/keys returns stored provider on mount (covers: AC-3)", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url === "/api/ai/keys") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ hasKey: true, provider: "openai" }),
+        } as unknown as Response);
+      }
+      return Promise.reject(new Error("unexpected call"));
+    });
+
+    render(<TracePanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText("OPENAI")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Demo Mode")).not.toBeInTheDocument();
+  });
+
+  it("defaults silently to demo mode when /api/ai/keys check fails on mount (covers: AC-5)", async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+
+    render(<TracePanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Demo Mode")).toBeInTheDocument();
+    });
+  });
+
+  it("disables prompt buttons and textarea when graph is not loaded (covers: AC-2)", () => {
+    useGraphStore.getState().reset();
+
+    render(<TracePanel />);
+
+    const promptButton = screen.getByText("How do stores connect to canvas?");
+    expect(promptButton).toBeDisabled();
+    expect(promptButton).toHaveAttribute(
+      "title",
+      "Load a repository to ask questions",
+    );
+
+    const textarea = screen.getByPlaceholderText(
+      "Load a repository to ask questions...",
+    );
+    expect(textarea).toBeDisabled();
+  });
+
+  it("switches to demo mode and retries query when Switch to Demo Mode is clicked on fallback notice card (covers: AC-3, AC-5)", async () => {
+    const sseChunks = [
+      'data: {"type":"text","text":"Demo fallback answer resolved successfully"}\n\n',
+      'data: {"type":"done"}\n\n',
+    ];
+
+    const stream = new ReadableStream({
+      start(controller) {
+        for (const chunk of sseChunks) {
+          controller.enqueue(new TextEncoder().encode(chunk));
+        }
+        controller.close();
+      },
+    });
+
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url === "/api/ai/keys") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ hasKey: false }),
+        } as unknown as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        body: stream,
+      } as unknown as Response);
+    });
+
+    const existingThread = [
+      {
+        id: "msg:user_1",
+        threadId: "test/app",
+        role: "user",
+        content: "Explain system architecture",
+        status: "complete",
+        citations: [],
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "msg:assistant_1",
+        threadId: "test/app",
+        role: "assistant",
+        content: "Partial before failure",
+        status: "error",
+        errorMessage: "Rate limit exceeded",
+        fallbackNotice: {
+          code: "rate_limit",
+          title: "Rate Limit Exceeded",
+          message: "Please wait or switch to demo mode.",
+          suggestedAction: "switch_demo",
+          retryAfterSeconds: 30,
+        },
+        citations: [],
+        isPathVerified: false,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    const switchBtn = screen.getByRole("button", {
+      name: /switch to demo mode/i,
+    });
+    fireEvent.click(switchBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Demo fallback answer resolved successfully"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("retries assistant query when retry button is clicked on fallback notice card (covers: AC-3)", async () => {
+    const sseChunks = [
+      'data: {"type":"text","text":"Retried response completed"}\n\n',
+      'data: {"type":"done"}\n\n',
+    ];
+
+    const stream = new ReadableStream({
+      start(controller) {
+        for (const chunk of sseChunks) {
+          controller.enqueue(new TextEncoder().encode(chunk));
+        }
+        controller.close();
+      },
+    });
+
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url === "/api/ai/keys") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ hasKey: false }),
+        } as unknown as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        body: stream,
+      } as unknown as Response);
+    });
+
+    const existingThread = [
+      {
+        id: "msg:user_retry",
+        threadId: "test/app",
+        role: "user",
+        content: "Trace entrypoint",
+        status: "complete",
+        citations: [],
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "msg:assistant_retry",
+        threadId: "test/app",
+        role: "assistant",
+        content: "",
+        status: "error",
+        errorMessage: "Provider outage",
+        fallbackNotice: {
+          code: "provider_outage",
+          title: "Provider Service Outage",
+          message: "Temporary outage",
+          suggestedAction: "switch_demo",
+        },
+        citations: [],
+        isPathVerified: false,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    const retryBtn = screen.getByRole("button", { name: /retry now/i });
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Retried response completed"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("clears chat history and active trace when clear chat button is clicked", () => {
+    const existingThread = [
+      {
+        id: "msg:user_1",
+        threadId: "test/app",
+        role: "user",
+        content: "Hello",
+        status: "complete",
+        citations: [],
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    expect(screen.getByText("Hello")).toBeInTheDocument();
+
+    const clearButton = screen.getByTitle("Clear thread history");
+    fireEvent.click(clearButton);
+
+    expect(screen.queryByText("Hello")).not.toBeInTheDocument();
+    expect(screen.getByText("Ask Architectural Questions")).toBeInTheDocument();
+  });
 });

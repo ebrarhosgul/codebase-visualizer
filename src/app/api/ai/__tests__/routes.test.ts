@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
-import { POST as keysPost, DELETE as keysDelete } from "../keys/route";
+import {
+  POST as keysPost,
+  DELETE as keysDelete,
+  GET as keysGet,
+} from "../keys/route";
 import { POST as queryPost } from "../query/route";
 import { resetRateLimits } from "@/lib/ai/rate-limiter";
-import { AI_KEY_COOKIE_NAME } from "@/lib/ai/crypto";
+import { encryptApiKey, AI_KEY_COOKIE_NAME } from "@/lib/ai/crypto";
 
 describe("AI API Routes", () => {
   beforeEach(() => {
@@ -83,6 +87,47 @@ describe("AI API Routes", () => {
       expect(res.status).toBe(200);
       const cookie = res.cookies.get(AI_KEY_COOKIE_NAME);
       expect(cookie?.value).toBe("");
+    });
+
+    it("returns hasKey false on GET when cookie is missing (covers: AC-3)", async () => {
+      const req = new NextRequest("http://localhost:3000/api/ai/keys", {
+        method: "GET",
+      });
+
+      const res = await keysGet(req);
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as { hasKey: boolean };
+      expect(json.hasKey).toBe(false);
+    });
+
+    it("returns hasKey false on GET when cookie is invalid (covers: AC-3)", async () => {
+      const req = new NextRequest("http://localhost:3000/api/ai/keys", {
+        method: "GET",
+        headers: {
+          cookie: `${AI_KEY_COOKIE_NAME}=invalid-encrypted-value`,
+        },
+      });
+
+      const res = await keysGet(req);
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as { hasKey: boolean };
+      expect(json.hasKey).toBe(false);
+    });
+
+    it("returns hasKey true and provider on GET when encrypted cookie is valid (covers: AC-3)", async () => {
+      const encrypted = encryptApiKey("my-test-gemini-key", "gemini");
+      const req = new NextRequest("http://localhost:3000/api/ai/keys", {
+        method: "GET",
+        headers: {
+          cookie: `${AI_KEY_COOKIE_NAME}=${encrypted}`,
+        },
+      });
+
+      const res = await keysGet(req);
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as { hasKey: boolean; provider: string };
+      expect(json.hasKey).toBe(true);
+      expect(json.provider).toBe("gemini");
     });
   });
 

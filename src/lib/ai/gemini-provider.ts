@@ -38,12 +38,52 @@ If a dependency path between files is asked or identified, mention the path in y
 Context Summary:
 ${context.contextSummary}`;
 
-    const formattedContents = messages.map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
+    const validMessages = messages.filter(
+      (m) =>
+        (m.role === "user" || m.role === "assistant") &&
+        m.content.trim().length > 0,
+    );
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${activeKey}`;
+    while (
+      validMessages.length > 0 &&
+      validMessages[validMessages.length - 1].role === "assistant"
+    ) {
+      validMessages.pop();
+    }
+
+    if (validMessages.length === 0) {
+      yield {
+        type: "error",
+        error: "No valid user message provided to Gemini API.",
+      };
+      return;
+    }
+
+    const formattedContents: Array<{
+      role: "user" | "model";
+      parts: Array<{ text: string }>;
+    }> = [];
+
+    for (const m of validMessages) {
+      const role = m.role === "assistant" ? "model" : "user";
+      const last = formattedContents[formattedContents.length - 1];
+      if (last && last.role === role) {
+        last.parts.push({ text: m.content });
+      } else {
+        formattedContents.push({
+          role,
+          parts: [{ text: m.content }],
+        });
+      }
+    }
+
+    const configuredModel =
+      process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash";
+    const model = configuredModel.startsWith("models/")
+      ? configuredModel.slice("models/".length)
+      : configuredModel;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${activeKey}`;
 
     let response: Response;
     try {
@@ -71,9 +111,20 @@ ${context.contextSummary}`;
 
     if (!response.ok) {
       const errorText = await response.text();
+      let parsedMessage = errorText;
+      try {
+        const errorJson = JSON.parse(errorText) as {
+          error?: { message?: string };
+        };
+        if (errorJson.error?.message) {
+          parsedMessage = errorJson.error.message;
+        }
+      } catch {
+        // Fall back to raw error text if not JSON
+      }
       yield {
         type: "error",
-        error: `Gemini API returned HTTP ${response.status}: ${errorText}`,
+        error: `Gemini API returned HTTP ${response.status}: ${parsedMessage}`,
       };
       return;
     }
