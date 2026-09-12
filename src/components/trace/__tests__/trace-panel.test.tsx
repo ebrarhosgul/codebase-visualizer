@@ -547,4 +547,225 @@ describe("TracePanel", () => {
     expect(screen.queryByText("Hello")).not.toBeInTheDocument();
     expect(screen.getByText("Ask Architectural Questions")).toBeInTheDocument();
   });
+
+  it("renders structured markdown formatting in assistant messages", () => {
+    const existingThread = [
+      {
+        id: "msg:assistant_md",
+        threadId: "test/app",
+        role: "assistant",
+        content: `### Connection & Data Flow
+
+1. **State Provider Hook (\`hooks/useTelemetry.ts\`)**:
+- Manages real-time telemetry state updates.
+
+\`\`\`typescript
+export function useTelemetry() { return {}; }
+\`\`\``,
+        status: "complete",
+        citations: [],
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    // Renders heading with level 3
+    const heading = screen.getByRole("heading", { level: 3 });
+    expect(heading).toHaveTextContent("Connection & Data Flow");
+
+    // Renders list number badge
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getByText(/State Provider Hook/)).toBeInTheDocument();
+
+    // Renders code block with language badge
+    expect(screen.getByText("typescript")).toBeInTheDocument();
+    expect(
+      screen.getByText(/export function useTelemetry/),
+    ).toBeInTheDocument();
+
+    // Renders assistant message header and copy response button
+    expect(screen.getByText("Semantic Assistant")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /copy response/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("copies assistant message content to clipboard and reveals temporary copied feedback", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    const existingThread = [
+      {
+        id: "msg:assistant_copy_test",
+        threadId: "test/app",
+        role: "assistant",
+        content: "Detailed explanation of application stores and hooks.",
+        status: "complete",
+        citations: [],
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    const copyBtn = screen.getByRole("button", { name: /copy response/i });
+    expect(copyBtn).toBeInTheDocument();
+
+    await React.act(async () => {
+      fireEvent.click(copyBtn);
+    });
+
+    expect(writeTextMock).toHaveBeenCalledWith(
+      "Detailed explanation of application stores and hooks.",
+    );
+    expect(
+      screen.getByRole("button", { name: /response copied/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Copied")).toBeInTheDocument();
+  });
+
+  it("navigates to code viewer when clicking recognized file path in assistant message", () => {
+    const existingThread = [
+      {
+        id: "msg:assistant_nav_test",
+        threadId: "test/app",
+        role: "assistant",
+        content: "Inspect the entrypoint at `src/index.ts` to see imports.",
+        status: "complete",
+        citations: [],
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    const fileButton = screen.getByRole("button", { name: /src\/index\.ts/i });
+    expect(fileButton).toBeInTheDocument();
+
+    fireEvent.click(fileButton);
+
+    expect(useWorkspaceStore.getState().activeRightTab).toBe("code");
+    expect(useGraphStore.getState().activeTarget?.fileId).toBe(
+      "file:src/index.ts",
+    );
+    expect(useGraphStore.getState().activeTarget?.line).toBe(1);
+  });
+
+  it("does not provide file navigation button for unrecognized inline code snippets", () => {
+    const existingThread = [
+      {
+        id: "msg:assistant_unrecognized_code",
+        threadId: "test/app",
+        role: "assistant",
+        content: "Call `calculateLayout()` before dispatching canvas actions.",
+        status: "complete",
+        citations: [],
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    expect(screen.getByText("calculateLayout()")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /calculateLayout\(\)/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides copy response button while assistant message is streaming", () => {
+    const existingThread = [
+      {
+        id: "msg:assistant_streaming",
+        threadId: "test/app",
+        role: "assistant",
+        content: "Beginning architectural review...",
+        status: "streaming",
+        citations: [],
+        isPathVerified: false,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    expect(
+      screen.queryByRole("button", { name: /copy response/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Beginning architectural review..."),
+    ).toBeInTheDocument();
+  });
+
+  it("handles clipboard write failure gracefully on copy response", async () => {
+    const writeTextMock = vi
+      .fn()
+      .mockRejectedValue(new Error("Permission denied"));
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    const existingThread = [
+      {
+        id: "msg:assistant_fail_copy",
+        threadId: "test/app",
+        role: "assistant",
+        content: "Content to copy.",
+        status: "complete",
+        citations: [],
+        isPathVerified: true,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    sessionStorage.setItem(
+      "cv:thread:test/app",
+      JSON.stringify(existingThread),
+    );
+
+    render(<TracePanel />);
+
+    const copyBtn = screen.getByRole("button", { name: /copy response/i });
+    await React.act(async () => {
+      fireEvent.click(copyBtn);
+    });
+
+    expect(writeTextMock).toHaveBeenCalled();
+    expect(screen.getByText("Content to copy.")).toBeInTheDocument();
+  });
 });

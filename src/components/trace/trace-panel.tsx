@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { useGraphStore } from "@/stores/graph-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useAiQueryStream } from "@/hooks/use-ai-query-stream";
@@ -19,6 +25,8 @@ import {
   Compass,
   AlertTriangle,
   ArrowRight,
+  Copy,
+  Check,
 } from "lucide-react";
 import type {
   AiFallbackNotice,
@@ -28,6 +36,7 @@ import type {
 } from "@/lib/ai/types";
 import type { PathTrace } from "@/entities";
 import { FallbackNoticeCard } from "./fallback-notice-card";
+import { MarkdownMessage } from "./markdown-message";
 
 const SUGGESTED_PROMPTS = [
   "How do stores connect to canvas?",
@@ -56,6 +65,7 @@ export function TracePanel(): React.JSX.Element {
     useState<AiProviderId>("gemini");
   const [isKeyDialogOpen, setIsKeyDialogOpen] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isStreaming, streamQuery, abortQuery } = useAiQueryStream();
@@ -124,6 +134,43 @@ export function TracePanel(): React.JSX.Element {
     });
     setActiveRightTab("code");
   };
+
+  const handleCopyMessage = useCallback(async (text: string, msgId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMessageId(msgId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch {
+      // Tolerate clipboard write failures in restricted environments
+    }
+  }, []);
+
+  const knownFilePaths = useMemo(() => {
+    if (!graph) return [];
+    return Object.values(graph.files).map((f) => f.path);
+  }, [graph]);
+
+  const handleDirectFileNavigation = useCallback(
+    (filePath: string) => {
+      if (!graph) return;
+      const fileEntry = Object.values(graph.files).find(
+        (f) =>
+          f.path === filePath ||
+          f.path.endsWith(`/${filePath}`) ||
+          f.name === filePath,
+      );
+      if (fileEntry) {
+        navigateToTarget({
+          fileId: fileEntry.id,
+          line: 1,
+          source: "search",
+          timestamp: Date.now(),
+        });
+        setActiveRightTab("code");
+      }
+    },
+    [graph, navigateToTarget, setActiveRightTab],
+  );
 
   const executeAssistantQuery = async (
     textToSend: string,
@@ -485,13 +532,54 @@ export function TracePanel(): React.JSX.Element {
                 }`}
               >
                 {/* Message body */}
-                <div className="whitespace-pre-wrap leading-relaxed">
-                  {msg.content ||
-                    (msg.status === "streaming" && "Analyzing...")}
-                  {msg.status === "streaming" && (
-                    <span className="inline-block w-1.5 h-3.5 ml-1 bg-[var(--accent-primary)] animate-pulse align-middle" />
-                  )}
-                </div>
+                {msg.role === "user" ? (
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {msg.content}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[var(--border-subtle)] text-[10px] text-[var(--text-muted)]">
+                      <div className="flex items-center gap-1.5 font-medium text-[var(--text-secondary)]">
+                        <Sparkles className="w-3 h-3 text-[var(--accent-primary)]" />
+                        <span>Semantic Assistant</span>
+                      </div>
+                      {msg.content && msg.status !== "streaming" && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(msg.content, msg.id)}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
+                          title="Copy response"
+                          aria-label={
+                            copiedMessageId === msg.id
+                              ? "Response copied"
+                              : "Copy response"
+                          }
+                        >
+                          {copiedMessageId === msg.id ? (
+                            <>
+                              <Check className="w-2.5 h-2.5 text-[var(--status-success)]" />
+                              <span className="text-[var(--status-success)]">
+                                Copied
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-2.5 h-2.5" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    <MarkdownMessage
+                      content={msg.content}
+                      isStreaming={msg.status === "streaming"}
+                      knownFilePaths={knownFilePaths}
+                      onFileClick={handleDirectFileNavigation}
+                    />
+                  </div>
+                )}
 
                 {/* Fallback Notice Card (AC-2, AC-3) */}
                 {msg.status === "error" && (
