@@ -53,7 +53,10 @@ describe("GitHub token crypto utilities", () => {
     const token = "ghp_1234567890abcdef123456";
     const encrypted = encryptGithubToken(token);
     const [iv, tag, cipher] = encrypted.split(":");
-    const tampered = `${iv}:${tag.slice(0, -2)}00:${cipher}`;
+    const tamperedTag = tag.endsWith("00")
+      ? `${tag.slice(0, -2)}ff`
+      : `${tag.slice(0, -2)}00`;
+    const tampered = `${iv}:${tamperedTag}:${cipher}`;
     expect(decryptGithubToken(tampered)).toBeNull();
   });
 

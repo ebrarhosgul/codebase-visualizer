@@ -98,6 +98,21 @@ export function TracePanel(): React.JSX.Element {
     scrollToBottom();
   }, [messages, isStreaming]);
 
+  // Check if user has stored API key to initialize demo mode properly
+  useEffect(() => {
+    fetch("/api/ai/keys")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.hasKey && data.provider) {
+          setIsDemoMode(false);
+          setSelectedProvider(data.provider);
+        }
+      })
+      .catch(() => {
+        // Silently default to demo mode if check fails
+      });
+  }, []);
+
   // Dual action citation navigation (AC-6)
   const handleCitationClick = (citation: CitationRef) => {
     navigateToTarget({
@@ -182,14 +197,22 @@ export function TracePanel(): React.JSX.Element {
     let receivedNotice: AiFallbackNotice | null = null;
     let receivedError: string | null = null;
 
+    const messagesToSend = activeMessages
+      .filter((m) => m.id !== assistantMsgId && m.content.trim().length > 0)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+    if (messagesToSend.length === 0) {
+      messagesToSend.push({ role: "user", content: textToSend });
+    }
+
     await streamQuery({
       repository,
       graph,
       contextSummary,
-      messages: activeMessages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      messages: messagesToSend,
       isDemo: activeDemo,
       provider: selectedProvider,
       onTextChunk: (chunk) => {
@@ -423,9 +446,22 @@ export function TracePanel(): React.JSX.Element {
               <div className="flex flex-col gap-1.5">
                 {SUGGESTED_PROMPTS.map((promptText, i) => (
                   <button
+                    type="button"
                     key={i}
-                    onClick={() => handleSend(promptText)}
-                    className="w-full text-left p-2 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)] transition-colors text-[11px]"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSend(promptText);
+                    }}
+                    disabled={!graph}
+                    className={`w-full text-left p-2 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] text-[11px] transition-colors ${
+                      !graph
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:text-[var(--text-primary)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)]"
+                    }`}
+                    title={
+                      !graph ? "Load a repository to ask questions" : undefined
+                    }
                   >
                     {promptText}
                   </button>

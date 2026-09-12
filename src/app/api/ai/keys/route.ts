@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { encryptApiKey, AI_KEY_COOKIE_NAME } from "@/lib/ai/crypto";
+import {
+  encryptApiKey,
+  decryptApiKey,
+  AI_KEY_COOKIE_NAME,
+} from "@/lib/ai/crypto";
 import type { AiProviderId } from "@/lib/ai/types";
+
+export const dynamic = "force-dynamic";
 
 const ALLOWED_PROVIDERS: readonly AiProviderId[] = [
   "gemini",
@@ -90,4 +96,29 @@ export async function DELETE(): Promise<NextResponse> {
   });
 
   return response;
+}
+
+/**
+ * Route handler for GET /api/ai/keys.
+ * Checks if a BYOK encrypted cookie exists and returns the provider.
+ */
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const cookie = req.cookies.get(AI_KEY_COOKIE_NAME);
+
+  const headers = new Headers();
+  headers.set("Cache-Control", "no-store, max-age=0");
+
+  if (!cookie?.value) {
+    return NextResponse.json({ hasKey: false }, { headers });
+  }
+
+  const payload = decryptApiKey(cookie.value);
+  if (!payload) {
+    return NextResponse.json({ hasKey: false }, { headers });
+  }
+
+  return NextResponse.json(
+    { hasKey: true, provider: payload.provider },
+    { headers },
+  );
 }

@@ -155,7 +155,7 @@ spec [0010](../specs/0010-ai-service-stabilization-and-fallback-notices/index.md
   - [x] Actionable recovery controls: countdown timer, auto retry toggle, and modal triggers (AC-2, AC-3)
   - [x] Credential redaction & offline demo execution: regex token scrubbing and zero network browser runtime (AC-4, AC-5)
 - [ ] Verify it: `/check verify AI service stabilization and fallback notices`
-- [ ] Test it: `/test AI service stabilization and fallback notices`
+- [x] Test it: `/test AI service stabilization and fallback notices`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.

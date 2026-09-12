@@ -274,6 +274,58 @@ describe("AI Providers and Registry", () => {
       expect(citationEvents.length).toBeGreaterThan(0);
       expect(traceEvents.length).toBe(1);
       expect(doneEvents.length).toBe(1);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "models/gemini-3.6-flash:streamGenerateContent",
+        ),
+        expect.any(Object),
+      );
+    });
+
+    it("respects GEMINI_MODEL environment variable override", async () => {
+      const originalModel = process.env.GEMINI_MODEL;
+      process.env.GEMINI_MODEL = "models/gemini-3.5-flash";
+
+      try {
+        global.fetch = vi.fn().mockResolvedValue(
+          new Response(
+            'data: {"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}\n\n',
+            {
+              status: 200,
+              headers: { "Content-Type": "text/event-stream" },
+            },
+          ),
+        );
+
+        const provider = new GeminiAIProvider();
+        const generator = provider.streamQuery(
+          [{ role: "user", content: "Hello" }],
+          {
+            repository: mockRepo,
+            graph: mockGraph,
+            contextSummary: "Summary",
+          },
+          "mock-key",
+        );
+
+        const events = [];
+        for await (const event of generator) {
+          events.push(event);
+        }
+
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "models/gemini-3.5-flash:streamGenerateContent",
+          ),
+          expect.any(Object),
+        );
+      } finally {
+        if (originalModel === undefined) {
+          delete process.env.GEMINI_MODEL;
+        } else {
+          process.env.GEMINI_MODEL = originalModel;
+        }
+      }
     });
 
     it("yields error event when Gemini returns non 200 status (covers: AC-3)", async () => {
@@ -301,6 +353,91 @@ describe("AI Providers and Registry", () => {
       if (events[0].type === "error") {
         expect(events[0].error).toContain("429");
       }
+    });
+
+    it("parses structured JSON error messages from Gemini API", async () => {
+      const errorJson = JSON.stringify({
+        error: {
+          code: 404,
+          message: "This model models/gemini-2.0-flash is no longer available.",
+          status: "NOT_FOUND",
+        },
+      });
+
+      global.fetch = vi.fn().mockResolvedValue(
+        new Response(errorJson, {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      const provider = new GeminiAIProvider();
+      const generator = provider.streamQuery(
+        [{ role: "user", content: "Hello" }],
+        {
+          repository: mockRepo,
+          graph: mockGraph,
+          contextSummary: "Summary",
+        },
+        "mock-key",
+      );
+
+      const events = [];
+      for await (const event of generator) {
+        events.push(event);
+      }
+
+      expect(events[0].type).toBe("error");
+      if (events[0].type === "error") {
+        expect(events[0].error).toBe(
+          "Gemini API returned HTTP 404: This model models/gemini-2.0-flash is no longer available.",
+        );
+      }
+    });
+
+    it("strips trailing assistant turns and empty turns to avoid requests ending with model turn", async () => {
+      global.fetch = vi.fn().mockResolvedValue(
+        new Response(
+          'data: {"candidates":[{"content":{"parts":[{"text":"answer"}]}}]}\n\n',
+          {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream" },
+          },
+        ),
+      );
+
+      const provider = new GeminiAIProvider();
+      const generator = provider.streamQuery(
+        [
+          { role: "user", content: "Initial query" },
+          { role: "assistant", content: "Previous reply" },
+          { role: "user", content: "Follow up question" },
+          { role: "assistant", content: "" }, // empty pending assistant turn
+        ],
+        {
+          repository: mockRepo,
+          graph: mockGraph,
+          contextSummary: "Summary",
+        },
+        "mock-key",
+      );
+
+      const events = [];
+      for await (const event of generator) {
+        events.push(event);
+      }
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const callArgs = (global.fetch as unknown as ReturnType<typeof vi.fn>)
+        .mock.calls[0];
+      const requestBody = JSON.parse(callArgs[1].body as string) as {
+        contents: Array<{ role: string; parts: Array<{ text: string }> }>;
+      };
+
+      // Last item in contents must be user, not model
+      const lastContent = requestBody.contents[requestBody.contents.length - 1];
+      expect(lastContent.role).toBe("user");
+      expect(lastContent.parts[0].text).toBe("Follow up question");
     });
   });
 

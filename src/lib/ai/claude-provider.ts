@@ -36,12 +36,30 @@ export class ClaudeProvider implements AIProvider {
 Analyze the repository context and provide clear architectural answers:
 ${context.contextSummary}`;
 
-    const formattedMessages = messages
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }));
+    const validMessages = messages.filter(
+      (m) =>
+        (m.role === "user" || m.role === "assistant") &&
+        m.content.trim().length > 0,
+    );
+    while (
+      validMessages.length > 0 &&
+      validMessages[validMessages.length - 1].role === "assistant"
+    ) {
+      validMessages.pop();
+    }
+
+    if (validMessages.length === 0) {
+      yield {
+        type: "error",
+        error: "No valid user message provided to Claude API.",
+      };
+      return;
+    }
+
+    const formattedMessages = validMessages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
 
     let response: Response;
     try {
