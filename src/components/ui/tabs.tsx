@@ -43,7 +43,7 @@ export function Tabs({
     >
       <TabsPrimitive.List
         className={cn(
-          "h-9 px-1 bg-[var(--surface-panel-secondary)] border-b border-[var(--border-subtle)] flex items-center gap-1 shrink-0",
+          "h-9 px-1.5 bg-[#121417] border-b border-zinc-800/60 flex items-center gap-1 shrink-0",
           listClassName,
         )}
       >
@@ -53,10 +53,10 @@ export function Tabs({
             value={tab.value}
             disabled={tab.disabled}
             className={cn(
-              "px-2.5 py-1 text-xs font-medium rounded transition-colors select-none",
-              "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]",
+              "px-2.5 py-1 text-xs font-medium rounded-md transition-colors select-none cursor-pointer",
+              "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40",
               "focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] focus-visible:outline-offset-1",
-              "data-[state=active]:bg-[var(--surface-card)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:shadow-xs",
+              "data-[state=active]:bg-zinc-800/80 data-[state=active]:text-zinc-100 data-[state=active]:border data-[state=active]:border-zinc-700/50 data-[state=active]:shadow-xs",
               "disabled:opacity-40 disabled:cursor-not-allowed",
             )}
           >

@@ -51,8 +51,8 @@ export function GraphControlsToolbar({
       role="toolbar"
       aria-label="Canvas zoom and view controls"
       className={cn(
-        "flex items-center gap-1 p-1 rounded-lg select-none shadow-lg transition-all",
-        "bg-[var(--surface-panel)] border border-[var(--border-default)]",
+        "flex items-center gap-1 p-1 rounded-lg select-none shadow-sm transition-all",
+        "bg-[#121417] border border-zinc-800/60",
         className,
       )}
     >
@@ -74,7 +74,7 @@ export function GraphControlsToolbar({
 
       {formattedZoom && (
         <span
-          className="px-1.5 text-[11px] font-mono font-medium text-[var(--text-secondary)] select-none"
+          className="px-1.5 text-[11px] font-mono font-medium text-zinc-400 select-none"
           aria-live="polite"
           title="Current canvas zoom"
         >
@@ -82,7 +82,7 @@ export function GraphControlsToolbar({
         </span>
       )}
 
-      <div className="w-px h-4 bg-[var(--border-subtle)] my-auto" />
+      <div className="w-px h-4 bg-zinc-800 my-auto" />
 
       <IconButton
         icon={Maximize}
@@ -115,8 +115,8 @@ export function GraphControlsToolbar({
           onClick={onToggleFollowCursor}
           className={
             isFollowCursorActive
-              ? "text-[var(--accent-primary)] border-[var(--accent-primary)]/40"
-              : "text-[var(--text-muted)]"
+              ? "text-blue-400 border-blue-500/30 bg-blue-500/10"
+              : "text-zinc-500 hover:text-zinc-300"
           }
         />
       )}
@@ -129,8 +129,8 @@ export function GraphControlsToolbar({
         onClick={onToggleMinimap}
         className={
           isMinimapVisible
-            ? "text-[var(--accent-primary)] border-[var(--accent-primary)]/40"
-            : ""
+            ? "text-blue-400 border-blue-500/30 bg-blue-500/10"
+            : "text-zinc-400 hover:text-zinc-200"
         }
       />
     </div>

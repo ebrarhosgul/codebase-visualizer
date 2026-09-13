@@ -59,45 +59,48 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
       role="article"
       aria-label={`Symbol node: ${symbol.name} (${kind})`}
       className={cn(
-        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-all shadow-md",
-        "bg-[var(--surface-card)] border",
+        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-colors duration-150 shadow-xs",
+        "bg-[#15171b] border",
         selected
-          ? "border-[var(--border-focus)] ring-2 ring-[var(--border-focus)] shadow-lg"
-          : "border-[var(--border-default)] hover:border-[var(--border-focus)]",
+          ? "border-[var(--accent-primary)] ring-1 ring-[var(--accent-primary)]/50 z-20"
+          : "border-zinc-800/80 hover:border-zinc-700",
       )}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="w-2.5 h-2.5 !bg-[var(--syntax-fn)] border-2 border-[var(--surface-card)] rounded-full -left-[5px]"
+        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -left-[4px]"
       />
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="p-1 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] shrink-0 text-[var(--syntax-fn)]">
+          <div className="p-1 rounded-md bg-zinc-900 border border-zinc-800 shrink-0 text-zinc-400">
             <Icon className="w-3.5 h-3.5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
             <h4
-              className="text-xs font-mono font-semibold text-[var(--text-primary)] truncate"
+              className="text-xs font-mono font-medium text-zinc-100 truncate"
               title={symbol.name}
             >
               {symbol.name}
             </h4>
-            <p className="text-[10px] text-[var(--text-muted)] truncate font-mono">
+            <p className="text-[10px] text-zinc-500 truncate font-mono">
               {symbol.signature || kind}
             </p>
           </div>
         </div>
-        <Badge variant={badgeVariant} className="shrink-0 text-[10px]">
+        <Badge
+          variant={badgeVariant}
+          className="shrink-0 text-[10px] font-mono px-1.5 py-0.2"
+        >
           {kind}
         </Badge>
       </div>
 
       {symbol.isExported && (
-        <div className="mt-2 pt-1 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] text-[var(--text-secondary)] font-mono">
+        <div className="mt-2 pt-1 border-t border-zinc-800/80 flex items-center justify-between text-[10px] text-zinc-400 font-mono">
           <span>exported</span>
-          <span className="text-[var(--status-success)] text-[9px] uppercase">
+          <span className="text-emerald-400 text-[9px] uppercase font-mono">
             {symbol.visibility}
           </span>
         </div>
@@ -106,7 +109,7 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
       <Handle
         type="source"
         position={Position.Right}
-        className="w-2.5 h-2.5 !bg-[var(--syntax-fn)] border-2 border-[var(--surface-card)] rounded-full -right-[5px]"
+        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -right-[4px]"
       />
     </div>
   );

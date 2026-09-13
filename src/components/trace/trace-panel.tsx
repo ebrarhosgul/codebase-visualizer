@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { useGraphStore } from "@/stores/graph-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useAiQueryStream } from "@/hooks/use-ai-query-stream";
@@ -19,6 +25,8 @@ import {
   Compass,
   AlertTriangle,
   ArrowRight,
+  Copy,
+  Check,
 } from "lucide-react";
 import type {
   AiFallbackNotice,
@@ -28,6 +36,7 @@ import type {
 } from "@/lib/ai/types";
 import type { PathTrace } from "@/entities";
 import { FallbackNoticeCard } from "./fallback-notice-card";
+import { MarkdownMessage } from "./markdown-message";
 
 const SUGGESTED_PROMPTS = [
   "How do stores connect to canvas?",
@@ -56,6 +65,7 @@ export function TracePanel(): React.JSX.Element {
     useState<AiProviderId>("gemini");
   const [isKeyDialogOpen, setIsKeyDialogOpen] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isStreaming, streamQuery, abortQuery } = useAiQueryStream();
@@ -124,6 +134,43 @@ export function TracePanel(): React.JSX.Element {
     });
     setActiveRightTab("code");
   };
+
+  const handleCopyMessage = useCallback(async (text: string, msgId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMessageId(msgId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch {
+      // Tolerate clipboard write failures in restricted environments
+    }
+  }, []);
+
+  const knownFilePaths = useMemo(() => {
+    if (!graph) return [];
+    return Object.values(graph.files).map((f) => f.path);
+  }, [graph]);
+
+  const handleDirectFileNavigation = useCallback(
+    (filePath: string) => {
+      if (!graph) return;
+      const fileEntry = Object.values(graph.files).find(
+        (f) =>
+          f.path === filePath ||
+          f.path.endsWith(`/${filePath}`) ||
+          f.name === filePath,
+      );
+      if (fileEntry) {
+        navigateToTarget({
+          fileId: fileEntry.id,
+          line: 1,
+          source: "search",
+          timestamp: Date.now(),
+        });
+        setActiveRightTab("code");
+      }
+    },
+    [graph, navigateToTarget, setActiveRightTab],
+  );
 
   const executeAssistantQuery = async (
     textToSend: string,
@@ -345,16 +392,14 @@ export function TracePanel(): React.JSX.Element {
 
   return (
     <div
-      className="flex flex-col h-full w-full bg-[var(--surface-panel)] select-none text-xs overflow-hidden"
+      className="flex flex-col h-full w-full bg-[#121417] select-none text-xs overflow-hidden"
       data-testid="trace-panel"
     >
       {/* Top action header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border-subtle)] bg-[var(--surface-card)]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/60 bg-[#121417]">
         <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-          <span className="font-semibold text-[var(--text-primary)]">
-            Semantic Trace
-          </span>
+          <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
+          <span className="font-semibold text-zinc-100">Semantic Trace</span>
           <Badge
             variant={isDemoMode ? "default" : "accent"}
             className="text-[10px] h-4.5 px-1.5"
@@ -369,7 +414,7 @@ export function TracePanel(): React.JSX.Element {
               variant="ghost"
               size="sm"
               onClick={clearTrace}
-              className="h-6 px-1.5 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className="h-6 px-1.5 text-[10px] text-zinc-400 hover:text-zinc-200"
               title="Clear active trace glow on canvas"
             >
               Clear Glow
@@ -380,7 +425,7 @@ export function TracePanel(): React.JSX.Element {
             variant="ghost"
             size="sm"
             onClick={() => setIsDemoMode((prev) => !prev)}
-            className="h-6 px-2 text-[10px]"
+            className="h-6 px-2 text-[10px] text-zinc-400 hover:text-zinc-200"
             title="Toggle between Zero Cost Demo and Live BYOK"
           >
             {isDemoMode ? "Enable BYOK" : "Switch to Demo"}
@@ -390,7 +435,7 @@ export function TracePanel(): React.JSX.Element {
             variant="ghost"
             size="sm"
             onClick={() => setIsKeyDialogOpen(true)}
-            className="h-6 w-6 p-0 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-200"
             title="Configure API Keys"
           >
             <Key className="w-3.5 h-3.5" />
@@ -401,7 +446,7 @@ export function TracePanel(): React.JSX.Element {
               variant="ghost"
               size="sm"
               onClick={handleClearChat}
-              className="h-6 w-6 p-0 text-[var(--text-muted)] hover:text-[var(--status-error)]"
+              className="h-6 w-6 p-0 text-zinc-500 hover:text-red-400"
               title="Clear thread history"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -413,7 +458,7 @@ export function TracePanel(): React.JSX.Element {
       {/* Warning banner (AC-4, AC-7) */}
       {warningMessage && (
         <div
-          className="mx-3 mt-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200 text-[11px] flex items-start gap-2"
+          className="mx-3 mt-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-200 text-[11px] flex items-start gap-2"
           data-testid="trace-warning-banner"
         >
           <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
@@ -425,14 +470,14 @@ export function TracePanel(): React.JSX.Element {
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
         {messages.length === 0 ? (
           <div className="py-6 text-center space-y-3">
-            <div className="w-10 h-10 mx-auto rounded-full bg-[var(--surface-hover)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--accent-primary)]">
+            <div className="w-10 h-10 mx-auto rounded-full bg-zinc-900 border border-zinc-800/80 flex items-center justify-center text-zinc-400">
               <Compass className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-medium text-[var(--text-primary)]">
+              <div className="font-medium text-zinc-100">
                 Ask Architectural Questions
               </div>
-              <p className="text-[11px] text-[var(--text-muted)] max-w-xs mx-auto mt-1">
+              <p className="text-[11px] text-zinc-400 max-w-xs mx-auto mt-1">
                 Explore module dependencies and visual call paths in natural
                 language.
               </p>
@@ -440,10 +485,10 @@ export function TracePanel(): React.JSX.Element {
 
             {/* Suggested prompt pills (AC-2) */}
             <div className="pt-2 space-y-1.5 max-w-xs mx-auto text-left">
-              <div className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
                 Suggested Prompts
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 {SUGGESTED_PROMPTS.map((promptText, i) => (
                   <button
                     type="button"
@@ -454,10 +499,10 @@ export function TracePanel(): React.JSX.Element {
                       handleSend(promptText);
                     }}
                     disabled={!graph}
-                    className={`w-full text-left p-2 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)] text-[11px] transition-colors ${
+                    className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs text-zinc-400 transition-colors cursor-pointer border border-transparent ${
                       !graph
                         ? "opacity-50 cursor-not-allowed"
-                        : "hover:text-[var(--text-primary)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)]"
+                        : "hover:text-zinc-200 hover:bg-zinc-800/50 hover:border-zinc-800/50"
                     }`}
                     title={
                       !graph ? "Load a repository to ask questions" : undefined
@@ -480,18 +525,57 @@ export function TracePanel(): React.JSX.Element {
               <div
                 className={`max-w-[90%] rounded-lg p-3 text-xs ${
                   msg.role === "user"
-                    ? "bg-[var(--accent-primary)] text-[var(--accent-primary-foreground)] rounded-br-none"
-                    : "bg-[var(--surface-card)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-bl-none shadow-xs"
+                    ? "bg-zinc-800 text-zinc-100 border border-zinc-700/60 rounded-br-none"
+                    : "bg-[#15171B] border border-zinc-800/80 text-zinc-200 rounded-bl-none shadow-xs"
                 }`}
               >
                 {/* Message body */}
-                <div className="whitespace-pre-wrap leading-relaxed">
-                  {msg.content ||
-                    (msg.status === "streaming" && "Analyzing...")}
-                  {msg.status === "streaming" && (
-                    <span className="inline-block w-1.5 h-3.5 ml-1 bg-[var(--accent-primary)] animate-pulse align-middle" />
-                  )}
-                </div>
+                {msg.role === "user" ? (
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {msg.content}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-zinc-800/60 text-[10px] text-zinc-500">
+                      <div className="flex items-center gap-1.5 font-medium text-zinc-300">
+                        <Sparkles className="w-3 h-3 text-zinc-400" />
+                        <span>Semantic Assistant</span>
+                      </div>
+                      {msg.content && msg.status !== "streaming" && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(msg.content, msg.id)}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors cursor-pointer"
+                          title="Copy response"
+                          aria-label={
+                            copiedMessageId === msg.id
+                              ? "Response copied"
+                              : "Copy response"
+                          }
+                        >
+                          {copiedMessageId === msg.id ? (
+                            <>
+                              <Check className="w-2.5 h-2.5 text-emerald-400" />
+                              <span className="text-emerald-400">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-2.5 h-2.5" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    <MarkdownMessage
+                      content={msg.content}
+                      isStreaming={msg.status === "streaming"}
+                      knownFilePaths={knownFilePaths}
+                      onFileClick={handleDirectFileNavigation}
+                    />
+                  </div>
+                )}
 
                 {/* Fallback Notice Card (AC-2, AC-3) */}
                 {msg.status === "error" && (
@@ -516,12 +600,12 @@ export function TracePanel(): React.JSX.Element {
                 {/* Path Trace summary card (AC-5) */}
                 {msg.pathTrace && (
                   <div
-                    className="mt-3 p-2.5 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] space-y-2"
+                    className="mt-3 p-2.5 rounded-md bg-[#0B0C0E] border border-zinc-800/60 space-y-2"
                     data-testid="path-trace-card"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--accent-primary)]">
-                        <Layers className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-200">
+                        <Layers className="w-3.5 h-3.5 text-zinc-400" />
                         <span>Verified Dependency Path</span>
                       </div>
                       <Badge
@@ -552,15 +636,15 @@ export function TracePanel(): React.JSX.Element {
                               }}
                               className={`px-1.5 py-0.5 rounded text-[10px] transition-colors border ${
                                 isFocused
-                                  ? "bg-[var(--accent-primary)] text-white border-[var(--accent-primary)]"
-                                  : "bg-[var(--surface-card)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]"
+                                  ? "bg-blue-600 text-white border-blue-600"
+                                  : "bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-zinc-100 hover:border-zinc-700"
                               }`}
                               title={`Step ${idx + 1}: ${fileEntity?.path ?? nodeId}`}
                             >
                               {label}
                             </button>
                             {idx < msg.pathTrace!.stepNodeIds.length - 1 && (
-                              <ArrowRight className="w-2.5 h-2.5 text-[var(--text-muted)] shrink-0" />
+                              <ArrowRight className="w-2.5 h-2.5 text-zinc-600 shrink-0" />
                             )}
                           </React.Fragment>
                         );
@@ -572,7 +656,7 @@ export function TracePanel(): React.JSX.Element {
                         variant="ghost"
                         size="sm"
                         onClick={() => setActiveTrace(msg.pathTrace!)}
-                        className="h-5 px-2 text-[10px] text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10"
+                        className="h-5 px-2 text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
                       >
                         Highlight On Canvas
                       </Button>
@@ -582,8 +666,8 @@ export function TracePanel(): React.JSX.Element {
 
                 {/* Citations section (AC-6) */}
                 {msg.citations && msg.citations.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-[var(--border-subtle)] space-y-1.5">
-                    <div className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                  <div className="mt-3 pt-2 border-t border-zinc-800/60 space-y-1.5">
+                    <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
                       Code Citations
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -591,10 +675,10 @@ export function TracePanel(): React.JSX.Element {
                         <button
                           key={cite.id}
                           onClick={() => handleCitationClick(cite)}
-                          className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)] transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 rounded bg-[#0B0C0E] border border-zinc-800/80 text-[11px] text-zinc-300 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800/50 transition-colors"
                           title={`Click to view ${cite.label} at line ${cite.line || 1}`}
                         >
-                          <FileCode className="w-3 h-3 text-[var(--accent-primary)]" />
+                          <FileCode className="w-3 h-3 text-zinc-400" />
                           <span>
                             {cite.label}
                             {cite.line ? `:${cite.line}` : ""}
@@ -612,7 +696,7 @@ export function TracePanel(): React.JSX.Element {
       </div>
 
       {/* Query input footer */}
-      <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--surface-card)]">
+      <div className="p-3 border-t border-zinc-800/60 bg-[#121417]">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -636,7 +720,7 @@ export function TracePanel(): React.JSX.Element {
             }
             disabled={!graph || isStreaming}
             rows={2}
-            className="flex-1 p-2 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-default)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] resize-none disabled:opacity-50"
+            className="flex-1 p-2 rounded-md bg-[#0B0C0E] border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 resize-none disabled:opacity-50 transition-all"
           />
 
           {isStreaming ? (

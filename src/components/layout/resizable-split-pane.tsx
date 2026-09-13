@@ -81,15 +81,15 @@ export function ResizableSplitPane({
                 className={cn(
                   "relative flex items-center justify-center transition-colors select-none z-10",
                   direction === "horizontal"
-                    ? "w-1.5 cursor-col-resize hover:bg-[var(--border-focus)] active:bg-[var(--border-focus)] bg-[var(--border-subtle)]"
-                    : "h-1.5 cursor-row-resize hover:bg-[var(--border-focus)] active:bg-[var(--border-focus)] bg-[var(--border-subtle)]",
+                    ? "w-1 cursor-col-resize hover:bg-zinc-700/60 active:bg-blue-600/80 bg-zinc-800/50"
+                    : "h-1 cursor-row-resize hover:bg-zinc-700/60 active:bg-blue-600/80 bg-zinc-800/50",
                   "focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] focus-visible:outline-offset-1",
                 )}
               >
                 <div
                   className={cn(
-                    "rounded-full bg-[var(--text-muted)] opacity-40 transition-opacity group-hover:opacity-100",
-                    direction === "horizontal" ? "w-0.5 h-6" : "h-0.5 w-6",
+                    "rounded-full bg-zinc-600 opacity-40 transition-opacity group-hover:opacity-100",
+                    direction === "horizontal" ? "w-0.5 h-5" : "h-0.5 w-5",
                   )}
                 />
               </Separator>

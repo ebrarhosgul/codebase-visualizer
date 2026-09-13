@@ -26,11 +26,11 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--accent-primary)] text-[var(--accent-primary-foreground)] font-semibold hover:bg-[var(--accent-primary-hover)] shadow-xs",
+    "bg-[var(--accent-primary)] text-[var(--accent-primary-foreground)] font-medium hover:bg-[var(--accent-primary-hover)] shadow-xs border border-transparent",
   secondary:
-    "bg-[var(--surface-panel-secondary)] text-[var(--text-primary)] border border-[var(--border-default)] hover:bg-[var(--surface-hover)] shadow-xs",
+    "bg-zinc-900 text-zinc-200 border border-zinc-800/80 hover:bg-zinc-800 hover:text-zinc-100 shadow-xs",
   ghost:
-    "bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]",
+    "bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50",
   danger:
     "bg-[var(--status-error)] text-white font-medium hover:opacity-90 shadow-xs",
 };

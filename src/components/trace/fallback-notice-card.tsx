@@ -33,28 +33,28 @@ const NOTICE_STYLE_MAP: Record<
   }
 > = {
   rate_limit: {
-    border: "border-amber-500/40",
-    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    bg: "bg-amber-500/5",
     badgeVariant: "warning",
   },
   auth_error: {
-    border: "border-rose-500/40",
-    bg: "bg-rose-500/10",
+    border: "border-rose-500/20",
+    bg: "bg-rose-500/5",
     badgeVariant: "error",
   },
   provider_outage: {
-    border: "border-sky-500/40",
-    bg: "bg-sky-500/10",
+    border: "border-blue-500/20",
+    bg: "bg-blue-500/5",
     badgeVariant: "info",
   },
   network_timeout: {
-    border: "border-amber-500/40",
-    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
+    bg: "bg-amber-500/5",
     badgeVariant: "warning",
   },
   unknown: {
-    border: "border-[var(--border-default)]",
-    bg: "bg-[var(--surface-panel-secondary)]",
+    border: "border-zinc-800/80",
+    bg: "bg-[#0B0C0E]",
     badgeVariant: "default",
   },
 };
@@ -148,9 +148,7 @@ export function FallbackNoticeCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           {renderIcon()}
-          <span className="font-semibold text-[var(--text-primary)]">
-            {notice.title}
-          </span>
+          <span className="font-semibold text-zinc-100">{notice.title}</span>
         </div>
         <Badge
           variant={style.badgeVariant}
@@ -161,13 +159,13 @@ export function FallbackNoticeCard({
       </div>
 
       {/* Description message */}
-      <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
+      <p className="text-[11px] leading-relaxed text-zinc-400">
         {notice.message}
       </p>
 
       {/* Rate limit countdown and auto retry checkbox */}
       {notice.code === "rate_limit" && (
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-1 border-t border-[var(--border-subtle)] text-[11px]">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-1 border-t border-zinc-800/60 text-[11px]">
           <div className="flex items-center gap-1.5 text-amber-300 font-medium">
             <Clock className="w-3.5 h-3.5" />
             <span>
@@ -177,12 +175,12 @@ export function FallbackNoticeCard({
             </span>
           </div>
 
-          <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+          <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-zinc-500 hover:text-zinc-300">
             <input
               type="checkbox"
               checked={autoRetry}
               onChange={(e) => setAutoRetry(e.target.checked)}
-              className="rounded border-[var(--border-default)] accent-[var(--accent-primary)] w-3.5 h-3.5"
+              className="rounded border-zinc-800 accent-blue-500 w-3.5 h-3.5"
             />
             <span>Auto retry when ready</span>
           </label>
@@ -190,7 +188,7 @@ export function FallbackNoticeCard({
       )}
 
       {/* Action triggers */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[var(--border-subtle)]">
+      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-800/60">
         {notice.code === "auth_error" && onOpenKeySettings && (
           <Button
             type="button"
@@ -212,7 +210,7 @@ export function FallbackNoticeCard({
             onClick={onSwitchToDemo}
             className="gap-1.5"
           >
-            <Sparkles className="w-3 h-3 text-[var(--accent-primary)]" />
+            <Sparkles className="w-3 h-3 text-zinc-400" />
             <span>Switch to Demo Mode</span>
           </Button>
         )}

@@ -59,13 +59,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             aria-invalid={Boolean(error)}
             aria-describedby={error ? errorId : helperId}
             className={cn(
-              "w-full h-8 px-2.5 rounded-md text-sm text-[var(--text-primary)] bg-[var(--surface-panel)] border border-[var(--border-default)] transition-colors",
-              "placeholder:text-[var(--text-muted)]",
-              "focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] focus-visible:outline-offset-1",
+              "w-full h-8 px-2.5 rounded-md text-xs text-zinc-100 bg-[#0b0c0e] border border-zinc-800 transition-colors",
+              "placeholder:text-zinc-500",
+              "focus-visible:outline-none focus-visible:border-[var(--border-focus)] focus-visible:ring-1 focus-visible:ring-[var(--border-focus)]/40",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               Icon && "pl-8",
               error &&
-                "border-[var(--status-error)] focus-visible:outline-[var(--status-error)]",
+                "border-[var(--status-error)] focus-visible:border-[var(--status-error)] focus-visible:ring-[var(--status-error)]/30",
               className,
             )}
             {...props}

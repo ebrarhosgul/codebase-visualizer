@@ -21,36 +21,36 @@ Token values live in `src/app/globals.css` as native CSS custom properties and T
 
 | Token | Dark Value | Light Value | Purpose |
 |---|---|---|---|
-| `--surface-canvas` | `#090d16` | `#f1f5f9` | Graph canvas backdrop |
-| `--surface-panel` | `#0f172a` | `#ffffff` | Primary sidebars and inspector panels |
-| `--surface-panel-secondary` | `#1e293b` | `#f8fafc` | Elevated panel headers and tab strips |
-| `--surface-card` | `#141e33` | `#ffffff` | Graph node cards and floating dialogs |
-| `--surface-hover` | `rgba(255, 255, 255, 0.05)` | `rgba(0, 0, 0, 0.04)` | Hover highlight state |
-| `--surface-active` | `rgba(255, 255, 255, 0.10)` | `rgba(0, 0, 0, 0.08)` | Selected or active item highlight |
+| `--surface-canvas` | `#0b0c0e` | `#f4f4f5` | Graph canvas backdrop |
+| `--surface-panel` | `#121417` | `#ffffff` | Primary sidebars and inspector panels |
+| `--surface-panel-secondary` | `#181b1f` | `#f4f4f5` | Elevated panel headers and tab strips |
+| `--surface-card` | `#15171b` | `#ffffff` | Graph node cards and floating dialogs |
+| `--surface-hover` | `rgba(255, 255, 255, 0.04)` | `rgba(0, 0, 0, 0.04)` | Hover highlight state |
+| `--surface-active` | `rgba(255, 255, 255, 0.08)` | `rgba(0, 0, 0, 0.08)` | Selected or active item highlight |
 
 ### Borders
 
 | Token | Dark Value | Light Value | Purpose |
 |---|---|---|---|
-| `--border-subtle` | `#1e293b` | `#e2e8f0` | Dividers and internal panel rules |
-| `--border-default` | `#334155` | `#cbd5e1` | Panel perimeters and input outlines |
-| `--border-focus` | `#38bdf8` | `#0284c7` | Visible focus outline ring |
+| `--border-subtle` | `rgba(255, 255, 255, 0.07)` | `#e4e4e7` | Dividers and internal panel rules |
+| `--border-default` | `rgba(255, 255, 255, 0.12)` | `#d4d4d8` | Panel perimeters and input outlines |
+| `--border-focus` | `#3b82f6` | `#2563eb` | Visible focus outline ring |
 
 ### Text Hierarchy
 
 | Token | Dark Value | Light Value | Contrast Ratio |
 |---|---|---|---|
-| `--text-primary` | `#f8fafc` | `#0f172a` | Greater than 13 to 1 |
-| `--text-secondary` | `#94a3b8` | `#475569` | Greater than 5 to 1 |
-| `--text-muted` | `#64748b` | `#64748b` | Greater than 4.5 to 1 |
+| `--text-primary` | `#f4f4f5` | `#18181b` | Greater than 13 to 1 |
+| `--text-secondary` | `#a1a1aa` | `#71717a` | Greater than 5 to 1 |
+| `--text-muted` | `#71717a` | `#a1a1aa` | Greater than 4.5 to 1 |
 
 ### Interactive Accents
 
 | Token | Dark Value | Light Value | Purpose |
 |---|---|---|---|
-| `--accent-primary` | `#38bdf8` | `#0284c7` | Primary action buttons and links |
-| `--accent-primary-hover` | `#0ea5e9` | `#0369a1` | Hover state on primary actions |
-| `--accent-primary-foreground` | `#090d16` | `#ffffff` | Readable text on primary accent |
+| `--accent-primary` | `#3b82f6` | `#2563eb` | Primary action buttons and links |
+| `--accent-primary-hover` | `#2563eb` | `#1d4ed8` | Hover state on primary actions |
+| `--accent-primary-foreground` | `#ffffff` | `#ffffff` | Readable text on primary accent |
 
 ### Status Indicators
 
@@ -59,17 +59,17 @@ Token values live in `src/app/globals.css` as native CSS custom properties and T
 | Success | `#10b981` | `#059669` | Verified checks, parsed states, clean builds |
 | Warning | `#f59e0b` | `#d97706` | External packages, cycles, rate limits |
 | Error | `#ef4444` | `#dc2626` | Parse errors, broken links, failed queries |
-| Info | `#38bdf8` | `#0284c7` | Informational callouts and tooltips |
+| Info | `#3b82f6` | `#2563eb` | Informational callouts and tooltips |
 
 ### Syntax Badges
 
 | Node Kind | Token Name | Hex Color | Purpose |
 |---|---|---|---|
-| TypeScript | `--syntax-ts` | `#38bdf8` | TypeScript file nodes |
-| JavaScript | `--syntax-js` | `#facc15` | JavaScript file nodes |
-| Function | `--syntax-fn` | `#a78bfa` | Callable functions and methods |
-| Class | `--syntax-class` | `#34d399` | Classes and constructors |
-| Type | `--syntax-type` | `#f472b6` | Types and interfaces |
+| TypeScript | `--syntax-ts` | `#a1a1aa` | TypeScript file nodes |
+| JavaScript | `--syntax-js` | `#a1a1aa` | JavaScript file nodes |
+| Function | `--syntax-fn` | `#d4d4d8` | Callable functions and methods |
+| Class | `--syntax-class` | `#e4e4e7` | Classes and constructors |
+| Type | `--syntax-type` | `#a1a1aa` | Types and interfaces |
 
 ## Typography
 

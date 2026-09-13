@@ -20,9 +20,6 @@ function getFileBadgeVariant(name: string): BadgeVariant {
   if (name.endsWith(".js") || name.endsWith(".jsx")) {
     return "syntax-js";
   }
-  if (name.endsWith(".json")) {
-    return "warning";
-  }
   return "default";
 }
 
@@ -55,7 +52,7 @@ export const FileNodeCard = React.memo(function FileNodeCard({
   } else if (entityType === "external") {
     Icon = Package;
     badgeLabel = "pkg";
-    badgeVariant = "warning";
+    badgeVariant = "default";
     subtitle = "external package";
   } else if (entityType === "file") {
     Icon = FileCode;
@@ -73,37 +70,39 @@ export const FileNodeCard = React.memo(function FileNodeCard({
       role="article"
       aria-label={`${entityType} node: ${label}`}
       className={cn(
-        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-all duration-200 shadow-md",
-        "bg-[var(--surface-card)] border",
-        selected || isHovered
-          ? "border-[var(--accent-primary)] ring-2 ring-[var(--accent-primary)] shadow-lg shadow-[var(--accent-primary)]/20 scale-[1.02] z-20"
-          : isConnected
-            ? "border-[var(--border-focus)] ring-1 ring-[var(--border-focus)] shadow-sm"
-            : "border-[var(--border-default)] hover:border-[var(--border-focus)]",
-        isDimmed && !selected && !isHovered && !isConnected && "opacity-30",
+        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-colors duration-150 shadow-xs",
+        "bg-[#15171b] border",
+        selected
+          ? "border-[var(--accent-primary)] ring-2 ring-[var(--accent-primary)]/40 z-20"
+          : isHovered
+            ? "border-zinc-700 bg-zinc-900/90 z-10"
+            : isConnected
+              ? "border-zinc-700 shadow-xs"
+              : "border-zinc-800/80 hover:border-zinc-700",
+        isDimmed && !selected && !isHovered && !isConnected && "opacity-25",
       )}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="w-2.5 h-2.5 !bg-[var(--accent-primary)] border-2 border-[var(--surface-card)] rounded-full -left-[5px]"
+        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -left-[4px]"
       />
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="p-1.5 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] shrink-0 text-[var(--accent-primary)]">
-            <Icon className="w-4 h-4" aria-hidden="true" />
+          <div className="p-1.5 rounded-md bg-zinc-900 border border-zinc-800 shrink-0 text-zinc-400">
+            <Icon className="w-3.5 h-3.5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
             <h4
-              className="text-xs font-semibold text-[var(--text-primary)] truncate"
+              className="text-xs font-medium text-zinc-100 truncate"
               title={label}
             >
               {label}
             </h4>
             {subtitle && (
               <p
-                className="text-[10px] text-[var(--text-muted)] truncate font-mono"
+                className="text-[10px] text-zinc-500 truncate font-mono"
                 title={subtitle}
               >
                 {subtitle}
@@ -113,21 +112,21 @@ export const FileNodeCard = React.memo(function FileNodeCard({
         </div>
         <Badge
           variant={badgeVariant}
-          className="shrink-0 text-[10px] font-mono"
+          className="shrink-0 text-[10px] font-mono px-1.5 py-0.2"
         >
           {badgeLabel}
         </Badge>
       </div>
 
       {entityType === "file" && (
-        <div className="mt-2 pt-2 border-t border-[var(--border-subtle)]">
+        <div className="mt-2 pt-2 border-t border-zinc-800/80">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="flex items-center gap-1 text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] rounded"
+            className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] rounded cursor-pointer"
             aria-expanded={isExpanded}
           >
             {isExpanded ? (
@@ -139,16 +138,16 @@ export const FileNodeCard = React.memo(function FileNodeCard({
           </button>
 
           {isExpanded && (
-            <div className="mt-2 text-[10px] text-[var(--text-secondary)] space-y-1 font-mono">
+            <div className="mt-2 text-[10px] text-zinc-400 space-y-1 font-mono">
               <div className="flex justify-between">
                 <span>Symbols:</span>
-                <span className="text-[var(--text-primary)]">
+                <span className="text-zinc-200 font-medium">
                   {data.entity.symbolIds ? data.entity.symbolIds.length : 0}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Imports:</span>
-                <span className="text-[var(--text-primary)]">
+                <span className="text-zinc-200 font-medium">
                   {data.entity.importIds ? data.entity.importIds.length : 0}
                 </span>
               </div>
@@ -160,7 +159,7 @@ export const FileNodeCard = React.memo(function FileNodeCard({
       <Handle
         type="source"
         position={Position.Right}
-        className="w-2.5 h-2.5 !bg-[var(--accent-primary)] border-2 border-[var(--surface-card)] rounded-full -right-[5px]"
+        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -right-[4px]"
       />
     </div>
   );

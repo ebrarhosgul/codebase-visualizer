@@ -44,13 +44,13 @@ export function CustomMiniMap({
   return (
     <MiniMap
       nodeColor={getMinimapNodeColor}
-      maskColor="rgba(9, 13, 22, 0.75)"
+      maskColor="rgba(11, 12, 14, 0.85)"
       zoomable={zoomable}
       pannable={pannable}
       ariaLabel="Overview minimap of architecture graph"
       className={cn(
-        "rounded-lg overflow-hidden select-none shadow-xl transition-all",
-        "!bg-[var(--surface-panel)] !border !border-[var(--border-default)]",
+        "rounded-lg overflow-hidden select-none transition-all shadow-sm",
+        "!bg-[#121417] !border !border-zinc-800/60",
         className,
       )}
     />

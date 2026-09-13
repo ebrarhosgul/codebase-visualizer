@@ -126,7 +126,7 @@ export function KeySettingsDialog({
       <form onSubmit={handleSaveKey} className="space-y-4 pt-2">
         {/* Provider selection */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-[var(--text-primary)]">
+          <label className="text-xs font-medium text-zinc-200">
             Active Provider
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -140,10 +140,10 @@ export function KeySettingsDialog({
                     setSelectedProvider(p.id);
                     setStatusMessage(null);
                   }}
-                  className={`p-2 rounded-md border text-left text-xs transition-colors ${
+                  className={`p-2 rounded-md border text-left text-xs transition-colors cursor-pointer ${
                     isSelected
-                      ? "border-[var(--accent-primary)] bg-[var(--surface-hover)] text-[var(--text-primary)] font-medium"
-                      : "border-[var(--border-subtle)] bg-[var(--surface-panel-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      ? "border-blue-500/60 bg-zinc-800 text-zinc-100 font-medium"
+                      : "border-zinc-800 bg-[#0B0C0E] text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
                   }`}
                 >
                   <div>{p.name}</div>
@@ -151,15 +151,15 @@ export function KeySettingsDialog({
               );
             })}
           </div>
-          <p className="text-[11px] text-[var(--text-muted)]">
+          <p className="text-[11px] text-zinc-500">
             {PROVIDERS.find((p) => p.id === selectedProvider)?.hint}
           </p>
         </div>
 
         {/* API key input */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-[var(--text-primary)] flex items-center gap-1.5">
-            <Key className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+          <label className="text-xs font-medium text-zinc-200 flex items-center gap-1.5">
+            <Key className="w-3.5 h-3.5 text-zinc-400" />
             <span>API Key</span>
           </label>
           <Input
@@ -177,8 +177,8 @@ export function KeySettingsDialog({
           <div
             className={`p-2.5 rounded-md text-xs flex items-center gap-2 ${
               statusMessage.type === "success"
-                ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
-                : "bg-red-500/10 border border-red-500/30 text-red-300"
+                ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
+                : "bg-red-500/10 border border-red-500/20 text-red-300"
             }`}
           >
             {statusMessage.type === "success" && (
@@ -188,14 +188,14 @@ export function KeySettingsDialog({
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
+        <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={handleClearKey}
             loading={isSubmitting}
-            className="text-[var(--status-error)] hover:bg-red-500/10 hover:text-red-300 gap-1.5"
+            className="text-red-400 hover:bg-red-500/10 hover:text-red-300 gap-1.5"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Clear Stored Key</span>

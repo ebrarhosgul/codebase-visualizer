@@ -42,19 +42,17 @@ export const FolderGroupNode = React.memo(function FolderGroupNode({
   return (
     <div
       className={cn(
-        "w-full h-full rounded-2xl p-3 transition-all duration-300 select-none pointer-events-none",
+        "w-full h-full rounded-xl p-3 transition-colors duration-200 select-none pointer-events-none",
         isActive
-          ? "border-2 border-[var(--accent-primary)]/80 bg-[var(--accent-primary)]/8 shadow-xl shadow-[var(--accent-primary)]/15"
-          : "border border-[var(--border-subtle)]/80 bg-[var(--surface-panel)]/30 backdrop-blur-xs",
+          ? "border-2 border-zinc-700 bg-zinc-900/30"
+          : "border border-zinc-800/60 bg-zinc-950/30",
       )}
       data-testid={`folder-group-${label}`}
     >
       <div
         className={cn(
           "flex items-center justify-between gap-2 border-b pb-2 mb-2 transition-colors pointer-events-auto cursor-pointer",
-          isActive
-            ? "border-[var(--accent-primary)]/40"
-            : "border-[var(--border-subtle)]/40",
+          isActive ? "border-zinc-750" : "border-zinc-800/40",
         )}
         onDoubleClick={handleCollapse}
         title="Double click or click chevron to collapse folder"
@@ -63,7 +61,7 @@ export const FolderGroupNode = React.memo(function FolderGroupNode({
           <button
             type="button"
             onClick={handleCollapse}
-            className="p-1 rounded hover:bg-[var(--surface-canvas)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            className="p-1 rounded hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
             aria-label={`Collapse ${label} folder`}
             data-testid={`folder-collapse-${label}`}
           >
@@ -73,18 +71,16 @@ export const FolderGroupNode = React.memo(function FolderGroupNode({
             className={cn(
               "p-1 rounded transition-colors shrink-0",
               isActive
-                ? "bg-[var(--accent-primary)]/25 text-[var(--accent-primary)]"
-                : "bg-[var(--surface-panel-secondary)] text-[var(--accent-primary)] opacity-80",
+                ? "bg-zinc-800 text-zinc-200"
+                : "bg-zinc-900 text-zinc-400",
             )}
           >
             <Folder className="w-3.5 h-3.5" />
           </div>
           <span
             className={cn(
-              "text-xs font-semibold font-mono truncate tracking-tight transition-colors",
-              isActive
-                ? "text-[var(--text-primary)] font-bold drop-shadow-xs"
-                : "text-[var(--text-primary)]",
+              "text-xs font-medium font-mono truncate tracking-tight transition-colors",
+              isActive ? "text-zinc-100" : "text-zinc-300",
             )}
             title={label}
           >
@@ -92,11 +88,8 @@ export const FolderGroupNode = React.memo(function FolderGroupNode({
           </span>
         </div>
         <Badge
-          variant={isActive ? "accent" : "default"}
-          className={cn(
-            "text-[9px] font-mono shrink-0 transition-colors",
-            isActive && "border-[var(--accent-primary)] font-semibold",
-          )}
+          variant="default"
+          className="text-[9px] font-mono text-zinc-400 border-zinc-800 bg-zinc-900/60 shrink-0 px-1.5 py-0.2"
         >
           {fileCount} {fileCount === 1 ? "file" : "files"}
         </Badge>
