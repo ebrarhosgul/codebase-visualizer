@@ -252,4 +252,42 @@ describe("MarkdownMessage", () => {
     );
     expect(tokens.length).toBeGreaterThan(0);
   });
+
+  it("formats LaTeX formulas and math blocks without garbled characters or broken italics", () => {
+    const markdown = `The dead reckoning algorithm calculates position updates using elapsed time ($\\Delta t$):
+- Calculates elapsed time between ticks:
+- $$\\Delta t = t{\\text{current}} - t{\\text{last}}$$
+- Latitude shift:
+- $$\\Delta \\text{lat} = \\frac{d \\cdot \\cos(\\theta)}{R_{\\text{earth}}}$$
+- Altitude changes based on vertical speed ($\\Delta h = \\text{vertical\\_rate} \\times \\Delta t$).`;
+
+    render(<MarkdownMessage content={markdown} />);
+
+    // Formulas should be cleaned into legible Unicode representations
+    expect(screen.getByText("Δt")).toBeInTheDocument();
+    expect(screen.getByText("Δt = t_current - t_last")).toBeInTheDocument();
+    expect(
+      screen.getByText("Δlat = (d · cos(θ)) / R_earth"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Δh = vertical_rate × Δt")).toBeInTheDocument();
+
+    // LaTeX command text and delimiters should not leak raw into display
+    expect(screen.queryByText(/\\text/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\\frac/)).not.toBeInTheDocument();
+  });
+
+  it("does not treat intra-word underscores in variable names as italics", () => {
+    const tokens = parseInlineTokens(
+      "The variable vertical_rate and flight_plan_id are underscored.",
+    );
+
+    const italicTokens = tokens.filter((t) => t.type === "italic");
+    expect(italicTokens.length).toBe(0);
+
+    const fullText = tokens
+      .map((t) => ("content" in t ? t.content : ""))
+      .join("");
+    expect(fullText).toContain("vertical_rate");
+    expect(fullText).toContain("flight_plan_id");
+  });
 });

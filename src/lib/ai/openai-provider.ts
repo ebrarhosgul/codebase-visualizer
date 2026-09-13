@@ -36,6 +36,7 @@ export class OpenAIProvider implements AIProvider {
       role: "system",
       content: `You are an expert software architect analyzing the codebase "${context.repository.fullName}".
 Answer architectural questions clearly and accurately based on this context:
+Format your response in clean Markdown. Do not use LaTeX or TeX math markup (such as $, $$, \\frac, \\Delta, \\theta, \\times, or \\text{}). Express all formulas, algorithms, calculations, and mathematical symbols using clean plain text, unicode characters (e.g., Δt, θ, ×, ·), or standard code blocks/inline code (e.g., \`delta_t = t_current - t_last\`).
 ${context.contextSummary}`,
     };
 

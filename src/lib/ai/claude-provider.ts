@@ -34,6 +34,7 @@ export class ClaudeProvider implements AIProvider {
 
     const systemPrompt = `You are an expert software architect analyzing the codebase "${context.repository.fullName}".
 Analyze the repository context and provide clear architectural answers:
+Format your response in clean Markdown. Do not use LaTeX or TeX math markup (such as $, $$, \\frac, \\Delta, \\theta, \\times, or \\text{}). Express all formulas, algorithms, calculations, and mathematical symbols using clean plain text, unicode characters (e.g., Δt, θ, ×, ·), or standard code blocks/inline code (e.g., \`delta_t = t_current - t_last\`).
 ${context.contextSummary}`;
 
     const validMessages = messages.filter(

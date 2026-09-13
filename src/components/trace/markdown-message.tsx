@@ -17,6 +17,7 @@ export type MarkdownBlock =
       readonly language: string;
       readonly code: string;
     }
+  | { readonly type: "math_block"; readonly expression: string }
   | { readonly type: "blockquote"; readonly text: string }
   | { readonly type: "unordered_list"; readonly items: readonly ListItemData[] }
   | { readonly type: "ordered_list"; readonly items: readonly ListItemData[] }
@@ -42,6 +43,11 @@ export interface ListItemData {
 export type InlineToken =
   | { readonly type: "text"; readonly content: string }
   | { readonly type: "code"; readonly content: string }
+  | {
+      readonly type: "math";
+      readonly content: string;
+      readonly isBlock?: boolean;
+    }
   | { readonly type: "bold"; readonly children: readonly InlineToken[] }
   | { readonly type: "italic"; readonly children: readonly InlineToken[] }
   | { readonly type: "bold_italic"; readonly children: readonly InlineToken[] }
@@ -52,13 +58,124 @@ export type InlineToken =
   | { readonly type: "link"; readonly label: string; readonly href: string };
 
 /**
- * Parses inline formatting tags like bold, italic, inline code, and links.
+ * Normalizes LaTeX math notation into clean, readable Unicode math text.
+ */
+export function formatLatexMath(latex: string): string {
+  if (!latex) return "";
+
+  let res = latex.trim();
+
+  // Strip leading/trailing math delimiters if present
+  if (res.startsWith("$$") && res.endsWith("$$") && res.length >= 4) {
+    res = res.slice(2, -2).trim();
+  } else if (res.startsWith("$") && res.endsWith("$") && res.length >= 2) {
+    res = res.slice(1, -1).trim();
+  }
+
+  // Remove \text{...}, \mathrm{...}, \mathbf{...}, \mathit{...}
+  res = res.replace(/\\(?:text|mathrm|mathbf|mathit)\{([^}]*)\}/g, "$1");
+
+  // Unescape underscores: \_ -> _
+  res = res.replace(/\\_/g, "_");
+
+  // Clean subscript braces: _{text} -> _text
+  res = res.replace(/_\{([^}]+)\}/g, "_$1");
+
+  // Clean superscript braces: ^{text} -> ^$1
+  res = res.replace(/\^\{([^}]+)\}/g, "^$1");
+
+  // Convert standalone letter followed by curly brace like t{current} into t_current
+  res = res.replace(/(?<![a-zA-Z\\])([a-zA-Z])\{([^}]+)\}/g, "$1_$2");
+
+  // Handle \frac{num}{den} recursively
+  while (/\\frac\{([^{}]+)\}\{([^{}]+)\}/.test(res)) {
+    res = res.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "($1) / $2");
+  }
+
+  // Handle \sqrt{...}
+  res = res.replace(/\\sqrt\{([^}]*)\}/g, "√($1)");
+
+  // Common Greek letters
+  const greekMap: Record<string, string> = {
+    "\\Delta": "Δ",
+    "\\delta": "δ",
+    "\\theta": "θ",
+    "\\Theta": "Θ",
+    "\\alpha": "α",
+    "\\beta": "β",
+    "\\gamma": "γ",
+    "\\Gamma": "Γ",
+    "\\lambda": "λ",
+    "\\Lambda": "Λ",
+    "\\mu": "μ",
+    "\\pi": "π",
+    "\\Pi": "Π",
+    "\\sigma": "σ",
+    "\\Sigma": "Σ",
+    "\\omega": "ω",
+    "\\Omega": "Ω",
+    "\\phi": "φ",
+    "\\Phi": "Φ",
+    "\\epsilon": "ε",
+  };
+
+  for (const [tex, unicode] of Object.entries(greekMap)) {
+    res = res.replaceAll(tex, unicode);
+  }
+
+  // Common math symbols
+  const symbolMap: Record<string, string> = {
+    "\\times": "×",
+    "\\cdot": "·",
+    "\\pm": "±",
+    "\\le": "≤",
+    "\\leq": "≤",
+    "\\ge": "≥",
+    "\\geq": "≥",
+    "\\ne": "≠",
+    "\\neq": "≠",
+    "\\approx": "≈",
+    "\\infty": "∞",
+    "\\sum": "∑",
+    "\\int": "∫",
+    "\\deg": "°",
+    "\\to": "→",
+    "\\rightarrow": "→",
+  };
+
+  for (const [tex, unicode] of Object.entries(symbolMap)) {
+    res = res.replaceAll(tex, unicode);
+  }
+
+  // Common trigonometric/math function names (\sin, \cos, \tan, etc.)
+  res = res.replace(/\\(sin|cos|tan|ln|log|exp|min|max|lim)\b/g, "$1");
+
+  // Remove spacing commands: \,, \;, \!, \quad, \qquad
+  res = res.replace(/\\(?:quad|qquad|[;,!])/g, " ");
+
+  // Remove \left and \right
+  res = res.replace(/\\(?:left|right)/g, "");
+
+  // Clean remaining stray backslashes before known ascii words
+  res = res.replace(/\\([a-zA-Z]+)/g, "$1");
+
+  // Collapse space between delta prefix and variable (e.g. \Delta t -> Δt, \Delta lat -> Δlat)
+  res = res.replace(/([Δδ])\s+([a-zA-Z])/g, "$1$2");
+
+  // Collapse consecutive spaces
+  res = res.replace(/\s+/g, " ").trim();
+
+  return res;
+}
+
+/**
+ * Parses inline formatting tags like bold, italic, inline code, math, and links.
  */
 export function parseInlineTokens(rawText: string): readonly InlineToken[] {
   if (!rawText) return [];
 
   const inlineRegex =
-    /(`[^`]+`|\*\*\*[\s\S]+?\*\*\*|\*\*[\s\S]+?\*\*|__[\s\S]+?__|\*[\s\S]+?\*|_[\s\S]+?_|~~[\s\S]+?~~|\[[^\]]+\]\([^)]+\))/g;
+    /(`[^`]+`|\$\$[^\$]+?\$\$|\$(?!\s)[^\$\n]+?(?<!\s)\$|\*\*\*[\s\S]+?\*\*\*|\*\*[\s\S]+?\*\*|__[\s\S]+?__|\*[\s\S]+?\*|(?<!\w)_[^_]+_(?!\w)|~~[\s\S]+?~~|\[[^\]]+\]\([^)]+\))/g;
 
   const parts = rawText.split(inlineRegex);
   const result: InlineToken[] = [];
@@ -68,6 +185,27 @@ export function parseInlineTokens(rawText: string): readonly InlineToken[] {
 
     if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
       result.push({ type: "code", content: part.slice(1, -1) });
+    } else if (
+      part.startsWith("$$") &&
+      part.endsWith("$$") &&
+      part.length >= 4
+    ) {
+      result.push({
+        type: "math",
+        content: formatLatexMath(part.slice(2, -2)),
+        isBlock: true,
+      });
+    } else if (
+      part.startsWith("$") &&
+      part.endsWith("$") &&
+      part.length >= 2 &&
+      !part.startsWith("$$")
+    ) {
+      result.push({
+        type: "math",
+        content: formatLatexMath(part.slice(1, -1)),
+        isBlock: false,
+      });
     } else if (
       part.startsWith("***") &&
       part.endsWith("***") &&
@@ -185,6 +323,39 @@ export function parseMarkdown(rawContent: string): readonly MarkdownBlock[] {
         type: "code_block",
         language: language || "text",
         code: codeLines.join("\n"),
+      });
+      continue;
+    }
+
+    // Display Math block ($$...$$)
+    if (line.trim().startsWith("$$")) {
+      const trimmed = line.trim();
+      if (
+        trimmed.startsWith("$$") &&
+        trimmed.endsWith("$$") &&
+        trimmed.length >= 4
+      ) {
+        blocks.push({
+          type: "math_block",
+          expression: formatLatexMath(trimmed.slice(2, -2)),
+        });
+        i++;
+        continue;
+      }
+      const mathLines: string[] = [trimmed.slice(2)];
+      i++;
+      while (i < lines.length && !lines[i].trim().endsWith("$$")) {
+        mathLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length && lines[i].trim().endsWith("$$")) {
+        const last = lines[i].trim();
+        mathLines.push(last.slice(0, -2));
+        i++;
+      }
+      blocks.push({
+        type: "math_block",
+        expression: formatLatexMath(mathLines.join(" ")),
       });
       continue;
     }
@@ -325,6 +496,7 @@ export function parseMarkdown(rawContent: string): readonly MarkdownBlock[] {
       i < lines.length &&
       lines[i].trim() &&
       !lines[i].trim().startsWith("```") &&
+      !lines[i].trim().startsWith("$$") &&
       !lines[i].match(/^#{1,6}\s+/) &&
       !lines[i].startsWith("> ") &&
       !/^(?:-{3,}|\*{3,}|_{3,})$/.test(lines[i].trim()) &&
@@ -432,6 +604,26 @@ function InlineContent({
               </code>
             );
           }
+
+          case "math":
+            if (token.isBlock) {
+              return (
+                <span
+                  key={index}
+                  className="block my-2 px-3 py-1.5 rounded bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-[11.5px] text-[var(--accent-primary)] text-center tracking-wide overflow-x-auto select-all"
+                >
+                  {token.content}
+                </span>
+              );
+            }
+            return (
+              <span
+                key={index}
+                className="inline-block px-1.5 py-0.5 mx-0.5 rounded bg-[var(--surface-panel-secondary)] font-mono text-[11px] text-[var(--accent-primary)] align-baseline"
+              >
+                {token.content}
+              </span>
+            );
 
           case "bold":
             return (
@@ -659,6 +851,16 @@ export function MarkdownMessage({
                 language={block.language}
                 code={block.code}
               />
+            );
+
+          case "math_block":
+            return (
+              <div
+                key={index}
+                className="my-2 px-3 py-2 rounded bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-xs text-[var(--accent-primary)] text-center tracking-wide overflow-x-auto select-all"
+              >
+                {block.expression}
+              </div>
             );
 
           case "blockquote": {
