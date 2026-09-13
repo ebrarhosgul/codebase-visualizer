@@ -3,73 +3,73 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #090d16;
-  --foreground: #f8fafc;
+  --background: #0b0c0e;
+  --foreground: #f4f4f5;
 
-  --surface-canvas: #090d16;
-  --surface-panel: #0f172a;
-  --surface-panel-secondary: #1e293b;
-  --surface-card: #141e33;
-  --surface-hover: rgba(255, 255, 255, 0.05);
-  --surface-active: rgba(255, 255, 255, 0.1);
+  --surface-canvas: #0b0c0e;
+  --surface-panel: #121417;
+  --surface-panel-secondary: #181b1f;
+  --surface-card: #15171b;
+  --surface-hover: rgba(255, 255, 255, 0.04);
+  --surface-active: rgba(255, 255, 255, 0.08);
 
-  --border-subtle: #1e293b;
-  --border-default: #334155;
-  --border-focus: #38bdf8;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-focus: #3b82f6;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
 
-  --accent-primary: #38bdf8;
-  --accent-primary-hover: #0ea5e9;
-  --accent-primary-foreground: #090d16;
+  --accent-primary: #3b82f6;
+  --accent-primary-hover: #2563eb;
+  --accent-primary-foreground: #ffffff;
 
   --status-success: #10b981;
   --status-warning: #f59e0b;
   --status-error: #ef4444;
-  --status-info: #38bdf8;
+  --status-info: #3b82f6;
 
-  --syntax-ts: #38bdf8;
-  --syntax-js: #facc15;
-  --syntax-fn: #a78bfa;
-  --syntax-class: #34d399;
-  --syntax-type: #f472b6;
+  --syntax-ts: #a1a1aa;
+  --syntax-js: #a1a1aa;
+  --syntax-fn: #d4d4d8;
+  --syntax-class: #e4e4e7;
+  --syntax-type: #a1a1aa;
 }
 
 .light {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #fafafa;
+  --foreground: #18181b;
 
-  --surface-canvas: #f1f5f9;
+  --surface-canvas: #f4f4f5;
   --surface-panel: #ffffff;
-  --surface-panel-secondary: #f8fafc;
+  --surface-panel-secondary: #f4f4f5;
   --surface-card: #ffffff;
   --surface-hover: rgba(0, 0, 0, 0.04);
   --surface-active: rgba(0, 0, 0, 0.08);
 
-  --border-subtle: #e2e8f0;
-  --border-default: #cbd5e1;
-  --border-focus: #0284c7;
+  --border-subtle: #e4e4e7;
+  --border-default: #d4d4d8;
+  --border-focus: #2563eb;
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
+  --text-primary: #18181b;
+  --text-secondary: #71717a;
+  --text-muted: #a1a1aa;
 
-  --accent-primary: #0284c7;
-  --accent-primary-hover: #0369a1;
+  --accent-primary: #2563eb;
+  --accent-primary-hover: #1d4ed8;
   --accent-primary-foreground: #ffffff;
 
   --status-success: #059669;
   --status-warning: #d97706;
   --status-error: #dc2626;
-  --status-info: #0284c7;
+  --status-info: #2563eb;
 
-  --syntax-ts: #0284c7;
-  --syntax-js: #ca8a04;
-  --syntax-fn: #7c3aed;
-  --syntax-class: #059669;
-  --syntax-type: #db2777;
+  --syntax-ts: #71717a;
+  --syntax-js: #71717a;
+  --syntax-fn: #52525b;
+  --syntax-class: #3f3f46;
+  --syntax-type: #71717a;
 }
 
 @theme inline {
@@ -125,20 +125,20 @@ body {
 /* Monaco pulse line decoration (AC-2) */
 @keyframes monaco-pulse-fade {
   0% {
-    background-color: rgba(56, 189, 248, 0.35);
-    border-left: 3px solid #38bdf8;
+    background-color: rgba(59, 130, 246, 0.2);
+    border-left: 2px solid #3b82f6;
   }
   70% {
-    background-color: rgba(56, 189, 248, 0.2);
-    border-left: 3px solid #38bdf8;
+    background-color: rgba(59, 130, 246, 0.12);
+    border-left: 2px solid #3b82f6;
   }
   100% {
     background-color: transparent;
-    border-left: 3px solid transparent;
+    border-left: 2px solid transparent;
   }
 }
 
 .monaco-pulse-line {
-  animation: monaco-pulse-fade 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: monaco-pulse-fade 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   z-index: 10;
 }

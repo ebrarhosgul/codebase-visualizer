@@ -65,11 +65,11 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
       onClick={handleClick}
       onDoubleClick={handleExpand}
       className={cn(
-        "group relative w-[260px] rounded-xl border p-3 select-none cursor-pointer transition-all duration-200",
-        "bg-[var(--surface-panel)] backdrop-blur-md shadow-md hover:shadow-lg",
+        "group relative w-[260px] rounded-lg border p-3 select-none cursor-pointer transition-colors duration-150",
+        "bg-[#15171b] shadow-xs",
         selected
-          ? "border-[var(--accent-primary)] ring-2 ring-[var(--accent-primary)]/20 shadow-xl"
-          : "border-[var(--border-default)] hover:border-[var(--border-focus)]",
+          ? "border-[var(--accent-primary)] ring-1 ring-[var(--accent-primary)]/50"
+          : "border-zinc-800/80 hover:border-zinc-700",
       )}
       data-testid={`collapsed-folder-${label}`}
       title="Click to inspect, double click to expand"
@@ -77,22 +77,16 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
       <Handle
         type="target"
         position={Position.Left}
-        className="w-2 h-2 !bg-[var(--border-focus)] border-none !opacity-0 group-hover:!opacity-100 transition-opacity"
+        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -left-[4px] !opacity-0 group-hover:!opacity-100 transition-opacity"
       />
 
-      <div className="flex items-center justify-between gap-2 border-b border-[var(--border-subtle)]/60 pb-2 mb-2">
+      <div className="flex items-center justify-between gap-2 border-b border-zinc-800/60 pb-2 mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <div
-            className="p-1 rounded shrink-0"
-            style={{
-              backgroundColor: `${layerDef.color}20`,
-              color: layerDef.color,
-            }}
-          >
+          <div className="p-1 rounded bg-zinc-900 border border-zinc-800 shrink-0 text-zinc-400">
             <Folder className="w-3.5 h-3.5" />
           </div>
           <span
-            className="text-xs font-semibold font-mono text-[var(--text-primary)] truncate"
+            className="text-xs font-medium font-mono text-zinc-100 truncate"
             title={label}
           >
             {label}
@@ -102,7 +96,7 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
         <button
           type="button"
           onClick={handleExpand}
-          className="p-1 rounded hover:bg-[var(--surface-canvas)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors shrink-0"
+          className="p-1 rounded hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 transition-colors shrink-0 cursor-pointer"
           aria-label={`Expand ${label} folder`}
           data-testid={`folder-expand-${label}`}
         >
@@ -114,25 +108,20 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
         <div className="flex items-center gap-1.5">
           <Badge
             variant="default"
-            className="text-[9px] font-mono px-1.5 py-0.5 border"
-            style={{
-              borderColor: `${layerDef.color}40`,
-              color: layerDef.color,
-              backgroundColor: `${layerDef.color}10`,
-            }}
+            className="text-[9px] font-mono px-1.5 py-0.2 border border-zinc-700/60 bg-zinc-800/50 text-zinc-400"
           >
             {layerDef.label}
           </Badge>
-          <span className="text-[10px] font-mono text-[var(--text-secondary)]">
+          <span className="text-[10px] font-mono text-zinc-400">
             {fileCount} {fileCount === 1 ? "file" : "files"}
           </span>
         </div>
 
         {/* Aggregated external dependencies counters */}
-        <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--text-muted)]">
+        <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-400">
           {externalImportCount > 0 && (
             <span
-              className="flex items-center gap-0.5 text-sky-400"
+              className="flex items-center gap-0.5 text-zinc-400"
               title={`${externalImportCount} incoming external dependencies`}
             >
               <ArrowDownLeft className="w-3 h-3" />
@@ -141,7 +130,7 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
           )}
           {externalExportCount > 0 && (
             <span
-              className="flex items-center gap-0.5 text-amber-400"
+              className="flex items-center gap-0.5 text-zinc-400"
               title={`${externalExportCount} outgoing external dependencies`}
             >
               <ArrowUpRight className="w-3 h-3" />
@@ -154,7 +143,7 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
       <Handle
         type="source"
         position={Position.Right}
-        className="w-2 h-2 !bg-[var(--border-focus)] border-none !opacity-0 group-hover:!opacity-100 transition-opacity"
+        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -right-[4px] !opacity-0 group-hover:!opacity-100 transition-opacity"
       />
     </div>
   );

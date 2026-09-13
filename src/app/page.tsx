@@ -50,20 +50,23 @@ export default function Home(): React.JSX.Element {
   );
 
   const leftContent = (
-    <div className="p-3 flex flex-col gap-3 h-full">
+    <div className="p-2 flex flex-col gap-2 h-full select-none">
       {/* Active Repository Metadata Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <GitBranch className="w-4 h-4 text-[var(--accent-primary)] shrink-0" />
+      <div className="flex items-center justify-between px-1 pt-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <GitBranch className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
           <span
-            className="text-xs font-semibold text-[var(--text-primary)] truncate"
+            className="text-xs font-semibold text-zinc-100 truncate"
             title={repository?.fullName ?? "No repository loaded"}
           >
             {repository ? repository.fullName : "No repository"}
           </span>
         </div>
         {repository ? (
-          <Badge variant="accent" className="shrink-0 font-mono text-[10px]">
+          <Badge
+            variant="default"
+            className="shrink-0 font-mono text-[10px] text-zinc-400 border-zinc-800 bg-zinc-900/60"
+          >
             {repository.defaultBranch}
           </Badge>
         ) : (
@@ -75,31 +78,36 @@ export default function Home(): React.JSX.Element {
 
       {/* Language Breakdown Badges if repository loaded */}
       {repository && Object.keys(repository.languages).length > 0 && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 px-1">
           {Object.entries(repository.languages).map(([lang, count]) => (
             <Badge
               key={lang}
-              variant={lang === "typescript" ? "syntax-ts" : "syntax-js"}
-              className="text-[10px]"
+              variant="default"
+              className="text-[9px] font-mono text-zinc-400 border-zinc-800/80 bg-zinc-900/40"
             >
               {lang}: {count}
             </Badge>
           ))}
-          <Badge variant="default" className="text-[10px]">
+          <Badge
+            variant="default"
+            className="text-[9px] font-mono text-zinc-400 border-zinc-800/80 bg-zinc-900/40"
+          >
             {repository.totalFiles} files
           </Badge>
         </div>
       )}
 
       {/* File Search Input */}
-      <Input
-        icon={Search}
-        value={fileFilter}
-        onChange={(e) => setFileFilter(e.target.value)}
-        placeholder="Filter files..."
-        aria-label="Filter repository files"
-        className="h-8 text-xs"
-      />
+      <div className="px-1">
+        <Input
+          icon={Search}
+          value={fileFilter}
+          onChange={(e) => setFileFilter(e.target.value)}
+          placeholder="Filter files..."
+          aria-label="Filter repository files"
+          className="h-7 text-xs bg-[#0b0c0e] border-zinc-800/80 text-zinc-200 placeholder:text-zinc-500"
+        />
+      </div>
 
       {/* File Navigation Tree (VS Code-style hierarchical folder tree) */}
       <FolderTree

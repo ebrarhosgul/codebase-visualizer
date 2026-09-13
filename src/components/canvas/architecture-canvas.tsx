@@ -380,7 +380,7 @@ function ArchitectureCanvasInner({
               style: {
                 stroke: "#38bdf8",
                 strokeWidth: 3,
-                filter: "drop-shadow(0 0 6px rgba(56, 189, 248, 0.75))",
+                filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4))",
                 opacity: 1,
               },
               markerEnd: {
@@ -441,7 +441,7 @@ function ArchitectureCanvasInner({
               style: {
                 stroke: "#38bdf8",
                 strokeWidth: 3,
-                filter: "drop-shadow(0 0 6px rgba(56, 189, 248, 0.75))",
+                filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4))",
                 opacity: 1,
               },
               markerEnd: {
@@ -469,7 +469,6 @@ function ArchitectureCanvasInner({
               style: {
                 stroke: "#a78bfa",
                 strokeWidth: 2.5,
-                filter: "drop-shadow(0 0 6px rgba(167, 139, 250, 0.75))",
                 opacity: 1,
               },
               markerEnd: {
@@ -821,7 +820,7 @@ function ArchitectureCanvasInner({
           variant={BackgroundVariant.Dots}
           gap={16}
           size={1}
-          color="rgba(148, 163, 184, 0.15)"
+          color="rgba(255, 255, 255, 0.05)"
         />
         {isMinimapVisible && <CustomMiniMap />}
       </ReactFlow>

@@ -190,10 +190,10 @@ export function RepoSubmissionBar({
       <div className="w-full flex items-center justify-between gap-3">
         {/* Logo and Brand */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="w-6 h-6 rounded bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] flex items-center justify-center">
-            <GitFork className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+          <div className="w-6 h-6 rounded bg-[#121417] border border-zinc-800/80 flex items-center justify-center">
+            <GitFork className="w-3.5 h-3.5 text-zinc-200" />
           </div>
-          <span className="text-xs font-bold tracking-tight text-[var(--text-primary)] hidden sm:inline">
+          <span className="text-xs font-semibold tracking-tight text-zinc-100 hidden sm:inline">
             Codebase Visualizer
           </span>
         </div>
@@ -234,8 +234,8 @@ export function RepoSubmissionBar({
             onClick={() => setIsTokenOpen(!isTokenOpen)}
             className={`h-8 px-2 text-xs flex items-center gap-1 ${
               hasGithubToken
-                ? "text-[var(--accent-primary)] font-medium"
-                : "text-[var(--text-muted)]"
+                ? "text-blue-400 font-medium hover:text-blue-300"
+                : "text-zinc-400 hover:text-zinc-200"
             }`}
             title="Configure GitHub Personal Access Token"
             aria-label="Configure GitHub Personal Access Token"
@@ -279,7 +279,7 @@ export function RepoSubmissionBar({
               variant="ghost"
               size="sm"
               onClick={handleForceRefresh}
-              className="h-8 px-2 text-xs flex items-center gap-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] shrink-0"
+              className="h-8 px-2 text-xs flex items-center gap-1 text-zinc-400 hover:text-zinc-200 shrink-0"
               title="Force re ingest repository (bypasses client cache)"
               aria-label="Force Re-ingest"
             >
@@ -294,7 +294,7 @@ export function RepoSubmissionBar({
               variant="ghost"
               size="sm"
               onClick={handleShare}
-              className="h-8 px-2.5 text-xs flex items-center gap-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] shrink-0"
+              className="h-8 px-2.5 text-xs flex items-center gap-1 text-zinc-400 hover:text-zinc-200 shrink-0"
               title="Copy deep link permalink for current repository and selection"
               aria-label="Share workspace link"
             >
@@ -317,12 +317,12 @@ export function RepoSubmissionBar({
       {/* Token configuration drawer / popup when opened */}
       {isTokenOpen && (
         <div
-          className="p-3 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-default)] flex flex-col gap-2.5 text-xs animate-in fade-in-0"
+          className="p-3 rounded-md bg-[#121417] border border-zinc-800/80 flex flex-col gap-2.5 text-xs animate-in fade-in-0"
           data-testid="github-token-drawer"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 font-medium text-[var(--text-primary)]">
-              <Key className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+            <div className="flex items-center gap-1.5 font-medium text-zinc-100">
+              <Key className="w-3.5 h-3.5 text-zinc-400" />
               <span>GitHub Personal Access Token</span>
             </div>
             {hasGithubToken && (
@@ -332,7 +332,7 @@ export function RepoSubmissionBar({
             )}
           </div>
 
-          <p className="text-[11px] text-[var(--text-secondary)] leading-normal">
+          <p className="text-[11px] text-zinc-400 leading-normal">
             Stored in an encrypted httpOnly cookie (`github_pat`). Increases
             your GitHub API rate limit from 60 to 5,000 requests per hour. Only
             public read permissions are needed.
@@ -403,31 +403,31 @@ export function RepoSubmissionBar({
       {/* Two Tier Streaming Progress Indicator (AC-4) */}
       {isIngesting && ingestionProgress && (
         <div
-          className="px-3 py-2 rounded bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] flex flex-col gap-1.5 text-xs"
+          className="px-3 py-2 rounded-md bg-[#121417] border border-zinc-800/80 flex flex-col gap-1.5 text-xs"
           data-testid="ingestion-progress-bar"
         >
           {/* Tier 1: Phase and Bar */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 overflow-hidden">
-              <Loader2 className="w-3.5 h-3.5 text-[var(--accent-primary)] animate-spin shrink-0" />
+              <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin shrink-0" />
               <Badge
                 variant="accent"
                 className="uppercase text-[10px] shrink-0 font-semibold"
               >
                 {ingestionPhase.replace(/_/g, " ")}
               </Badge>
-              <span className="text-[11px] text-[var(--text-primary)] truncate font-medium">
+              <span className="text-[11px] text-zinc-200 truncate font-medium">
                 {ingestionProgress.message}
               </span>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[10px] font-mono text-[var(--text-muted)]">
+              <span className="text-[10px] font-mono text-zinc-400">
                 {Math.round(ingestionProgress.current)}%
               </span>
-              <div className="w-24 h-1.5 rounded-full bg-[var(--surface-canvas)] overflow-hidden">
+              <div className="w-24 h-1.5 rounded-full bg-[#0B0C0E] border border-zinc-800/60 overflow-hidden">
                 <div
-                  className="h-full bg-[var(--accent-primary)] transition-all duration-300"
+                  className="h-full bg-blue-500 transition-all duration-300"
                   style={{
                     width: `${Math.min(100, Math.max(5, ingestionProgress.current))}%`,
                   }}
@@ -439,7 +439,7 @@ export function RepoSubmissionBar({
           {/* Tier 2: Detailed Item Counter / Current Module (AC-4) */}
           {ingestionProgress.detail && (
             <div
-              className="flex items-center justify-between text-[10px] text-[var(--text-muted)] font-mono pl-5 truncate"
+              className="flex items-center justify-between text-[10px] text-zinc-400 font-mono pl-5 truncate"
               data-testid="ingestion-detail-counter"
             >
               <span className="truncate">
@@ -465,7 +465,7 @@ export function RepoSubmissionBar({
       {/* Offline Fallback Notice Banner (AC-8) */}
       {offlineFallback && (
         <div
-          className="px-3 py-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between gap-2"
+          className="px-3 py-1.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-center justify-between gap-2"
           data-testid="offline-notice-banner"
         >
           <div className="flex items-center gap-2">
@@ -488,7 +488,7 @@ export function RepoSubmissionBar({
       {/* Rate Limit and General Ingestion Error Banner (AC-6, AC-9) */}
       {ingestionPhase === "error" && ingestionError && (
         <div
-          className="p-3 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex flex-col gap-2"
+          className="p-3 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex flex-col gap-2"
           data-testid="ingestion-error-alert"
         >
           <div className="flex items-start gap-2">
@@ -536,7 +536,7 @@ export function RepoSubmissionBar({
       {/* Completion Notification with Cache Hit Indicator (AC-1, AC-2) */}
       {showComplete && ingestionPhase === "complete" && (
         <div
-          className="px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between"
+          className="px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center justify-between"
           data-testid="ingestion-complete-banner"
         >
           <div className="flex items-center gap-2 min-w-0">

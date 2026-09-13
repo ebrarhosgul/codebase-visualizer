@@ -56,93 +56,25 @@ export interface FileTypeStyle {
 export function getFileTypeStyle(
   fileName: string,
   ext: string,
-  language: string,
+  _language?: string,
 ): FileTypeStyle {
+  void _language;
   const lowerExt = ext.toLowerCase();
   const lowerName = fileName.toLowerCase();
 
-  // React TypeScript
-  if (lowerExt === ".tsx") {
-    return {
-      icon: FileCode,
-      iconColor: "text-cyan-400",
-      badgeClass: "bg-cyan-950/60 text-cyan-300 border-cyan-800/60",
-      labelClass: "text-cyan-100/90 group-hover:text-cyan-200",
-    };
-  }
-
-  // Pure TypeScript
-  if (lowerExt === ".ts" || language === "typescript") {
-    return {
-      icon: FileCode,
-      iconColor: "text-sky-400",
-      badgeClass: "bg-sky-950/60 text-sky-300 border-sky-800/60",
-      labelClass: "text-sky-100/90 group-hover:text-sky-200",
-    };
-  }
-
-  // React JavaScript
-  if (lowerExt === ".jsx") {
-    return {
-      icon: FileCode,
-      iconColor: "text-amber-300",
-      badgeClass: "bg-amber-950/60 text-amber-300 border-amber-800/60",
-      labelClass: "text-amber-100/90 group-hover:text-amber-200",
-    };
-  }
-
-  // Pure JavaScript
-  if (
-    lowerExt === ".js" ||
-    lowerExt === ".mjs" ||
-    lowerExt === ".cjs" ||
-    language === "javascript"
-  ) {
-    return {
-      icon: FileCode,
-      iconColor: "text-yellow-400",
-      badgeClass: "bg-yellow-950/60 text-yellow-300 border-yellow-800/60",
-      labelClass: "text-yellow-100/90 group-hover:text-yellow-200",
-    };
-  }
-
-  // JSON Configuration & Data
+  let Icon = FileCode;
   if (lowerExt === ".json") {
-    return {
-      icon: FileJson,
-      iconColor: "text-emerald-400",
-      badgeClass: "bg-emerald-950/60 text-emerald-300 border-emerald-800/60",
-      labelClass: "text-emerald-100/80 group-hover:text-emerald-200",
-    };
-  }
-
-  // Stylesheets
-  if (
+    Icon = FileJson;
+  } else if (
     lowerExt === ".css" ||
     lowerExt === ".scss" ||
     lowerExt === ".sass" ||
     lowerExt === ".less"
   ) {
-    return {
-      icon: Palette,
-      iconColor: "text-pink-400",
-      badgeClass: "bg-pink-950/60 text-pink-300 border-pink-800/60",
-      labelClass: "text-pink-100/80 group-hover:text-pink-200",
-    };
-  }
-
-  // Markdown & Documentation
-  if (lowerExt === ".md" || lowerExt === ".mdx" || lowerExt === ".txt") {
-    return {
-      icon: FileText,
-      iconColor: "text-purple-400",
-      badgeClass: "bg-purple-950/60 text-purple-300 border-purple-800/60",
-      labelClass: "text-purple-100/80 group-hover:text-purple-200",
-    };
-  }
-
-  // Media & Images
-  if (
+    Icon = Palette;
+  } else if (lowerExt === ".md" || lowerExt === ".mdx" || lowerExt === ".txt") {
+    Icon = FileText;
+  } else if (
     lowerExt === ".svg" ||
     lowerExt === ".png" ||
     lowerExt === ".jpg" ||
@@ -150,35 +82,21 @@ export function getFileTypeStyle(
     lowerExt === ".ico" ||
     lowerExt === ".webp"
   ) {
-    return {
-      icon: FileImage,
-      iconColor: "text-rose-400",
-      badgeClass: "bg-rose-950/60 text-rose-300 border-rose-800/60",
-      labelClass: "text-rose-100/80 group-hover:text-rose-200",
-    };
-  }
-
-  // Configuration & Dotfiles
-  if (
+    Icon = FileImage;
+  } else if (
     lowerName.startsWith(".env") ||
     lowerName.startsWith(".git") ||
     lowerName.includes("config") ||
     lowerName === "dockerfile"
   ) {
-    return {
-      icon: Settings,
-      iconColor: "text-indigo-400",
-      badgeClass: "bg-indigo-950/60 text-indigo-300 border-indigo-800/60",
-      labelClass: "text-indigo-100/80 group-hover:text-indigo-200",
-    };
+    Icon = Settings;
   }
 
-  // Fallback / Other
   return {
-    icon: FileText,
-    iconColor: "text-slate-400",
-    badgeClass: "bg-slate-800/60 text-slate-300 border-slate-700/60",
-    labelClass: "text-slate-300 group-hover:text-slate-100",
+    icon: Icon,
+    iconColor: "text-zinc-400",
+    badgeClass: "bg-zinc-900/60 text-zinc-400 border-zinc-800/80",
+    labelClass: "text-zinc-300 group-hover:text-zinc-100",
   };
 }
 
@@ -422,7 +340,7 @@ export const FolderTree = React.memo(function FolderTree({
             aria-label={`Folder ${node.name}`}
           >
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-amber-400/70 group-hover:text-amber-300 shrink-0">
+              <span className="text-zinc-500 group-hover:text-zinc-300 shrink-0">
                 {isExpanded ? (
                   <ChevronDown className="w-3.5 h-3.5" />
                 ) : (
@@ -430,18 +348,18 @@ export const FolderTree = React.memo(function FolderTree({
                 )}
               </span>
               {isExpanded ? (
-                <FolderOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <FolderOpen className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
               ) : (
-                <Folder className="w-3.5 h-3.5 text-amber-500/90 shrink-0" />
+                <Folder className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
               )}
               <span
-                className="font-mono text-[11px] font-semibold text-amber-200/90 group-hover:text-amber-100 truncate"
+                className="font-mono text-[11px] font-medium text-zinc-300 group-hover:text-zinc-100 truncate"
                 title={node.path}
               >
                 {node.name}
               </span>
             </div>
-            <span className="text-[9px] font-mono text-amber-400/80 bg-amber-950/40 border border-amber-800/30 px-1 py-0.2 rounded shrink-0">
+            <span className="text-[9px] font-mono text-zinc-500 bg-zinc-800/50 border border-zinc-700/40 px-1 py-0.2 rounded shrink-0">
               {node.children.length}
             </span>
           </div>
@@ -468,7 +386,7 @@ export const FolderTree = React.memo(function FolderTree({
         <div key={node.id} style={{ paddingLeft: `${indentPx}px` }}>
           <Tooltip content="Not allowed yet" side="right">
             <div
-              className="flex items-center justify-between py-1 px-1.5 rounded text-xs opacity-65 cursor-not-allowed hover:bg-[var(--surface-hover)] select-none transition-opacity group"
+              className="flex items-center justify-between py-1 px-1.5 rounded text-xs opacity-65 cursor-not-allowed hover:bg-zinc-800/40 select-none transition-opacity group"
               tabIndex={-1}
               role="button"
               aria-disabled={true}
@@ -477,15 +395,12 @@ export const FolderTree = React.memo(function FolderTree({
               <div className="flex items-center gap-1.5 min-w-0">
                 <IconComponent
                   className={cn(
-                    "w-3.5 h-3.5 shrink-0 opacity-80",
+                    "w-3.5 h-3.5 shrink-0 opacity-70",
                     style.iconColor,
                   )}
                 />
                 <span
-                  className={cn(
-                    "font-mono text-[11px] truncate",
-                    style.labelClass,
-                  )}
+                  className="font-mono text-[11px] truncate text-zinc-400 group-hover:text-zinc-200"
                   title={node.path}
                 >
                   {node.name}
@@ -493,7 +408,7 @@ export const FolderTree = React.memo(function FolderTree({
               </div>
               <span
                 className={cn(
-                  "text-[9px] font-mono px-1 py-0.2 rounded border opacity-70 shrink-0",
+                  "text-[9px] font-mono px-1 py-0.2 rounded border shrink-0",
                   style.badgeClass,
                 )}
               >
@@ -523,21 +438,24 @@ export const FolderTree = React.memo(function FolderTree({
           className={cn(
             "flex items-center justify-between py-1 px-1.5 rounded text-xs cursor-pointer select-none transition-colors group",
             isSelected
-              ? "bg-[var(--surface-hover)] text-[var(--text-primary)] font-semibold border-l-2 border-[var(--accent-primary)]"
-              : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]",
+              ? "bg-zinc-800/80 text-zinc-100 font-medium border-l-2 border-[var(--accent-primary)]"
+              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50",
           )}
           aria-label={`File ${node.path}`}
         >
           <div className="flex items-center gap-1.5 min-w-0">
             <IconComponent
-              className={cn("w-3.5 h-3.5 shrink-0", style.iconColor)}
+              className={cn(
+                "w-3.5 h-3.5 shrink-0",
+                isSelected ? "text-zinc-200" : style.iconColor,
+              )}
             />
             <span
               className={cn(
                 "font-mono text-[11px] truncate",
                 isSelected
-                  ? "text-[var(--text-primary)] font-semibold"
-                  : style.labelClass,
+                  ? "text-zinc-100 font-medium"
+                  : "text-zinc-300 group-hover:text-zinc-100",
               )}
               title={node.path}
             >
@@ -560,8 +478,8 @@ export const FolderTree = React.memo(function FolderTree({
   return (
     <div className={cn("flex flex-col h-full min-h-0", className)}>
       {/* Folder Tree Action Toolbar */}
-      <div className="flex items-center justify-between px-1 py-1 mb-1 border-b border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)]">
-        <span className="text-[10px] font-semibold uppercase tracking-wider">
+      <div className="flex items-center justify-between px-1 py-1 mb-1 border-b border-zinc-800/60 text-[11px] text-zinc-500">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">
           Folders & Files
         </span>
         <div className="flex items-center gap-1">
@@ -580,8 +498,8 @@ export const FolderTree = React.memo(function FolderTree({
                 className={cn(
                   "flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono border transition-colors cursor-pointer",
                   showAllFiles
-                    ? "bg-[var(--accent-primary)]/15 border-[var(--accent-primary)] text-[var(--accent-primary)]"
-                    : "bg-[var(--surface-panel)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+                    ? "bg-zinc-800 border-zinc-700 text-zinc-200"
+                    : "bg-zinc-900/60 border-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40",
                 )}
                 aria-pressed={showAllFiles}
                 aria-label="Toggle all files display"
@@ -597,7 +515,7 @@ export const FolderTree = React.memo(function FolderTree({
             size="sm"
             label="Expand all folders"
             onClick={expandAll}
-            className="w-5 h-5 p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            className="w-5 h-5 p-0.5 text-zinc-500 hover:text-zinc-200"
           />
           <IconButton
             icon={ChevronsUp}
@@ -605,7 +523,7 @@ export const FolderTree = React.memo(function FolderTree({
             size="sm"
             label="Collapse all folders"
             onClick={collapseAll}
-            className="w-5 h-5 p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            className="w-5 h-5 p-0.5 text-zinc-500 hover:text-zinc-200"
           />
         </div>
       </div>
