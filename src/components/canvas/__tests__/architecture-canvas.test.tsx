@@ -905,5 +905,33 @@ describe("ArchitectureCanvas", () => {
       { color?: string } | undefined;
     expect(incomingMarker?.color).toBe("#a78bfa");
     expect(incomingMarker?.color).not.toContain("var(");
+
+    // 4. Advance past navigation time lock and navigate to an inner symbol from editor
+    act(() => {
+      useGraphStore.setState({ lockedUntil: 0 });
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/a.ts",
+        symbolId: "symbol:src/a.ts#handleClick",
+        line: 8,
+        column: 4,
+        source: "editor",
+        timestamp: Date.now() + 500,
+      });
+    });
+
+    const activeEdgesFromEditor = (capturedReactFlowProps?.edges ??
+      []) as Edge[];
+    const outgoingEdgeFromEditor = activeEdgesFromEditor.find(
+      (e: Edge) => e.source === "file:src/a.ts",
+    );
+    // The connecting arrow must stay active and clearly visible, not dimmed to 0.2 opacity
+    expect(outgoingEdgeFromEditor).toBeDefined();
+    expect(outgoingEdgeFromEditor?.animated).toBe(true);
+    expect(outgoingEdgeFromEditor?.style?.stroke).toBe("#38bdf8");
+    expect(outgoingEdgeFromEditor?.style?.strokeWidth).toBe(3);
+    expect(outgoingEdgeFromEditor?.style?.opacity).toBe(1);
+    const editorMarker = outgoingEdgeFromEditor?.markerEnd as
+      { color?: string } | undefined;
+    expect(editorMarker?.color).toBe("#38bdf8");
   });
 });

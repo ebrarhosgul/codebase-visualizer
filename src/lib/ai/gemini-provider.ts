@@ -34,6 +34,7 @@ export class GeminiAIProvider implements AIProvider {
 
     const systemInstruction = `You are an expert software architect analyzing the codebase "${context.repository.fullName}".
 Analyze the provided repository context and answer the user's architectural question concisely.
+Format your response in clean Markdown. Do not use LaTeX or TeX math markup (such as $, $$, \\frac, \\Delta, \\theta, \\times, or \\text{}). Express all formulas, algorithms, calculations, and mathematical symbols using clean plain text, unicode characters (e.g., Δt, θ, ×, ·), or standard code blocks/inline code (e.g., \`delta_t = t_current - t_last\`).
 If a dependency path between files is asked or identified, mention the path in your response.
 Context Summary:
 ${context.contextSummary}`;

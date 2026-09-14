@@ -38,6 +38,7 @@ function ArchitectureCanvasInner({
 }: ArchitectureCanvasProps): React.JSX.Element {
   const graph = useGraphStore((state) => state.graph);
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
+  const selectedFileId = useGraphStore((state) => state.selectedFileId);
   const hoveredNodeId = useGraphStore((state) => state.hoveredNodeId);
   const selectNode = useGraphStore((state) => state.selectNode);
   const setHoveredNodeId = useGraphStore((state) => state.setHoveredNodeId);
@@ -127,10 +128,24 @@ function ArchitectureCanvasInner({
   nodesRef.current = nodes;
 
   // Active target for dependency highlighting (hover takes visual priority, falling back to selection/target)
-  const highlightNodeId =
+  const rawHighlightId =
     hoveredNodeId ||
     selectedNodeId ||
     (activeTarget ? activeTarget.symbolId || activeTarget.fileId : null);
+
+  // Canvas nodes and edges operate at file granularity; resolve symbol IDs to their containing file
+  const highlightNodeId = useMemo(() => {
+    if (!rawHighlightId) return null;
+    if (rawHighlightId.startsWith("symbol:")) {
+      return (
+        graph?.symbols[rawHighlightId]?.fileId ??
+        activeTarget?.fileId ??
+        selectedFileId ??
+        rawHighlightId
+      );
+    }
+    return rawHighlightId;
+  }, [rawHighlightId, graph, activeTarget?.fileId, selectedFileId]);
 
   // Pre-index graph edges by source and target for O(degree) lookup instead of O(E) full scan
   const edgeIndex = useMemo(() => {
@@ -306,6 +321,7 @@ function ArchitectureCanvasInner({
         const isConnected = connectedNodeIds.has(n.id);
         const isSelected =
           n.id === selectedNodeId ||
+          n.id === highlightNodeId ||
           (activeTarget != null &&
             (n.id === activeTarget.symbolId || n.id === activeTarget.fileId));
         const isHovered = isTarget && hoveredNodeId === n.id;
