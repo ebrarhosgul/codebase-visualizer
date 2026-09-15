@@ -934,4 +934,159 @@ describe("ArchitectureCanvas", () => {
       { color?: string } | undefined;
     expect(editorMarker?.color).toBe("#38bdf8");
   });
+
+  it("renders internal local import edges between TSX files and highlights connected nodes", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 2,
+        totalSymbols: 1,
+        languages: { typescript: 2 },
+        schemaVersion: 1,
+      },
+      directories: {
+        "dir:src": {
+          id: "dir:src",
+          path: "src",
+          name: "src",
+          parentDirId: null,
+          childDirIds: [],
+          childFileIds: ["file:src/App.tsx", "file:src/Button.tsx"],
+        },
+      },
+      files: {
+        "file:src/App.tsx": {
+          id: "file:src/App.tsx",
+          path: "src/App.tsx",
+          name: "App.tsx",
+          extension: ".tsx",
+          language: "typescript",
+          sizeBytes: 150,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [
+            "file:src/Button.tsx",
+            "symbol:src/Button.tsx#Button",
+            "ext:react",
+          ],
+          exportIds: [],
+        },
+        "file:src/Button.tsx": {
+          id: "file:src/Button.tsx",
+          path: "src/Button.tsx",
+          name: "Button.tsx",
+          extension: ".tsx",
+          language: "typescript",
+          sizeBytes: 120,
+          lineCount: 12,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/Button.tsx#Button"],
+          importIds: ["ext:react"],
+          exportIds: ["symbol:src/Button.tsx#Button"],
+        },
+      },
+      symbols: {
+        "symbol:src/Button.tsx#Button": {
+          id: "symbol:src/Button.tsx#Button",
+          fileId: "file:src/Button.tsx",
+          parentSymbolId: null,
+          name: "Button",
+          kind: "function",
+          range: {
+            start: { line: 1, column: 0 },
+            end: { line: 5, column: 1 },
+          },
+          selectionRange: {
+            start: { line: 1, column: 16 },
+            end: { line: 1, column: 22 },
+          },
+          isExported: true,
+          isDefaultExport: true,
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {
+        "ext:react": {
+          id: "ext:react",
+          name: "react",
+          isExternal: true,
+        },
+      },
+      edges: {
+        "edge:app->button": {
+          id: "edge:file:src/App.tsx->file:src/Button.tsx:file_import",
+          sourceId: "file:src/App.tsx",
+          targetId: "file:src/Button.tsx",
+          kind: "file_import",
+          weight: 1,
+          isExternal: false,
+        },
+        "edge:app->button-sym": {
+          id: "edge:file:src/App.tsx->symbol:src/Button.tsx#Button:file_import",
+          sourceId: "file:src/App.tsx",
+          targetId: "symbol:src/Button.tsx#Button",
+          kind: "file_import",
+          weight: 1,
+          isExternal: false,
+        },
+        "edge:app->react": {
+          id: "edge:file:src/App.tsx->ext:react:file_import",
+          sourceId: "file:src/App.tsx",
+          targetId: "ext:react",
+          kind: "file_import",
+          weight: 1,
+          isExternal: true,
+        },
+      },
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    expect(capturedReactFlowProps).not.toBeNull();
+    const renderedEdges = (capturedReactFlowProps?.edges ?? []) as Edge[];
+
+    // 1. Must contain an internal file-to-file edge between App.tsx and Button.tsx
+    const internalEdge = renderedEdges.find(
+      (e: Edge) =>
+        e.source === "file:src/App.tsx" && e.target === "file:src/Button.tsx",
+    );
+    expect(internalEdge).toBeDefined();
+    expect(internalEdge?.data?.isExternal).toBe(false);
+
+    // 2. Must also contain external edge to react
+    const externalEdge = renderedEdges.find(
+      (e: Edge) => e.source === "file:src/App.tsx" && e.target === "ext:react",
+    );
+    expect(externalEdge).toBeDefined();
+    expect(externalEdge?.data?.isExternal).toBe(true);
+
+    // 3. Selecting Button.tsx highlights the internal incoming edge from App.tsx
+    act(() => {
+      useGraphStore.getState().selectNode("file:src/Button.tsx");
+    });
+
+    const edgesAfterButtonSelect = (capturedReactFlowProps?.edges ??
+      []) as Edge[];
+    const activeIncoming = edgesAfterButtonSelect.find(
+      (e: Edge) =>
+        e.source === "file:src/App.tsx" && e.target === "file:src/Button.tsx",
+    );
+    expect(activeIncoming?.animated).toBe(true);
+    expect(activeIncoming?.style?.stroke).toBe("#a78bfa");
+
+    // Connected file node App.tsx should not be dimmed
+    const renderedNodes = capturedReactFlowProps?.nodes ?? [];
+    const appNode = renderedNodes.find((n) => n.id === "file:src/App.tsx");
+    expect(appNode?.data?.isConnected).toBe(true);
+    expect(appNode?.data?.isDimmed).toBe(false);
+  });
 });

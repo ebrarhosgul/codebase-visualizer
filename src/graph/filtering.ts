@@ -244,6 +244,14 @@ export function filterAndAggregateGraph(
     }
   }
 
+  // 4b. Map symbols to their declaring file representations
+  for (const sym of Object.values(graph.symbols)) {
+    const parentRep = nodeRepresentationMap[sym.fileId];
+    if (parentRep) {
+      nodeRepresentationMap[sym.id] = parentRep;
+    }
+  }
+
   // 5. Build CollapsedFolderSummary for each active collapsed folder
   const collapsedFolders: CollapsedFolderSummary[] = [];
   for (const [folderPath, files] of folderToFiles.entries()) {
@@ -255,8 +263,15 @@ export function filterAndAggregateGraph(
     let externalExportCount = 0;
 
     for (const edge of Object.values(graph.edges)) {
-      const sourceInFolder = fileIdSet.has(edge.sourceId);
-      const targetInFolder = fileIdSet.has(edge.targetId);
+      const sourceFileId = edge.sourceId.startsWith("symbol:")
+        ? (graph.symbols[edge.sourceId]?.fileId ?? edge.sourceId)
+        : edge.sourceId;
+      const targetFileId = edge.targetId.startsWith("symbol:")
+        ? (graph.symbols[edge.targetId]?.fileId ?? edge.targetId)
+        : edge.targetId;
+
+      const sourceInFolder = fileIdSet.has(sourceFileId);
+      const targetInFolder = fileIdSet.has(targetFileId);
 
       if (sourceInFolder && !targetInFolder) {
         externalExportCount += edge.weight;

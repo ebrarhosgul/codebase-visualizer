@@ -1,13 +1,56 @@
+import { ts } from "ts-morph";
+
 /**
  * Mapping of path alias patterns to directory prefixes.
+ * Supports a single directory prefix or an ordered list of fallback prefixes.
  */
 export interface PathAliasMap {
-  readonly [aliasPrefix: string]: string;
+  readonly [aliasPrefix: string]: string | readonly string[];
+}
+
+/**
+ * Parses JSON content tolerant of comments and trailing commas.
+ */
+function parseTsconfigJson(content: string): {
+  compilerOptions?: {
+    baseUrl?: string;
+    paths?: Record<string, string[] | string>;
+  };
+} | null {
+  try {
+    const parsedByTs = ts.parseConfigFileTextToJson("tsconfig.json", content);
+    if (parsedByTs.config && typeof parsedByTs.config === "object") {
+      return parsedByTs.config as {
+        compilerOptions?: {
+          baseUrl?: string;
+          paths?: Record<string, string[] | string>;
+        };
+      };
+    }
+  } catch {
+    // Continue to regex sanitizer
+  }
+
+  try {
+    const sanitized = content
+      .replace(/^\uFEFF/, "")
+      .replace(/\/\/.*$/gm, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/,\s*([\]}])/g, "$1");
+    return JSON.parse(sanitized) as {
+      compilerOptions?: {
+        baseUrl?: string;
+        paths?: Record<string, string[] | string>;
+      };
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Extracts compilerOptions.paths and baseUrl from tsconfig.json content.
- * Defaults to mapping "@/*" to "src/*" if not provided.
+ * Defaults to mapping "@/*" to "src/*" and root if not provided.
  */
 export function extractPathAliases(tsconfigJson?: string): PathAliasMap {
   const defaultAliases: Record<string, string> = {
@@ -18,49 +61,65 @@ export function extractPathAliases(tsconfigJson?: string): PathAliasMap {
     return defaultAliases;
   }
 
-  try {
-    // Basic JSON comments removal if present in tsconfig
-    const sanitized = tsconfigJson
-      .replace(/\/\/.*$/gm, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "");
-    const parsed = JSON.parse(sanitized) as {
-      compilerOptions?: {
-        baseUrl?: string;
-        paths?: Record<string, string[]>;
-      };
-    };
+  const parsed = parseTsconfigJson(tsconfigJson);
+  if (!parsed?.compilerOptions) {
+    return defaultAliases;
+  }
 
-    const compilerOptions = parsed.compilerOptions;
-    if (!compilerOptions?.paths) {
-      return defaultAliases;
+  const compilerOptions = parsed.compilerOptions;
+  const paths = compilerOptions.paths;
+  if (!paths) {
+    return defaultAliases;
+  }
+
+  const aliases: Record<string, string | readonly string[]> = {};
+  const baseUrl = (compilerOptions.baseUrl || ".")
+    .replace(/^\.\/?/, "")
+    .replace(/\/+$/, "");
+
+  for (const [pattern, targetListOrString] of Object.entries(paths)) {
+    const targetList = Array.isArray(targetListOrString)
+      ? targetListOrString
+      : [targetListOrString];
+
+    if (targetList.length === 0) {
+      continue;
     }
 
-    const aliases: Record<string, string> = {};
-    const baseUrl = (compilerOptions.baseUrl || ".")
-      .replace(/^\.\/?/, "")
-      .replace(/\/+$/, "");
+    const cleanPattern = pattern.replace(/\*$/, "");
+    const resolvedTargets: string[] = [];
 
-    for (const [pattern, targetList] of Object.entries(compilerOptions.paths)) {
-      if (!targetList || targetList.length === 0) {
+    for (const target of targetList) {
+      if (typeof target !== "string") {
         continue;
       }
 
-      const target = targetList[0] ?? "";
       // Strip wildcard asterisk (e.g. "@/*" -> "@/", "./src/*" -> "src/")
-      const cleanPattern = pattern.replace(/\*$/, "");
       let cleanTarget = target.replace(/\*$/, "").replace(/^\.\/?/, "");
 
       if (baseUrl && !cleanTarget.startsWith(baseUrl)) {
         cleanTarget = `${baseUrl}/${cleanTarget}`.replace(/^\/+/, "");
       }
 
-      aliases[cleanPattern] = cleanTarget;
+      if (
+        cleanPattern.endsWith("/") &&
+        cleanTarget.length > 0 &&
+        !cleanTarget.endsWith("/")
+      ) {
+        cleanTarget = `${cleanTarget}/`;
+      }
+
+      resolvedTargets.push(cleanTarget);
     }
 
-    return Object.keys(aliases).length > 0 ? aliases : defaultAliases;
-  } catch {
-    return defaultAliases;
+    if (resolvedTargets.length === 1) {
+      aliases[cleanPattern] = resolvedTargets[0] ?? "";
+    } else if (resolvedTargets.length > 1) {
+      aliases[cleanPattern] = resolvedTargets;
+    }
   }
+
+  return Object.keys(aliases).length > 0 ? aliases : defaultAliases;
 }
 
 /**
@@ -106,6 +165,37 @@ const EXTENSION_CANDIDATES = [
 ];
 
 /**
+ * Searches candidate file paths with extension matching and extension swapping.
+ */
+function findMatchingFilePath(
+  targetPath: string,
+  existingFilePaths: ReadonlySet<string>,
+): string | undefined {
+  const cleanPath = targetPath.replace(/^\/+/, "");
+
+  // 1. Direct match with candidates
+  for (const ext of EXTENSION_CANDIDATES) {
+    const candidate = cleanPath + ext;
+    if (existingFilePaths.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  // 2. Extension swap (e.g. ./button.js or ./button.jsx -> ./button.tsx or ./button.ts)
+  const stripped = cleanPath.replace(/\.(tsx?|jsx?|mjs|cjs)$/, "");
+  if (stripped !== cleanPath) {
+    for (const ext of EXTENSION_CANDIDATES) {
+      const candidate = stripped + ext;
+      if (existingFilePaths.has(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Resolves an imported module specifier to either an existing internal file path
  * or an external package name.
  */
@@ -124,14 +214,12 @@ export function resolveModuleSpecifier(
     const baseDir = segments.join("/");
     const normalized = normalizeRelativePath(baseDir, cleanSpecifier);
 
-    for (const ext of EXTENSION_CANDIDATES) {
-      const candidate = normalized + ext;
-      if (existingFilePaths.has(candidate)) {
-        return {
-          resolvedPath: candidate,
-          isExternal: false,
-        };
-      }
+    const match = findMatchingFilePath(normalized, existingFilePaths);
+    if (match) {
+      return {
+        resolvedPath: match,
+        isExternal: false,
+      };
     }
 
     // Relative import pointing outside parsed file collection
@@ -142,16 +230,30 @@ export function resolveModuleSpecifier(
   }
 
   // 2. Path alias mapping (e.g. @/* or ~/*)
-  for (const [aliasPattern, targetPrefix] of Object.entries(aliasMap)) {
+  for (const [aliasPattern, targetPrefixOrList] of Object.entries(aliasMap)) {
     if (cleanSpecifier.startsWith(aliasPattern)) {
       const remainder = cleanSpecifier.slice(aliasPattern.length);
-      const aliased = `${targetPrefix}${remainder}`;
+      const prefixes = Array.isArray(targetPrefixOrList)
+        ? targetPrefixOrList
+        : [targetPrefixOrList];
 
-      for (const ext of EXTENSION_CANDIDATES) {
-        const candidate = aliased + ext;
-        if (existingFilePaths.has(candidate)) {
+      for (const targetPrefix of prefixes) {
+        const aliased = `${targetPrefix}${remainder}`;
+        const match = findMatchingFilePath(aliased, existingFilePaths);
+        if (match) {
           return {
-            resolvedPath: candidate,
+            resolvedPath: match,
+            isExternal: false,
+          };
+        }
+      }
+
+      // If alias is @/ or ~/ and targeted src/ did not match, check root directory fallback
+      if (aliasPattern === "@/" || aliasPattern === "~/") {
+        const rootMatch = findMatchingFilePath(remainder, existingFilePaths);
+        if (rootMatch) {
+          return {
+            resolvedPath: rootMatch,
             isExternal: false,
           };
         }
@@ -165,7 +267,30 @@ export function resolveModuleSpecifier(
     }
   }
 
-  // 3. External npm package (e.g. "react", "@xyflow/react", "lodash/get")
+  // 3. Check if bare non-relative specifier resolves to an internal file (e.g. baseUrl 'src' or root)
+  const bareDirectMatch = findMatchingFilePath(
+    cleanSpecifier,
+    existingFilePaths,
+  );
+  if (bareDirectMatch) {
+    return {
+      resolvedPath: bareDirectMatch,
+      isExternal: false,
+    };
+  }
+
+  const bareSrcMatch = findMatchingFilePath(
+    `src/${cleanSpecifier}`,
+    existingFilePaths,
+  );
+  if (bareSrcMatch) {
+    return {
+      resolvedPath: bareSrcMatch,
+      isExternal: false,
+    };
+  }
+
+  // 4. External npm package (e.g. "react", "@xyflow/react", "lodash/get")
   let packageName = cleanSpecifier;
   if (cleanSpecifier.startsWith("@")) {
     // Scoped package e.g. @radix-ui/react-dialog

@@ -93,4 +93,64 @@ describe("tar-extractor", () => {
     expect(progressCalls[0]?.path).toContain("alpha.ts");
     expect(progressCalls[1]?.path).toContain("beta.ts");
   });
+
+  it("extracts nested tsconfig when root tsconfig is absent", async () => {
+    const pack = tar.pack();
+
+    pack.entry(
+      { name: "test-repo-abc123/packages/app/tsconfig.json" },
+      JSON.stringify({ compilerOptions: { paths: { "@/*": ["./*"] } } }),
+    );
+    pack.entry(
+      { name: "test-repo-abc123/packages/app/index.ts" },
+      "export const app = true;",
+    );
+    pack.finalize();
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of pack) {
+      chunks.push(chunk as Buffer);
+    }
+    const gzippedBuffer = gzipSync(Buffer.concat(chunks));
+    const arrayBuffer = gzippedBuffer.buffer.slice(
+      gzippedBuffer.byteOffset,
+      gzippedBuffer.byteOffset + gzippedBuffer.byteLength,
+    );
+
+    const result = await unpackRepositoryTarball(arrayBuffer, 10);
+    expect(result.tsconfigContent).toBeDefined();
+    expect(result.tsconfigContent).toContain('"@/*"');
+  });
+
+  it("prioritizes root tsconfig over nested tsconfig", async () => {
+    const pack = tar.pack();
+
+    pack.entry(
+      { name: "test-repo-abc123/packages/app/tsconfig.json" },
+      JSON.stringify({ compilerOptions: { paths: { "nested/*": ["./*"] } } }),
+    );
+    pack.entry(
+      { name: "test-repo-abc123/tsconfig.json" },
+      JSON.stringify({ compilerOptions: { paths: { "root/*": ["./*"] } } }),
+    );
+    pack.entry(
+      { name: "test-repo-abc123/src/index.ts" },
+      "export const ok = true;",
+    );
+    pack.finalize();
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of pack) {
+      chunks.push(chunk as Buffer);
+    }
+    const gzippedBuffer = gzipSync(Buffer.concat(chunks));
+    const arrayBuffer = gzippedBuffer.buffer.slice(
+      gzippedBuffer.byteOffset,
+      gzippedBuffer.byteOffset + gzippedBuffer.byteLength,
+    );
+
+    const result = await unpackRepositoryTarball(arrayBuffer, 10);
+    expect(result.tsconfigContent).toBeDefined();
+    expect(result.tsconfigContent).toContain('"root/*"');
+  });
 });

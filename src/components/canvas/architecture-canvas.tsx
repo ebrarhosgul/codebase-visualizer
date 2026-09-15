@@ -81,7 +81,7 @@ function ArchitectureCanvasInner({
         granularity: "files",
         includeExternal: !hideExternal,
       },
-      enabledEdgeKinds: ["file_import", "re_export"],
+      enabledEdgeKinds: ["file_import", "re_export", "call", "type_reference"],
       filters: {
         selectedLayers,
         collapsedFolderIds,
@@ -171,20 +171,46 @@ function ArchitectureCanvasInner({
       Array<{ id: string; sourceId: string }>
     >();
 
+    const resolveNodeId = (id: string): string =>
+      graph.symbols[id]?.fileId ?? id;
+
     for (const edge of Object.values(graph.edges)) {
-      let outList = outgoingByNode.get(edge.sourceId);
+      const sourceFileId = resolveNodeId(edge.sourceId);
+      const targetFileId = resolveNodeId(edge.targetId);
+
+      // Index by sourceFileId
+      let outList = outgoingByNode.get(sourceFileId);
       if (!outList) {
         outList = [];
-        outgoingByNode.set(edge.sourceId, outList);
+        outgoingByNode.set(sourceFileId, outList);
       }
-      outList.push({ id: edge.id, targetId: edge.targetId });
+      outList.push({ id: edge.id, targetId: targetFileId });
 
-      let inList = incomingByNode.get(edge.targetId);
+      if (sourceFileId !== edge.sourceId) {
+        let rawOutList = outgoingByNode.get(edge.sourceId);
+        if (!rawOutList) {
+          rawOutList = [];
+          outgoingByNode.set(edge.sourceId, rawOutList);
+        }
+        rawOutList.push({ id: edge.id, targetId: targetFileId });
+      }
+
+      // Index by targetFileId
+      let inList = incomingByNode.get(targetFileId);
       if (!inList) {
         inList = [];
-        incomingByNode.set(edge.targetId, inList);
+        incomingByNode.set(targetFileId, inList);
       }
-      inList.push({ id: edge.id, sourceId: edge.sourceId });
+      inList.push({ id: edge.id, sourceId: sourceFileId });
+
+      if (targetFileId !== edge.targetId) {
+        let rawInList = incomingByNode.get(edge.targetId);
+        if (!rawInList) {
+          rawInList = [];
+          incomingByNode.set(edge.targetId, rawInList);
+        }
+        rawInList.push({ id: edge.id, sourceId: sourceFileId });
+      }
     }
 
     return { outgoingByNode, incomingByNode };

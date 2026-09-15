@@ -134,22 +134,40 @@ export function toReactFlowElements(
       });
     }
 
+    let allowedEdgeKinds: Set<EdgeKind> | null = null;
+    if (options.enabledEdgeKinds && options.enabledEdgeKinds.length > 0) {
+      allowedEdgeKinds = new Set(options.enabledEdgeKinds);
+    }
+
     const activeNodeIds = new Set(nodes.map((n) => n.id));
     const edges: CodebaseReactFlowEdge[] = [];
+    const seenEdges = new Set<string>();
 
     // Direct visible edges
     for (const edge of filtered.visibleEdges) {
-      if (
-        !activeNodeIds.has(edge.sourceId) ||
-        !activeNodeIds.has(edge.targetId)
-      ) {
+      if (allowedEdgeKinds && !allowedEdgeKinds.has(edge.kind)) {
         continue;
       }
 
+      const sourceId =
+        filtered.nodeRepresentationMap[edge.sourceId] ?? edge.sourceId;
+      const targetId =
+        filtered.nodeRepresentationMap[edge.targetId] ?? edge.targetId;
+
+      if (!activeNodeIds.has(sourceId) || !activeNodeIds.has(targetId)) {
+        continue;
+      }
+
+      const visualEdgeKey = `${sourceId}->${targetId}:${edge.kind}`;
+      if (seenEdges.has(visualEdgeKey)) {
+        continue;
+      }
+      seenEdges.add(visualEdgeKey);
+
       edges.push({
         id: edge.id,
-        source: edge.sourceId,
-        target: edge.targetId,
+        source: sourceId,
+        target: targetId,
         type: edge.kind,
         ...(edge.weight > 1 ? { label: `x${edge.weight}` } : {}),
         data: {
@@ -163,6 +181,10 @@ export function toReactFlowElements(
 
     // Bundled summary edges
     for (const edge of filtered.bundledEdges) {
+      if (allowedEdgeKinds && !allowedEdgeKinds.has(edge.kind)) {
+        continue;
+      }
+
       if (
         !activeNodeIds.has(edge.sourceId) ||
         !activeNodeIds.has(edge.targetId)
