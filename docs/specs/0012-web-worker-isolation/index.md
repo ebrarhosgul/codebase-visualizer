@@ -1,7 +1,7 @@
 # 0012. Web Worker isolation for layout and parsing computations
 
 **Date**: 2026-09-16
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 

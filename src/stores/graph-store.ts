@@ -92,6 +92,8 @@ export interface GraphStoreState
   readonly rateLimitReset: number | null;
   readonly pendingRateLimitedRequest: IngestRequest | null;
   readonly hasGithubToken: boolean;
+  readonly isCalculatingLayout: boolean;
+  readonly layoutDurationMs: number | null;
 }
 
 export interface GraphStoreActions {
@@ -131,6 +133,10 @@ export interface GraphStoreActions {
   readonly setActiveTrace: (trace: PathTrace | null) => void;
   readonly focusTraceStep: (stepIndex: number | null) => void;
   readonly clearTrace: () => void;
+  readonly setLayoutCalculationState: (
+    isCalculating: boolean,
+    durationMs?: number | null,
+  ) => void;
   readonly reset: () => void;
 }
 
@@ -167,6 +173,8 @@ const initialState: GraphStoreState = {
   rateLimitReset: null,
   pendingRateLimitedRequest: null,
   hasGithubToken: false,
+  isCalculatingLayout: false,
+  layoutDurationMs: null,
 };
 
 let activeAbortController: AbortController | null = null;
@@ -1051,6 +1059,21 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       highlightedNodeIds: Object.freeze([]),
       highlightedEdgeIds: Object.freeze([]),
     });
+  },
+
+  setLayoutCalculationState: (
+    isCalculating: boolean,
+    durationMs?: number | null,
+  ): void => {
+    set((state) => ({
+      isCalculatingLayout: isCalculating,
+      layoutDurationMs:
+        durationMs !== undefined && durationMs !== null
+          ? durationMs
+          : isCalculating
+            ? state.layoutDurationMs
+            : state.layoutDurationMs,
+    }));
   },
 
   reset: (): void => {

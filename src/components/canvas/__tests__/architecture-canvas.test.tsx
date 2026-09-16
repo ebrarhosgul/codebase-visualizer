@@ -1859,4 +1859,50 @@ describe("ArchitectureCanvas", () => {
     });
     expect(mockSetCenter).toHaveBeenCalledTimes(2);
   });
+
+  it("renders layout calculating indicator in toolbar during background calculation (AC-4)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/main.ts": {
+          id: "file:src/main.ts",
+          path: "src/main.ts",
+          name: "main.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    // Initially not calculating
+    expect(
+      screen.queryByTestId("layout-calculating-indicator"),
+    ).not.toBeInTheDocument();
+  });
 });

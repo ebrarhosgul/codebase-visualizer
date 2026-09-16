@@ -180,10 +180,10 @@ Offload Dagre graph layout positioning, tar archive unpacking, and Babel abstrac
 **Done when:** repositories with 300 plus nodes parse and position without blocking the main thread for more than 50 milliseconds, frame rates stay above 55 FPS during ingestion and filter toggles, and worker calculated positions match existing graph output.
 spec [0012](../specs/0012-web-worker-isolation/index.md) · code in `src/graph/layout/`, `src/lib/workers/`, `src/components/canvas/`
 - [x] Design it (spec): `/architect web worker isolation for layout and parsing computations`
-- [ ] Build it: `/develop web worker isolation for layout and parsing computations`
-  - [ ] Worker contracts and background layout execution (AC-1, AC-2, AC-7)
-  - [ ] Worker client, busy termination and test fallback (AC-3, AC-5, AC-6)
-  - [ ] Asynchronous canvas hook and progress indicator (AC-4, AC-8)
+- [x] Build it: `/develop web worker isolation for layout and parsing computations`
+  - [x] Worker contracts and background layout execution (AC-1, AC-2, AC-7)
+  - [x] Worker client, busy termination and test fallback (AC-3, AC-5, AC-6)
+  - [x] Asynchronous canvas hook and progress indicator (AC-4, AC-8)
 - [ ] Verify it: `/check verify web worker isolation for layout and parsing computations`
 - [ ] Test it: `/test web worker isolation for layout and parsing computations`
 

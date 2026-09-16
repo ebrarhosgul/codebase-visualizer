@@ -15,14 +15,19 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useShallow } from "zustand/react/shallow";
-import { Sparkles, Network, FilterX, RotateCcw } from "lucide-react";
+import {
+  Sparkles,
+  Network,
+  FilterX,
+  RotateCcw,
+  AlertTriangle,
+} from "lucide-react";
 import { codebaseNodeTypes } from "./node-types";
 import { GraphControlsToolbar } from "./graph-controls-toolbar";
 import { CustomMiniMap } from "./custom-minimap";
 import { LayerFilterBar } from "./layer-filter-bar";
 import { Button } from "@/components/ui/button";
-import { toReactFlowElements } from "@/graph/adapters/react-flow-adapter";
-import { computeDagreLayout } from "@/graph/layout/dagre-layout";
+import { useAsyncGraphLayout } from "@/hooks/use-async-graph-layout";
 import { useGraphStore } from "@/stores/graph-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { cn } from "@/lib/utils";
@@ -94,59 +99,30 @@ function ArchitectureCanvasInner({
   const getZoomRef = React.useRef(getZoom);
   getZoomRef.current = getZoom;
 
-  // Compute positioned React Flow elements using pure transformation and Dagre layout with compound folders
-  const { initialNodes, initialEdges } = useMemo(() => {
-    if (!graph || Object.keys(graph.files).length === 0) {
-      return { initialNodes: [], initialEdges: [] };
-    }
+  // Compute positioned React Flow elements using asynchronous Web Worker layout with fallback
+  const layoutFilters = useMemo(
+    () => ({
+      selectedLayers,
+      collapsedFolderIds,
+      searchQuery,
+      hideExternal,
+    }),
+    [selectedLayers, collapsedFolderIds, searchQuery, hideExternal],
+  );
 
-    const rawElements = toReactFlowElements(graph, {
-      scope: {
-        granularity: "files",
-        includeExternal: !hideExternal,
-      },
-      enabledEdgeKinds: ["file_import", "re_export", "call", "type_reference"],
-      filters: {
-        selectedLayers,
-        collapsedFolderIds,
-        searchQuery,
-        hideExternal,
-      },
-    });
+  const {
+    nodes: layoutNodes,
+    edges: layoutEdges,
+    isCalculating: isCalculatingLayout,
+    error: layoutError,
+  } = useAsyncGraphLayout(graph, layoutFilters);
 
-    const positioned = computeDagreLayout(rawElements, {
-      direction: "LR",
-      nodeWidth: 240,
-      nodeHeight: 80,
-      nodeSeparation: 50,
-      rankSeparation: 100,
-      groupByFolder: true,
-    });
-
-    const styledEdges = positioned.edges.map((edge) => ({
-      ...edge,
-      type: "smoothstep",
-      style: {
-        stroke: "#475569",
-        strokeWidth: 1.5,
-        opacity: 0.6,
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: "#64748b",
-        width: 12,
-        height: 12,
-      },
-    }));
-
-    return {
-      initialNodes: positioned.nodes as CodebaseReactFlowNode[],
-      initialEdges: styledEdges as CodebaseReactFlowEdge[],
-    };
-  }, [graph, selectedLayers, collapsedFolderIds, searchQuery, hideExternal]);
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(
+    layoutNodes as CodebaseReactFlowNode[],
+  );
+  const [edges, setEdges, onEdgesChange] = useEdgesState(
+    layoutEdges as CodebaseReactFlowEdge[],
+  );
   const lastCenteredTargetKeyRef = React.useRef<string | null>(null);
   const nodesRef = React.useRef(nodes);
   nodesRef.current = nodes;
@@ -340,15 +316,15 @@ function ArchitectureCanvasInner({
     isSymbolsVisibleRef.current = shouldShowSymbols;
 
     const adjustedNodes = shouldShowSymbols
-      ? initialNodes.map((n) =>
+      ? layoutNodes.map((n) =>
           n.type === "symbol" ? { ...n, hidden: false } : n,
         )
-      : initialNodes;
+      : layoutNodes;
 
-    setNodes(adjustedNodes);
-    setEdges(initialEdges);
+    setNodes(adjustedNodes as CodebaseReactFlowNode[]);
+    setEdges(layoutEdges as CodebaseReactFlowEdge[]);
 
-    if (initialNodes.length > 0) {
+    if (layoutNodes.length > 0) {
       const hasTarget = Boolean(
         useGraphStore.getState().activeTarget ||
         useGraphStore.getState().pendingTarget,
@@ -360,7 +336,7 @@ function ArchitectureCanvasInner({
         return () => clearTimeout(timer);
       }
     }
-  }, [initialNodes, initialEdges, setNodes, setEdges, fitView]);
+  }, [layoutNodes, layoutEdges, setNodes, setEdges, fitView]);
 
   // Sync node selection, active folder container, and connection visual states
   useEffect(() => {
@@ -682,15 +658,15 @@ function ArchitectureCanvasInner({
       return;
     }
 
-    // Look for target node in layout initialNodes or current nodes.
+    // Look for target node in layout layoutNodes or current nodes.
     // For editor and tree navigation, prioritize the file card so the camera centers on the file being inspected.
     // For explicit symbol navigation (url or search), prioritize the symbol card if available.
     const fileTargetNode =
-      initialNodes.find((n) => n.id === activeTarget.fileId) ||
+      layoutNodes.find((n) => n.id === activeTarget.fileId) ||
       nodesRef.current.find((n) => n.id === activeTarget.fileId);
 
     const symbolTargetNode = activeTarget.symbolId
-      ? initialNodes.find((n) => n.id === activeTarget.symbolId) ||
+      ? layoutNodes.find((n) => n.id === activeTarget.symbolId) ||
         nodesRef.current.find((n) => n.id === activeTarget.symbolId)
       : null;
 
@@ -778,7 +754,7 @@ function ArchitectureCanvasInner({
     setCenter(centerX, centerY, { zoom: 1.2, duration: 800 });
   }, [
     activeTarget,
-    initialNodes,
+    layoutNodes,
     setCenter,
     getZoom,
     getViewport,
@@ -858,7 +834,7 @@ function ArchitectureCanvasInner({
   }
 
   // Filtered empty state when filters exclude all nodes (AC-10)
-  if (initialNodes.length === 0) {
+  if (layoutNodes.length === 0) {
     return (
       <div
         className={`relative w-full h-full bg-[var(--surface-canvas)] flex flex-col ${className ?? ""}`}
@@ -944,9 +920,24 @@ function ArchitectureCanvasInner({
               setIsFollowCursorActive((prev) => !prev)
             }
             currentZoom={getZoom ? Math.round(getZoom() * 10) / 10 : 1.0}
+            isCalculatingLayout={isCalculatingLayout}
           />
         </div>
       </div>
+
+      {layoutError && (
+        <div
+          role="alert"
+          data-testid="canvas-layout-error"
+          className="absolute top-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 text-xs text-amber-300 bg-amber-950/90 border border-amber-800/80 rounded-lg shadow-lg pointer-events-auto select-none"
+        >
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>
+            Background layout calculation failed ({layoutError.message}).
+            Showing previous layout.
+          </span>
+        </div>
+      )}
 
       <ReactFlow
         nodes={nodes}
