@@ -1331,4 +1331,104 @@ describe("ArchitectureCanvas", () => {
 
     vi.useRealTimers();
   });
+
+  it("throttles rapid viewport zoom fluctuations across threshold to avoid layout jitter (AC-4)", () => {
+    vi.useFakeTimers();
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 1,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/service.ts": {
+          id: "file:src/service.ts",
+          path: "src/service.ts",
+          name: "service.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/service.ts#doWork"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {
+        "symbol:src/service.ts#doWork": {
+          id: "symbol:src/service.ts#doWork",
+          fileId: "file:src/service.ts",
+          parentSymbolId: null,
+          name: "doWork",
+          kind: "function",
+          range: {
+            startOffset: 0,
+            endOffset: 30,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 3,
+            endColumn: 2,
+          },
+          selectionRange: {
+            startOffset: 0,
+            endOffset: 6,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 1,
+            endColumn: 7,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "export function doWork(): void",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    act(() => {
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 1.4 });
+      vi.advanceTimersByTime(10);
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 0.9 });
+      vi.advanceTimersByTime(10);
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 1.5 });
+      vi.advanceTimersByTime(10);
+    });
+
+    const midNodes = capturedReactFlowProps?.nodes ?? [];
+    const symbolNode = midNodes.find(
+      (n) => n.id === "symbol:src/service.ts#doWork",
+    );
+    expect(symbolNode?.hidden).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(80);
+    });
+
+    const finalNodes = capturedReactFlowProps?.nodes ?? [];
+    const symbolFinal = finalNodes.find(
+      (n) => n.id === "symbol:src/service.ts#doWork",
+    );
+    expect(symbolFinal?.hidden).toBe(false);
+
+    vi.useRealTimers();
+  });
 });

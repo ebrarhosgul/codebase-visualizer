@@ -550,4 +550,91 @@ describe("computeDagreLayout", () => {
       folderLeft + folderWidth,
     );
   });
+
+  it("clusters root level file symbols into root folder group container", () => {
+    const rootFileNode: CodebaseReactFlowNode = {
+      id: "file:main.ts",
+      type: "file",
+      position: { x: 0, y: 0 },
+      data: {
+        entityType: "file",
+        label: "main.ts",
+        entity: {
+          id: "file:main.ts",
+          path: "main.ts",
+          name: "main.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:(root)",
+          symbolIds: ["symbol:main.ts#bootstrap"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+    };
+
+    const rootSymbolNode: CodebaseReactFlowNode = {
+      id: "symbol:main.ts#bootstrap",
+      type: "symbol",
+      position: { x: 0, y: 0 },
+      hidden: true,
+      data: {
+        entityType: "symbol",
+        label: "bootstrap",
+        entity: {
+          id: "symbol:main.ts#bootstrap",
+          fileId: "file:main.ts",
+          parentSymbolId: null,
+          name: "bootstrap",
+          kind: "function",
+          range: {
+            startOffset: 0,
+            endOffset: 50,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 5,
+            endColumn: 2,
+          },
+          selectionRange: {
+            startOffset: 0,
+            endOffset: 9,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 1,
+            endColumn: 10,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "export function bootstrap(): void",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+    };
+
+    const laidOut = computeDagreLayout(
+      {
+        nodes: Object.freeze([rootFileNode, rootSymbolNode]),
+        edges: Object.freeze([]),
+      },
+      { direction: "LR", groupByFolder: true, nodeWidth: 240 },
+    );
+
+    const rootFolder = laidOut.nodes.find(
+      (n) => n.id === "folder-group:(root)",
+    );
+    expect(rootFolder).toBeDefined();
+
+    const fileResult = laidOut.nodes.find((n) => n.id === "file:main.ts");
+    const symbolResult = laidOut.nodes.find(
+      (n) => n.id === "symbol:main.ts#bootstrap",
+    );
+    expect(fileResult).toBeDefined();
+    expect(symbolResult).toBeDefined();
+
+    expect(fileResult!.position.y).toBeLessThan(symbolResult!.position.y);
+  });
 });

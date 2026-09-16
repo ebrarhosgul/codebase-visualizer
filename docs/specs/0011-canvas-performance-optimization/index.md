@@ -1,6 +1,6 @@
 # 0011 · Canvas performance optimization
 
-**Status**: In Progress
+**Status**: Accepted
 **Code area**: `src/components/canvas/`, `src/stores/`
 
 ## Summary

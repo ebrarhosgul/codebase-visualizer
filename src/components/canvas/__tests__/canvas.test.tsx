@@ -1,10 +1,11 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ReactFlowProvider } from "@xyflow/react";
 import { FileNodeCard } from "../file-node-card";
 import { SymbolNodeCard } from "../symbol-node-card";
 import { GraphControlsToolbar } from "../graph-controls-toolbar";
 import { getMinimapNodeColor } from "../custom-minimap";
+import { useGraphStore } from "@/stores/graph-store";
 import type { NodeProps } from "@xyflow/react";
 import type { CodebaseReactFlowNode } from "@/graph";
 import type { FileNode, SymbolNode } from "@/entities";
@@ -126,6 +127,77 @@ describe("FileNodeCard", () => {
       "very-long-feature-component-controller-name-that-would-overflow.tsx",
     );
   });
+
+  beforeEach(() => {
+    useGraphStore.getState().reset();
+  });
+
+  it("applies hovered styling when node is hovered in store (AC-2)", () => {
+    renderWithProvider(<FileNodeCard {...baseNodeProps} />);
+
+    act(() => {
+      useGraphStore.getState().setHoveredNodeId("file:src/index.ts");
+    });
+
+    const card = screen.getByRole("article", {
+      name: "file node: index.ts",
+    });
+    expect(card.className).toContain("border-zinc-700");
+    expect(card.className).toContain("bg-zinc-900/90");
+  });
+
+  it("applies dimmed styling when node is dimmed and not hovered or selected", () => {
+    const dimmedProps: NodeProps<CodebaseReactFlowNode> = {
+      ...baseNodeProps,
+      data: {
+        ...baseNodeProps.data,
+        isDimmed: true,
+      } as unknown as CodebaseReactFlowNode["data"],
+    };
+
+    renderWithProvider(<FileNodeCard {...dimmedProps} />);
+    const card = screen.getByRole("article", {
+      name: "file node: index.ts",
+    });
+    expect(card.className).toContain("opacity-25");
+  });
+
+  it("applies connected styling when node is marked connected", () => {
+    const connectedProps: NodeProps<CodebaseReactFlowNode> = {
+      ...baseNodeProps,
+      data: {
+        ...baseNodeProps.data,
+        isConnected: true,
+      } as unknown as CodebaseReactFlowNode["data"],
+    };
+
+    renderWithProvider(<FileNodeCard {...connectedProps} />);
+    const card = screen.getByRole("article", {
+      name: "file node: index.ts",
+    });
+    expect(card.className).toContain("border-zinc-700");
+  });
+
+  it("renders external package node with pkg badge", () => {
+    const externalProps: NodeProps<CodebaseReactFlowNode> = {
+      ...baseNodeProps,
+      id: "ext:react",
+      data: {
+        entityType: "external",
+        label: "react",
+        entity: {
+          id: "ext:react",
+          name: "react",
+          isExternal: true,
+        },
+      },
+    };
+
+    renderWithProvider(<FileNodeCard {...externalProps} />);
+    expect(screen.getByText("react")).toBeInTheDocument();
+    expect(screen.getByText("pkg")).toBeInTheDocument();
+    expect(screen.getByText("external package")).toBeInTheDocument();
+  });
 });
 
 const mockSymbolEntity: SymbolNode = {
@@ -207,6 +279,90 @@ describe("SymbolNodeCard", () => {
 
     const titleEl = screen.getByRole("heading", { level: 4 });
     expect(titleEl.className).toContain("truncate");
+  });
+
+  it("applies hovered styling when symbol is hovered in store (AC-2)", () => {
+    renderWithProvider(<SymbolNodeCard {...symbolProps} />);
+
+    act(() => {
+      useGraphStore
+        .getState()
+        .setHoveredNodeId("symbol:src/index.ts#buildGraph");
+    });
+
+    const card = screen.getByRole("article", {
+      name: "Symbol node: buildGraph (function)",
+    });
+    expect(card.className).toContain("border-zinc-700");
+    expect(card.className).toContain("bg-zinc-900/90");
+  });
+
+  it("renders class and interface symbols with matching badge variants", () => {
+    const classSymbol: NodeProps<CodebaseReactFlowNode> = {
+      ...symbolProps,
+      id: "symbol:src/index.ts#GraphService",
+      data: {
+        entityType: "symbol",
+        label: "GraphService",
+        entity: {
+          ...mockSymbolEntity,
+          id: "symbol:src/index.ts#GraphService",
+          name: "GraphService",
+          kind: "class",
+        },
+      },
+    };
+
+    const { unmount } = renderWithProvider(<SymbolNodeCard {...classSymbol} />);
+    expect(screen.getByText("class")).toBeInTheDocument();
+    unmount();
+
+    const interfaceSymbol: NodeProps<CodebaseReactFlowNode> = {
+      ...symbolProps,
+      id: "symbol:src/index.ts#GraphConfig",
+      data: {
+        entityType: "symbol",
+        label: "GraphConfig",
+        entity: {
+          ...mockSymbolEntity,
+          id: "symbol:src/index.ts#GraphConfig",
+          name: "GraphConfig",
+          kind: "interface",
+        },
+      },
+    };
+
+    renderWithProvider(<SymbolNodeCard {...interfaceSymbol} />);
+    expect(screen.getByText("interface")).toBeInTheDocument();
+  });
+
+  it("renders empty element when entityType is not symbol", () => {
+    const invalidProps = {
+      ...symbolProps,
+      data: {
+        entityType: "file",
+      },
+    } as unknown as NodeProps<CodebaseReactFlowNode>;
+
+    renderWithProvider(<SymbolNodeCard {...invalidProps} />);
+    expect(screen.queryByRole("article")).not.toBeInTheDocument();
+  });
+
+  it("omits exported section when symbol is not exported", () => {
+    const unexportedProps: NodeProps<CodebaseReactFlowNode> = {
+      ...symbolProps,
+      data: {
+        entityType: "symbol",
+        label: "buildGraph",
+        entity: {
+          ...mockSymbolEntity,
+          isExported: false,
+        },
+      },
+    };
+
+    renderWithProvider(<SymbolNodeCard {...unexportedProps} />);
+    expect(screen.queryByText("exported")).not.toBeInTheDocument();
   });
 });
 

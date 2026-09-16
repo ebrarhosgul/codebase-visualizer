@@ -21,7 +21,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 8 | Semantic AI query and path tracing | Slice 4 | done |
 | 9 | Client cache and ingestion streaming | Slice 5 | done |
 | 10 | AI service stabilization and fallback notices | Slice 6 | in-progress |
-| 11 | Canvas performance optimization | Slice 7 | in-progress |
+| 11 | Canvas performance optimization | Slice 7 | done |
 
 ## Foundations
 
@@ -160,7 +160,7 @@ spec [0010](../specs/0010-ai-service-stabilization-and-fallback-notices/index.md
 
 ## Slice 7: Canvas performance optimization
 
-### 11. Canvas performance optimization · in-progress
+### 11. Canvas performance optimization · done
 Eliminate canvas performance bottlenecks by enabling React Flow viewport pruning, memoizing node and edge components, simplifying heavy canvas styling, progressively disclosing symbols, and refining state selectors.
 **Done when:** the canvas maintains smooth 60 FPS interactions on large graphs with hundreds of nodes, offscreen nodes skip rendering, interactions avoid full canvas re renders, and progressive disclosure hides granular symbol nodes until zoomed or focused.
 spec [0011](../specs/0011-canvas-performance-optimization/index.md) · code in `src/components/canvas/`, `src/stores/`
@@ -170,7 +170,7 @@ spec [0011](../specs/0011-canvas-performance-optimization/index.md) · code in `
   - [x] Optimize Zustand selectors (AC-2)
   - [x] Implement progressive disclosure (AC-3, AC-4)
 - [x] Verify it: `/check verify canvas performance optimization`
-- [ ] Test it: `/test canvas performance optimization`
+- [x] Test it: `/test canvas performance optimization`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
