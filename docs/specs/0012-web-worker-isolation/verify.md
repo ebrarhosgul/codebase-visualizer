@@ -11,14 +11,14 @@ _Steps derived from spec 0012 acceptance criteria. `/check verify` runs these; `
 
 ## Commands
 
-- [ ] `npm test src/lib/workers/__tests__/worker-types.test.ts` → validates typed message envelopes and type guards → AC-7
-- [ ] `npm test src/graph/layout/__tests__/layout-worker-client.test.ts` → validates busy worker termination, 5000ms timeout guard, and synchronous test fallback → AC-3, AC-5, AC-6
-- [ ] `npm test src/hooks/__tests__/use-async-graph-layout.test.ts` → validates 50ms debouncing, unmount safety, and background state coordination → AC-3, AC-4
-- [ ] `npm test src/components/canvas/__tests__/graph-controls-toolbar.test.tsx` → validates layout calculation spinner rendering → AC-4
-- [ ] `npm test src/components/canvas/__tests__/architecture-canvas.test.tsx` → validates canvas integration and element persistence during calculation → AC-4, AC-5
-- [ ] `npm run typecheck` → confirms zero TypeScript errors across all worker and canvas modules → AC-1 through AC-8
-- [ ] `npm run lint` → confirms zero ESLint errors or warnings → AC-7
-- [ ] `npm run build` → confirms Next.js production worker chunk bundling and static generation succeed → AC-1
+- [x] `npm test src/lib/workers/__tests__/worker-types.test.ts` → validates typed message envelopes and type guards → AC-7
+- [x] `npm test src/graph/layout/__tests__/layout-worker-client.test.ts` → validates busy worker termination, 5000ms timeout guard, and synchronous test fallback → AC-3, AC-5, AC-6
+- [x] `npm test src/hooks/__tests__/use-async-graph-layout.test.ts` → validates 50ms debouncing, unmount safety, and background state coordination → AC-3, AC-4
+- [x] `npm test src/components/canvas/__tests__/graph-controls-toolbar.test.tsx` → validates layout calculation spinner rendering → AC-4
+- [x] `npm test src/components/canvas/__tests__/architecture-canvas.test.tsx` → validates canvas integration and element persistence during calculation → AC-4, AC-5
+- [x] `npm run typecheck` → confirms zero TypeScript errors across all worker and canvas modules → AC-1 through AC-8
+- [x] `npm run lint` → confirms zero ESLint errors or warnings → AC-7
+- [x] `npm run build` → confirms Next.js production worker chunk bundling and static generation succeed → AC-1
 
 ## Acceptance-criteria coverage
 

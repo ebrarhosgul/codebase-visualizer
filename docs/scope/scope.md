@@ -184,7 +184,7 @@ spec [0012](../specs/0012-web-worker-isolation/index.md) · code in `src/graph/l
   - [x] Worker contracts and background layout execution (AC-1, AC-2, AC-7)
   - [x] Worker client, busy termination and test fallback (AC-3, AC-5, AC-6)
   - [x] Asynchronous canvas hook and progress indicator (AC-4, AC-8)
-- [ ] Verify it: `/check verify web worker isolation for layout and parsing computations`
+- [x] Verify it: `/check verify web worker isolation for layout and parsing computations`
 - [ ] Test it: `/test web worker isolation for layout and parsing computations`
 
 ## Deferred
