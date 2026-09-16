@@ -16,6 +16,7 @@ import {
   createDefaultExportSymbolId,
   createGraphEdge,
   aggregateEdge,
+  normalizeFilePath,
   codebaseGraphSchema,
   CURRENT_SCHEMA_VERSION,
 } from "@/entities";
@@ -529,9 +530,14 @@ export function parseRepositoryAst(
       project.createSourceFile(file.path, file.content, { overwrite: true });
     }
     existingFilePaths.add(file.path);
+    existingFilePaths.add(normalizeFilePath(file.path));
   }
 
-  const aliasMap = extractPathAliases(tsconfigContent);
+  const rawTsconfig =
+    tsconfigContent ??
+    files.find((f) => f.path === "tsconfig.json" || f.path === "jsconfig.json")
+      ?.content;
+  const aliasMap = extractPathAliases(rawTsconfig);
   const directoryNodes = buildDirectoryHierarchy(Array.from(existingFilePaths));
   const program = project.getProgram();
 
@@ -541,12 +547,17 @@ export function parseRepositoryAst(
   const edges: Record<string, GraphEdge> = {};
 
   const languageCounts: Record<string, number> = {};
+  const fileImports: Record<string, Set<string>> = {};
+  const fileExports: Record<string, Set<string>> = {};
 
+  // Pass 1: Extract all file declarations and symbols so all symbols exist in memory
   for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
     const file = files[fileIndex];
     onProgress?.(fileIndex + 1, files.length, file.path);
     const fileId = createFileId(file.path);
     fileSources[fileId] = file.content;
+    fileImports[fileId] = new Set<string>();
+    fileExports[fileId] = new Set<string>();
 
     const sourceFile = project.getSourceFile(file.path);
     const lineCount = file.content.split("\n").length;
@@ -583,6 +594,12 @@ export function parseRepositoryAst(
         fileId,
         symbols,
       );
+
+      for (const sId of fileSymbolIds) {
+        if (symbols[sId]?.isExported) {
+          fileExports[fileId]?.add(sId);
+        }
+      }
     }
 
     const fileNode: FileNode = {
@@ -603,7 +620,24 @@ export function parseRepositoryAst(
     };
 
     fileNodes[fileId] = fileNode;
+  }
 
+  function addEdge(edge: GraphEdge) {
+    if (edges[edge.id]) {
+      edges[edge.id] = aggregateEdge(edges[edge.id]!, {
+        importSpecifiers: edge.metadata?.importSpecifiers,
+        callSites: edge.metadata?.callSites,
+        weightIncrement: edge.weight,
+      });
+    } else {
+      edges[edge.id] = edge;
+    }
+  }
+
+  // Pass 2: Extract import and export declarations, resolving internal files and symbols
+  for (const file of files) {
+    const fileId = createFileId(file.path);
+    const sourceFile = project.getSourceFile(file.path);
     if (!sourceFile) {
       continue;
     }
@@ -617,14 +651,22 @@ export function parseRepositoryAst(
           continue;
         }
 
+        const isTypeOnly = importDecl.isTypeOnly();
         const importSpecifiers: string[] = [];
+        const namedImports: Array<{ name: string; isTypeOnly: boolean }> = [];
+
         const defaultImport = importDecl.getDefaultImport();
-        if (defaultImport) {
-          importSpecifiers.push(defaultImport.getText());
+        const defaultImportName = defaultImport?.getText();
+        if (defaultImportName) {
+          importSpecifiers.push(defaultImportName);
         }
+
         for (const named of importDecl.getNamedImports()) {
-          importSpecifiers.push(named.getName());
+          const name = named.getName();
+          namedImports.push({ name, isTypeOnly: named.isTypeOnly() });
+          importSpecifiers.push(name);
         }
+
         const namespaceImport = importDecl.getNamespaceImport();
         if (namespaceImport) {
           importSpecifiers.push(`* as ${namespaceImport.getText()}`);
@@ -656,23 +698,77 @@ export function parseRepositoryAst(
           }
         }
 
-        const edgeKind = "file_import";
+        // File-to-file / file-to-external edge
+        const fileEdgeKind = isTypeOnly ? "type_reference" : "file_import";
         const candidateEdge = createGraphEdge({
           sourceId: fileId,
           targetId,
-          kind: edgeKind,
+          kind: fileEdgeKind,
           isExternal,
           metadata:
             importSpecifiers.length > 0 ? { importSpecifiers } : undefined,
         });
 
-        if (edges[candidateEdge.id]) {
-          edges[candidateEdge.id] = aggregateEdge(edges[candidateEdge.id]!, {
-            importSpecifiers,
-            weightIncrement: 1,
-          });
-        } else {
-          edges[candidateEdge.id] = candidateEdge;
+        addEdge(candidateEdge);
+        fileImports[fileId]?.add(targetId);
+
+        // If internal local import, link target symbol dependencies
+        if (!isExternal && resolved.resolvedPath) {
+          const targetFilePath = resolved.resolvedPath;
+          const targetFileSymbolIds = fileNodes[targetId]?.symbolIds ?? [];
+
+          // Default import symbol link
+          if (defaultImportName) {
+            let targetSymId: string | null = null;
+            for (const sId of targetFileSymbolIds) {
+              const s = symbols[sId];
+              if (s && s.isDefaultExport) {
+                targetSymId = s.id;
+                break;
+              }
+            }
+            if (!targetSymId) {
+              targetSymId = createDefaultExportSymbolId(targetFilePath);
+            }
+
+            const symEdge = createGraphEdge({
+              sourceId: fileId,
+              targetId: targetSymId,
+              kind: isTypeOnly ? "type_reference" : "file_import",
+              isExternal: false,
+              metadata: { importSpecifiers: [defaultImportName] },
+            });
+            addEdge(symEdge);
+            fileImports[fileId]?.add(targetSymId);
+          }
+
+          // Named import symbol links
+          for (const item of namedImports) {
+            let targetSymId: string | null = null;
+            for (const sId of targetFileSymbolIds) {
+              const s = symbols[sId];
+              if (s && s.name === item.name) {
+                targetSymId = s.id;
+                break;
+              }
+            }
+            if (!targetSymId) {
+              targetSymId = createSymbolId(targetFilePath, item.name);
+            }
+
+            const symEdge = createGraphEdge({
+              sourceId: fileId,
+              targetId: targetSymId,
+              kind:
+                isTypeOnly || item.isTypeOnly
+                  ? "type_reference"
+                  : "file_import",
+              isExternal: false,
+              metadata: { importSpecifiers: [item.name] },
+            });
+            addEdge(symEdge);
+            fileImports[fileId]?.add(targetSymId);
+          }
         }
       }
     } catch {
@@ -683,68 +779,108 @@ export function parseRepositoryAst(
     try {
       const exportDeclarations = sourceFile.getExportDeclarations();
       for (const exportDecl of exportDeclarations) {
-        if (!exportDecl.hasModuleSpecifier()) {
-          continue;
-        }
-
-        const moduleSpecifier = exportDecl.getModuleSpecifierValue();
-        if (!moduleSpecifier) {
-          continue;
-        }
-
-        const exportSpecifiers: string[] = [];
-        for (const named of exportDecl.getNamedExports()) {
-          exportSpecifiers.push(named.getName());
-        }
-
-        const resolved = resolveModuleSpecifier(
-          moduleSpecifier,
-          file.path,
-          aliasMap,
-          existingFilePaths,
-        );
-
-        let targetId: string;
-        let isExternal = false;
-
-        if (resolved.resolvedPath && !resolved.isExternal) {
-          targetId = createFileId(resolved.resolvedPath);
-        } else {
-          const pkgName = resolved.packageName || moduleSpecifier;
-          targetId = createExternalModuleId(pkgName);
-          isExternal = true;
-
-          if (!externalModules[targetId]) {
-            externalModules[targetId] = {
-              id: targetId,
-              name: pkgName,
-              isExternal: true,
-            };
+        const hasSpecifier = exportDecl.hasModuleSpecifier();
+        if (hasSpecifier) {
+          const moduleSpecifier = exportDecl.getModuleSpecifierValue();
+          if (!moduleSpecifier) {
+            continue;
           }
-        }
 
-        const candidateEdge = createGraphEdge({
-          sourceId: fileId,
-          targetId,
-          kind: "re_export",
-          isExternal,
-          metadata:
-            exportSpecifiers.length > 0
-              ? { importSpecifiers: exportSpecifiers }
-              : undefined,
-        });
+          const exportSpecifiers: string[] = [];
+          for (const named of exportDecl.getNamedExports()) {
+            exportSpecifiers.push(named.getName());
+          }
 
-        if (edges[candidateEdge.id]) {
-          edges[candidateEdge.id] = aggregateEdge(edges[candidateEdge.id]!, {
-            importSpecifiers: exportSpecifiers,
-            weightIncrement: 1,
+          const resolved = resolveModuleSpecifier(
+            moduleSpecifier,
+            file.path,
+            aliasMap,
+            existingFilePaths,
+          );
+
+          let targetId: string;
+          let isExternal = false;
+
+          if (resolved.resolvedPath && !resolved.isExternal) {
+            targetId = createFileId(resolved.resolvedPath);
+          } else {
+            const pkgName = resolved.packageName || moduleSpecifier;
+            targetId = createExternalModuleId(pkgName);
+            isExternal = true;
+
+            if (!externalModules[targetId]) {
+              externalModules[targetId] = {
+                id: targetId,
+                name: pkgName,
+                isExternal: true,
+              };
+            }
+          }
+
+          const candidateEdge = createGraphEdge({
+            sourceId: fileId,
+            targetId,
+            kind: "re_export",
+            isExternal,
+            metadata:
+              exportSpecifiers.length > 0
+                ? { importSpecifiers: exportSpecifiers }
+                : undefined,
           });
+
+          addEdge(candidateEdge);
+          fileImports[fileId]?.add(targetId);
+
+          if (!isExternal && resolved.resolvedPath) {
+            const targetFilePath = resolved.resolvedPath;
+            const targetFileSymbolIds = fileNodes[targetId]?.symbolIds ?? [];
+
+            for (const expName of exportSpecifiers) {
+              let targetSymId: string | null = null;
+              for (const sId of targetFileSymbolIds) {
+                const s = symbols[sId];
+                if (s && s.name === expName) {
+                  targetSymId = s.id;
+                  break;
+                }
+              }
+              if (!targetSymId) {
+                targetSymId = createSymbolId(targetFilePath, expName);
+              }
+
+              const symEdge = createGraphEdge({
+                sourceId: fileId,
+                targetId: targetSymId,
+                kind: "re_export",
+                isExternal: false,
+                metadata: { importSpecifiers: [expName] },
+              });
+              addEdge(symEdge);
+              fileExports[fileId]?.add(targetSymId);
+              fileImports[fileId]?.add(targetSymId);
+            }
+          }
         } else {
-          edges[candidateEdge.id] = candidateEdge;
+          // Local named export without module specifier
+          for (const named of exportDecl.getNamedExports()) {
+            const name = named.getName();
+            const localSymId = createSymbolId(file.path, name);
+            fileExports[fileId]?.add(localSymId);
+          }
         }
       }
     } catch {
       // Graceful tolerance for export parsing issues
+    }
+
+    // Freeze imports and exports into file node
+    const node = fileNodes[fileId];
+    if (node) {
+      fileNodes[fileId] = {
+        ...node,
+        importIds: Object.freeze(Array.from(fileImports[fileId] ?? []).sort()),
+        exportIds: Object.freeze(Array.from(fileExports[fileId] ?? []).sort()),
+      };
     }
   }
 

@@ -6,6 +6,7 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useOnViewportChange,
   ReactFlowProvider,
   type NodeMouseHandler,
   Background,
@@ -13,6 +14,7 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { useShallow } from "zustand/react/shallow";
 import { Sparkles, Network, FilterX, RotateCcw } from "lucide-react";
 import { codebaseNodeTypes } from "./node-types";
 import { GraphControlsToolbar } from "./graph-controls-toolbar";
@@ -39,36 +41,58 @@ function ArchitectureCanvasInner({
   const graph = useGraphStore((state) => state.graph);
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
-  const hoveredNodeId = useGraphStore((state) => state.hoveredNodeId);
   const selectNode = useGraphStore((state) => state.selectNode);
   const setHoveredNodeId = useGraphStore((state) => state.setHoveredNodeId);
   const isIngesting = useGraphStore((state) => state.isIngesting);
-  const selectedLayers = useGraphStore((state) => state.selectedLayers);
-  const collapsedFolderIds = useGraphStore((state) => state.collapsedFolderIds);
-  const searchQuery = useGraphStore((state) => state.searchQuery);
-  const hideExternal = useGraphStore((state) => state.hideExternal);
   const resetAllFilters = useGraphStore((state) => state.resetAllFilters);
-  const activeTrace = useGraphStore((state) => state.activeTrace);
-  const activeStepIndex = useGraphStore((state) => state.activeStepIndex);
-  const highlightedNodeIds = useGraphStore((state) => state.highlightedNodeIds);
-  const highlightedEdgeIds = useGraphStore((state) => state.highlightedEdgeIds);
-  const isSmallScreen = useWorkspaceStore((state) => state.isSmallScreen);
-  const isLeftCollapsed = useWorkspaceStore(
-    (state) => state.isLeftSidebarCollapsed,
+  const activeTarget = useGraphStore((state) => state.activeTarget);
+
+  const { selectedLayers, collapsedFolderIds, searchQuery, hideExternal } =
+    useGraphStore(
+      useShallow((state) => ({
+        selectedLayers: state.selectedLayers,
+        collapsedFolderIds: state.collapsedFolderIds,
+        searchQuery: state.searchQuery,
+        hideExternal: state.hideExternal,
+      })),
+    );
+
+  const {
+    activeTrace,
+    activeStepIndex,
+    highlightedNodeIds,
+    highlightedEdgeIds,
+  } = useGraphStore(
+    useShallow((state) => ({
+      activeTrace: state.activeTrace,
+      activeStepIndex: state.activeStepIndex,
+      highlightedNodeIds: state.highlightedNodeIds,
+      highlightedEdgeIds: state.highlightedEdgeIds,
+    })),
   );
-  const isRightCollapsed = useWorkspaceStore(
-    (state) => state.isRightPanelCollapsed,
+
+  const {
+    isSmallScreen,
+    isLeftCollapsed,
+    isRightCollapsed,
+    setActiveRightTab,
+    theme,
+  } = useWorkspaceStore(
+    useShallow((state) => ({
+      isSmallScreen: state.isSmallScreen,
+      isLeftCollapsed: state.isLeftSidebarCollapsed,
+      isRightCollapsed: state.isRightPanelCollapsed,
+      setActiveRightTab: state.setActiveRightTab,
+      theme: state.theme,
+    })),
   );
-  const setActiveRightTab = useWorkspaceStore(
-    (state) => state.setActiveRightTab,
-  );
-  const theme = useWorkspaceStore((state) => state.theme);
 
   const [isMinimapVisible, setIsMinimapVisible] = React.useState(true);
   const [isFollowCursorActive, setIsFollowCursorActive] = React.useState(true);
   const { fitView, zoomIn, zoomOut, getZoom, setCenter, getViewport } =
     useReactFlow();
-  const activeTarget = useGraphStore((state) => state.activeTarget);
+  const getZoomRef = React.useRef(getZoom);
+  getZoomRef.current = getZoom;
 
   // Compute positioned React Flow elements using pure transformation and Dagre layout with compound folders
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -81,7 +105,7 @@ function ArchitectureCanvasInner({
         granularity: "files",
         includeExternal: !hideExternal,
       },
-      enabledEdgeKinds: ["file_import", "re_export"],
+      enabledEdgeKinds: ["file_import", "re_export", "call", "type_reference"],
       filters: {
         selectedLayers,
         collapsedFolderIds,
@@ -127,9 +151,8 @@ function ArchitectureCanvasInner({
   const nodesRef = React.useRef(nodes);
   nodesRef.current = nodes;
 
-  // Active target for dependency highlighting (hover takes visual priority, falling back to selection/target)
+  // Active target for dependency highlighting (selection takes visual priority, falling back to activeTarget)
   const rawHighlightId =
-    hoveredNodeId ||
     selectedNodeId ||
     (activeTarget ? activeTarget.symbolId || activeTarget.fileId : null);
 
@@ -171,20 +194,46 @@ function ArchitectureCanvasInner({
       Array<{ id: string; sourceId: string }>
     >();
 
+    const resolveNodeId = (id: string): string =>
+      graph.symbols[id]?.fileId ?? id;
+
     for (const edge of Object.values(graph.edges)) {
-      let outList = outgoingByNode.get(edge.sourceId);
+      const sourceFileId = resolveNodeId(edge.sourceId);
+      const targetFileId = resolveNodeId(edge.targetId);
+
+      // Index by sourceFileId
+      let outList = outgoingByNode.get(sourceFileId);
       if (!outList) {
         outList = [];
-        outgoingByNode.set(edge.sourceId, outList);
+        outgoingByNode.set(sourceFileId, outList);
       }
-      outList.push({ id: edge.id, targetId: edge.targetId });
+      outList.push({ id: edge.id, targetId: targetFileId });
 
-      let inList = incomingByNode.get(edge.targetId);
+      if (sourceFileId !== edge.sourceId) {
+        let rawOutList = outgoingByNode.get(edge.sourceId);
+        if (!rawOutList) {
+          rawOutList = [];
+          outgoingByNode.set(edge.sourceId, rawOutList);
+        }
+        rawOutList.push({ id: edge.id, targetId: targetFileId });
+      }
+
+      // Index by targetFileId
+      let inList = incomingByNode.get(targetFileId);
       if (!inList) {
         inList = [];
-        incomingByNode.set(edge.targetId, inList);
+        incomingByNode.set(targetFileId, inList);
       }
-      inList.push({ id: edge.id, sourceId: edge.sourceId });
+      inList.push({ id: edge.id, sourceId: sourceFileId });
+
+      if (targetFileId !== edge.targetId) {
+        let rawInList = incomingByNode.get(edge.targetId);
+        if (!rawInList) {
+          rawInList = [];
+          incomingByNode.set(edge.targetId, rawInList);
+        }
+        rawInList.push({ id: edge.id, sourceId: sourceFileId });
+      }
     }
 
     return { outgoingByNode, incomingByNode };
@@ -227,9 +276,76 @@ function ArchitectureCanvasInner({
     };
   }, [highlightNodeId, graph, edgeIndex]);
 
+  // Progressive disclosure: hide symbol nodes when zoom < 1.2, reveal when zoom >= 1.2 (AC-3, AC-4)
+  const isSymbolsVisibleRef = React.useRef(false);
+  const zoomThrottleTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleViewportChange = useCallback(
+    ({ zoom }: { zoom: number }) => {
+      if (zoom < 1.0) {
+        lastCenteredTargetKeyRef.current = null;
+      }
+
+      const shouldShowSymbols = zoom >= 1.2;
+      if (shouldShowSymbols === isSymbolsVisibleRef.current) {
+        return;
+      }
+
+      isSymbolsVisibleRef.current = shouldShowSymbols;
+
+      if (zoomThrottleTimerRef.current) {
+        clearTimeout(zoomThrottleTimerRef.current);
+      }
+
+      zoomThrottleTimerRef.current = setTimeout(() => {
+        zoomThrottleTimerRef.current = null;
+        setNodes((currentNodes) => {
+          let hasChange = false;
+          const nextNodes = currentNodes.map((n) => {
+            if (n.type === "symbol" && n.hidden !== !shouldShowSymbols) {
+              hasChange = true;
+              return { ...n, hidden: !shouldShowSymbols };
+            }
+            return n;
+          });
+          return hasChange ? nextNodes : currentNodes;
+        });
+      }, 75);
+    },
+    [setNodes],
+  );
+
+  useOnViewportChange({
+    onChange: handleViewportChange,
+  });
+
+  useEffect(() => {
+    return () => {
+      if (zoomThrottleTimerRef.current) {
+        clearTimeout(zoomThrottleTimerRef.current);
+        zoomThrottleTimerRef.current = null;
+      }
+    };
+  }, []);
+
   // Sync state whenever underlying graph is recomputed
   useEffect(() => {
-    setNodes(initialNodes);
+    if (zoomThrottleTimerRef.current) {
+      clearTimeout(zoomThrottleTimerRef.current);
+      zoomThrottleTimerRef.current = null;
+    }
+
+    const currentZoom = getZoomRef.current ? getZoomRef.current() : 1.0;
+    const shouldShowSymbols = currentZoom >= 1.2;
+    isSymbolsVisibleRef.current = shouldShowSymbols;
+
+    const adjustedNodes = shouldShowSymbols
+      ? initialNodes.map((n) =>
+          n.type === "symbol" ? { ...n, hidden: false } : n,
+        )
+      : initialNodes;
+
+    setNodes(adjustedNodes);
     setEdges(initialEdges);
 
     if (initialNodes.length > 0) {
@@ -246,7 +362,7 @@ function ArchitectureCanvasInner({
     }
   }, [initialNodes, initialEdges, setNodes, setEdges, fitView]);
 
-  // Sync node selection, active folder container, and hover/connection visual states
+  // Sync node selection, active folder container, and connection visual states
   useEffect(() => {
     const isHighlightActive = Boolean(highlightNodeId);
     const isTraceActive = Boolean(activeTrace);
@@ -292,7 +408,7 @@ function ArchitectureCanvasInner({
           const isTraceNode = traceNodeSet.has(n.id);
           const isStepFocused = activeStepNodeId === n.id;
           const isSelected = n.id === selectedNodeId || isStepFocused;
-          const isHovered = isStepFocused || hoveredNodeId === n.id;
+          const isHovered = isStepFocused;
           const isConnected = isTraceNode;
           const isDimmed = !isTraceNode;
 
@@ -324,7 +440,7 @@ function ArchitectureCanvasInner({
           n.id === highlightNodeId ||
           (activeTarget != null &&
             (n.id === activeTarget.symbolId || n.id === activeTarget.fileId));
-        const isHovered = isTarget && hoveredNodeId === n.id;
+        const isHovered = false;
         const isDimmed = isHighlightActive && !isTarget && !isConnected;
 
         if (
@@ -355,7 +471,6 @@ function ArchitectureCanvasInner({
     activeTarget,
     highlightNodeId,
     connectedNodeIds,
-    hoveredNodeId,
     activeTrace,
     activeStepIndex,
     highlightedNodeIds,
@@ -567,13 +682,22 @@ function ArchitectureCanvasInner({
       return;
     }
 
-    // Look for target node in layout initialNodes or current nodes
-    const targetId = activeTarget.symbolId || activeTarget.fileId;
-    const targetNode =
-      initialNodes.find((n) => n.id === targetId) ||
+    // Look for target node in layout initialNodes or current nodes.
+    // For editor and tree navigation, prioritize the file card so the camera centers on the file being inspected.
+    // For explicit symbol navigation (url or search), prioritize the symbol card if available.
+    const fileTargetNode =
       initialNodes.find((n) => n.id === activeTarget.fileId) ||
-      nodesRef.current.find((n) => n.id === targetId) ||
       nodesRef.current.find((n) => n.id === activeTarget.fileId);
+
+    const symbolTargetNode = activeTarget.symbolId
+      ? initialNodes.find((n) => n.id === activeTarget.symbolId) ||
+        nodesRef.current.find((n) => n.id === activeTarget.symbolId)
+      : null;
+
+    const targetNode =
+      activeTarget.source === "editor" || activeTarget.source === "tree"
+        ? fileTargetNode || symbolTargetNode
+        : symbolTargetNode || fileTargetNode;
 
     if (!targetNode) {
       return;
@@ -596,9 +720,11 @@ function ArchitectureCanvasInner({
         return;
       }
 
-      // Check if target node is already visible inside current canvas viewport
+      // Check if target node is already visible inside current canvas viewport at zoom level
       if (typeof window !== "undefined" && getViewport) {
         const viewport = getViewport();
+        const isZoomedIn = viewport.zoom >= 1.0;
+
         const container = document.querySelector(".react-flow");
         const containerWidth =
           container?.clientWidth || window.innerWidth * 0.6;
@@ -617,14 +743,23 @@ function ArchitectureCanvasInner({
           screenX + screenW <= containerWidth - margin &&
           screenY + screenH <= containerHeight - margin;
 
-        // If node is already visible, keep camera steady so flow tracking is not disrupted
-        if (isVisible) {
+        // If node is already visible and we are zoomed in, keep camera steady so flow tracking is not disrupted
+        if (isZoomedIn && isVisible) {
           return;
         }
       }
 
       const targetKey = `editor:${targetNode.id}`;
-      if (lastCenteredTargetKeyRef.current === targetKey) {
+      const currentZoom = getZoomRef.current
+        ? getZoomRef.current()
+        : getViewport
+          ? getViewport().zoom
+          : 1.0;
+
+      if (
+        currentZoom >= 1.0 &&
+        lastCenteredTargetKeyRef.current === targetKey
+      ) {
         return;
       }
       lastCenteredTargetKeyRef.current = targetKey;
@@ -633,7 +768,7 @@ function ArchitectureCanvasInner({
       return;
     }
 
-    // Explicit navigation (url, search)
+    // Explicit navigation (tree, url, search)
     const targetKey = `${activeTarget.source}:${targetNode.id}:${activeTarget.timestamp}`;
     if (lastCenteredTargetKeyRef.current === targetKey) {
       return;
@@ -790,9 +925,18 @@ function ArchitectureCanvasInner({
 
         <div className="pointer-events-auto shrink-0">
           <GraphControlsToolbar
-            onZoomIn={() => zoomIn({ duration: 200 })}
-            onZoomOut={() => zoomOut({ duration: 200 })}
-            onFitView={() => fitView({ padding: 0.2, duration: 300 })}
+            onZoomIn={() => {
+              lastCenteredTargetKeyRef.current = null;
+              zoomIn({ duration: 200 });
+            }}
+            onZoomOut={() => {
+              lastCenteredTargetKeyRef.current = null;
+              zoomOut({ duration: 200 });
+            }}
+            onFitView={() => {
+              lastCenteredTargetKeyRef.current = null;
+              fitView({ padding: 0.2, duration: 300 });
+            }}
             isMinimapVisible={isMinimapVisible}
             onToggleMinimap={() => setIsMinimapVisible(!isMinimapVisible)}
             isFollowCursorActive={isFollowCursorActive}

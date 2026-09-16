@@ -406,5 +406,56 @@ describe("Graph Operations and React Flow Adapter (AC-6, AC-8)", () => {
       expect(bundledEdge).toBeDefined();
       expect(bundledEdge?.data?.isBundled).toBe(true);
     });
+
+    it("projects symbol nodes with hidden true by default for progressive disclosure (AC-3)", () => {
+      const graph = createCyclicGraph();
+      const elements = toReactFlowElements(graph, {
+        scope: {
+          granularity: "all",
+          includeExternal: true,
+        },
+      });
+
+      const symbolNodes = elements.nodes.filter((n) => n.type === "symbol");
+      expect(symbolNodes.length).toBeGreaterThan(0);
+      for (const node of symbolNodes) {
+        expect(node.hidden).toBe(true);
+      }
+    });
+
+    it("projects hidden symbol nodes under visible files when options.filters is passed (AC-3)", () => {
+      const graph = createCyclicGraph();
+      const elements = toReactFlowElements(graph, {
+        filters: {
+          selectedLayers: [],
+          collapsedFolderIds: [],
+          searchQuery: "",
+          hideExternal: false,
+        },
+      });
+
+      const symbolNodes = elements.nodes.filter((n) => n.type === "symbol");
+      expect(symbolNodes.length).toBe(2);
+      expect(symbolNodes.every((n) => n.hidden === true)).toBe(true);
+      expect(symbolNodes.map((n) => n.id)).toContain("symbol:src/a.ts#funcA");
+      expect(symbolNodes.map((n) => n.id)).toContain("symbol:src/b.ts#funcB");
+    });
+
+    it("filters symbol nodes by search query when options.filters searchQuery is provided (AC-3)", () => {
+      const graph = createCyclicGraph();
+      const elements = toReactFlowElements(graph, {
+        filters: {
+          selectedLayers: [],
+          collapsedFolderIds: [],
+          searchQuery: "funcA",
+          hideExternal: false,
+        },
+      });
+
+      const symbolNodes = elements.nodes.filter((n) => n.type === "symbol");
+      expect(symbolNodes.length).toBe(1);
+      expect(symbolNodes[0]?.id).toBe("symbol:src/a.ts#funcA");
+      expect(symbolNodes[0]?.hidden).toBe(true);
+    });
   });
 });

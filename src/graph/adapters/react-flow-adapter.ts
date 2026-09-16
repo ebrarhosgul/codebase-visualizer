@@ -134,22 +134,63 @@ export function toReactFlowElements(
       });
     }
 
+    // Visible symbols under visible files (with initial hidden: true for progressive disclosure)
+    const visibleFileIds = new Set(filtered.visibleFiles.map((f) => f.id));
+    const searchFilter = options.filters.searchQuery?.trim().toLowerCase();
+    for (const sym of Object.values(graph.symbols)) {
+      if (!visibleFileIds.has(sym.fileId)) {
+        continue;
+      }
+      if (searchFilter && !sym.name.toLowerCase().includes(searchFilter)) {
+        continue;
+      }
+      nodes.push({
+        id: sym.id,
+        type: "symbol",
+        position: { x: 0, y: 0 },
+        hidden: true,
+        data: {
+          entityType: "symbol",
+          entity: sym,
+          label: sym.name,
+        },
+      });
+    }
+
+    let allowedEdgeKinds: Set<EdgeKind> | null = null;
+    if (options.enabledEdgeKinds && options.enabledEdgeKinds.length > 0) {
+      allowedEdgeKinds = new Set(options.enabledEdgeKinds);
+    }
+
     const activeNodeIds = new Set(nodes.map((n) => n.id));
     const edges: CodebaseReactFlowEdge[] = [];
+    const seenEdges = new Set<string>();
 
     // Direct visible edges
     for (const edge of filtered.visibleEdges) {
-      if (
-        !activeNodeIds.has(edge.sourceId) ||
-        !activeNodeIds.has(edge.targetId)
-      ) {
+      if (allowedEdgeKinds && !allowedEdgeKinds.has(edge.kind)) {
         continue;
       }
 
+      const sourceId =
+        filtered.nodeRepresentationMap[edge.sourceId] ?? edge.sourceId;
+      const targetId =
+        filtered.nodeRepresentationMap[edge.targetId] ?? edge.targetId;
+
+      if (!activeNodeIds.has(sourceId) || !activeNodeIds.has(targetId)) {
+        continue;
+      }
+
+      const visualEdgeKey = `${sourceId}->${targetId}:${edge.kind}`;
+      if (seenEdges.has(visualEdgeKey)) {
+        continue;
+      }
+      seenEdges.add(visualEdgeKey);
+
       edges.push({
         id: edge.id,
-        source: edge.sourceId,
-        target: edge.targetId,
+        source: sourceId,
+        target: targetId,
         type: edge.kind,
         ...(edge.weight > 1 ? { label: `x${edge.weight}` } : {}),
         data: {
@@ -163,6 +204,10 @@ export function toReactFlowElements(
 
     // Bundled summary edges
     for (const edge of filtered.bundledEdges) {
+      if (allowedEdgeKinds && !allowedEdgeKinds.has(edge.kind)) {
+        continue;
+      }
+
       if (
         !activeNodeIds.has(edge.sourceId) ||
         !activeNodeIds.has(edge.targetId)
@@ -256,6 +301,7 @@ export function toReactFlowElements(
       id: sym.id,
       type: "symbol",
       position: { x: 0, y: 0 },
+      hidden: true,
       data: {
         entityType: "symbol",
         entity: sym,

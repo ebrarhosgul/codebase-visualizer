@@ -243,4 +243,243 @@ describe("parseRepositoryAst", () => {
       name: "src/two.ts",
     });
   });
+
+  it("resolves path alias @/* to root when compilerOptions.paths maps @/* to ./*", () => {
+    const tsconfig = `{
+      // TypeScript configuration with comments
+      "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["./*"],
+        },
+      },
+    }`;
+
+    const files: ExtractedFile[] = [
+      {
+        path: "app/flight/[code]/page.tsx",
+        content: `
+          import { getFlight } from "@/lib/api";
+          import FlightCard from "@/components/flight/flight-card";
+          import { Flight } from "@/types";
+
+          export default function Page() {
+            const flight = getFlight("TK1984");
+            return <FlightCard flight={flight} />;
+          }
+        `,
+        sizeBytes: 300,
+      },
+      {
+        path: "components/flight/flight-card.tsx",
+        content: `
+          export default function FlightCard({ flight }: { flight: any }) {
+            return <div>{flight.code}</div>;
+          }
+        `,
+        sizeBytes: 150,
+      },
+      {
+        path: "lib/api.ts",
+        content: `
+          export function getFlight(code: string) {
+            return { code };
+          }
+        `,
+        sizeBytes: 100,
+      },
+      {
+        path: "types/index.ts",
+        content: `
+          export interface Flight {
+            code: string;
+          }
+        `,
+        sizeBytes: 80,
+      },
+    ];
+
+    const result = parseRepositoryAst(files, mockRepoInfo, tsconfig);
+
+    // Should NOT create external module pseudo nodes for internal modules
+    expect(result.graph.externalModules["ext:@/lib/api"]).toBeUndefined();
+    expect(
+      result.graph.externalModules["ext:@/components/flight/flight-card"],
+    ).toBeUndefined();
+    expect(result.graph.externalModules["ext:@/types"]).toBeUndefined();
+
+    // Should create internal edges to the real files
+    const edgeApi =
+      result.graph.edges[
+        "edge:file:app/flight/[code]/page.tsx->file:lib/api.ts:file_import"
+      ];
+    expect(edgeApi).toBeDefined();
+    expect(edgeApi?.isExternal).toBe(false);
+
+    const edgeCard =
+      result.graph.edges[
+        "edge:file:app/flight/[code]/page.tsx->file:components/flight/flight-card.tsx:file_import"
+      ];
+    expect(edgeCard).toBeDefined();
+    expect(edgeCard?.isExternal).toBe(false);
+
+    const edgeTypes =
+      result.graph.edges[
+        "edge:file:app/flight/[code]/page.tsx->file:types/index.ts:file_import"
+      ];
+    expect(edgeTypes).toBeDefined();
+    expect(edgeTypes?.isExternal).toBe(false);
+  });
+
+  it("extracts path aliases from tsconfig.json in files list when tsconfigContent argument is omitted", () => {
+    const files: ExtractedFile[] = [
+      {
+        path: "tsconfig.json",
+        content: JSON.stringify({
+          compilerOptions: {
+            paths: {
+              "@/*": ["./*"],
+            },
+          },
+        }),
+        sizeBytes: 80,
+      },
+      {
+        path: "app/page.tsx",
+        content: `
+          import { helper } from "@/lib/helper";
+          export default function Home() { return <div>{helper()}</div>; }
+        `,
+        sizeBytes: 120,
+      },
+      {
+        path: "lib/helper.ts",
+        content: "export function helper() { return 'ok'; }",
+        sizeBytes: 50,
+      },
+    ];
+
+    const result = parseRepositoryAst(files, mockRepoInfo);
+
+    expect(result.graph.externalModules["ext:@/lib/helper"]).toBeUndefined();
+    const edge =
+      result.graph.edges[
+        "edge:file:app/page.tsx->file:lib/helper.ts:file_import"
+      ];
+    expect(edge).toBeDefined();
+    expect(edge?.isExternal).toBe(false);
+  });
+
+  it("resolves TSX local imports between project files and creates file and symbol dependency edges", () => {
+    const files: ExtractedFile[] = [
+      {
+        path: "src/components/button.tsx",
+        content: `
+          import React from "react";
+          export interface ButtonProps {
+            label: string;
+          }
+          export function Button({ label }: ButtonProps) {
+            return <button>{label}</button>;
+          }
+          export default Button;
+        `,
+        sizeBytes: 250,
+      },
+      {
+        path: "src/components/card.tsx",
+        content: `
+          import React from "react";
+          import Button, { ButtonProps } from "./button";
+          import { Check } from "lucide-react";
+          export function Card() {
+            return <div><Button label="Click" /></div>;
+          }
+        `,
+        sizeBytes: 240,
+      },
+      {
+        path: "src/components/index.ts",
+        content: `
+          export { Button } from "./button";
+          export { Card } from "./card";
+        `,
+        sizeBytes: 90,
+      },
+    ];
+
+    const result = parseRepositoryAst(files, mockRepoInfo);
+
+    // Files exist
+    const buttonFile = result.graph.files["file:src/components/button.tsx"];
+    const cardFile = result.graph.files["file:src/components/card.tsx"];
+    const indexFile = result.graph.files["file:src/components/index.ts"];
+
+    expect(buttonFile).toBeDefined();
+    expect(cardFile).toBeDefined();
+    expect(indexFile).toBeDefined();
+
+    // Symbols exist in button.tsx
+    const buttonSymId = "symbol:src/components/button.tsx#Button";
+    const buttonPropsSymId = "symbol:src/components/button.tsx#ButtonProps";
+    expect(result.graph.symbols[buttonSymId]).toBeDefined();
+    expect(result.graph.symbols[buttonPropsSymId]).toBeDefined();
+
+    // External module stub created for lucide-react
+    expect(result.graph.externalModules["ext:lucide-react"]).toBeDefined();
+    // Internal files are NOT external
+    expect(result.graph.externalModules["ext:./button"]).toBeUndefined();
+
+    // File-to-file edge from card.tsx to button.tsx
+    const cardToButtonFileEdge =
+      result.graph.edges[
+        "edge:file:src/components/card.tsx->file:src/components/button.tsx:file_import"
+      ];
+    expect(cardToButtonFileEdge).toBeDefined();
+    expect(cardToButtonFileEdge?.isExternal).toBe(false);
+
+    // Symbol edge from card.tsx to Button symbol
+    const cardToButtonSymEdge =
+      result.graph.edges[
+        "edge:file:src/components/card.tsx->symbol:src/components/button.tsx#Button:file_import"
+      ];
+    expect(cardToButtonSymEdge).toBeDefined();
+    expect(cardToButtonSymEdge?.isExternal).toBe(false);
+
+    // Symbol edge from card.tsx to ButtonProps symbol
+    const cardToButtonPropsSymEdge =
+      result.graph.edges[
+        "edge:file:src/components/card.tsx->symbol:src/components/button.tsx#ButtonProps:file_import"
+      ];
+    expect(cardToButtonPropsSymEdge).toBeDefined();
+    expect(cardToButtonPropsSymEdge?.isExternal).toBe(false);
+
+    // External edge from card.tsx to lucide-react
+    const cardToLucideEdge =
+      result.graph.edges[
+        "edge:file:src/components/card.tsx->ext:lucide-react:file_import"
+      ];
+    expect(cardToLucideEdge).toBeDefined();
+    expect(cardToLucideEdge?.isExternal).toBe(true);
+
+    // Re-export edges from index.ts
+    const indexToButtonFileEdge =
+      result.graph.edges[
+        "edge:file:src/components/index.ts->file:src/components/button.tsx:re_export"
+      ];
+    expect(indexToButtonFileEdge).toBeDefined();
+    expect(indexToButtonFileEdge?.isExternal).toBe(false);
+
+    const indexToButtonSymEdge =
+      result.graph.edges[
+        "edge:file:src/components/index.ts->symbol:src/components/button.tsx#Button:re_export"
+      ];
+    expect(indexToButtonSymEdge).toBeDefined();
+    expect(indexToButtonSymEdge?.isExternal).toBe(false);
+
+    // Verify importIds and exportIds
+    expect(cardFile?.importIds).toContain("file:src/components/button.tsx");
+    expect(cardFile?.importIds).toContain(buttonSymId);
+    expect(cardFile?.importIds).toContain("ext:lucide-react");
+  });
 });

@@ -6,6 +6,7 @@ import { Code, Boxes, Layers, Braces } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import type { CodebaseReactFlowNode } from "@/graph";
 import type { SymbolKind } from "@/entities";
+import { useGraphStore } from "@/stores/graph-store";
 import { cn } from "@/lib/utils";
 
 function getSymbolBadgeVariant(kind: SymbolKind): BadgeVariant {
@@ -42,9 +43,12 @@ function getSymbolIcon(kind: SymbolKind) {
  * Custom React Flow card node representing symbol declarations.
  */
 export const SymbolNodeCard = React.memo(function SymbolNodeCard({
+  id,
   data,
   selected,
 }: NodeProps<CodebaseReactFlowNode>): React.JSX.Element {
+  const isHoveredInStore = useGraphStore((state) => state.hoveredNodeId === id);
+
   if (data.entityType !== "symbol") {
     return <div />;
   }
@@ -53,6 +57,8 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
   const kind = symbol.kind;
   const Icon = getSymbolIcon(kind);
   const badgeVariant = getSymbolBadgeVariant(kind);
+  const isHovered =
+    isHoveredInStore || Boolean((data as Record<string, unknown>).isHovered);
 
   return (
     <div
@@ -63,7 +69,9 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
         "bg-[#15171b] border",
         selected
           ? "border-[var(--accent-primary)] ring-1 ring-[var(--accent-primary)]/50 z-20"
-          : "border-zinc-800/80 hover:border-zinc-700",
+          : isHovered
+            ? "border-zinc-700 bg-zinc-900/90 z-10"
+            : "border-zinc-800/80 hover:border-zinc-700",
       )}
     >
       <Handle

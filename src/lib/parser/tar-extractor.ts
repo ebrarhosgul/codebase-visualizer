@@ -120,7 +120,10 @@ export async function unpackRepositoryTarball(
 
       // Check for tsconfig.json / jsconfig.json
       const isTsConfig =
-        strippedPath === "tsconfig.json" || strippedPath === "jsconfig.json";
+        strippedPath === "tsconfig.json" ||
+        strippedPath === "jsconfig.json" ||
+        strippedPath.endsWith("/tsconfig.json") ||
+        strippedPath.endsWith("/jsconfig.json");
 
       const isSource = isSourceFile(strippedPath);
       const isBinary = isBinaryFile(strippedPath);
@@ -154,7 +157,10 @@ export async function unpackRepositoryTarball(
         const fullBuffer = Buffer.concat(chunks);
         const textContent = fullBuffer.toString("utf8");
 
-        if (isTsConfig && !tsconfigContent) {
+        if (
+          isTsConfig &&
+          (!tsconfigContent || strippedPath === "tsconfig.json")
+        ) {
           tsconfigContent = textContent;
         }
 

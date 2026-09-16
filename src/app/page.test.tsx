@@ -115,7 +115,7 @@ describe("Home Page", () => {
     expect(useGraphStore.getState().activeTarget?.fileId).toBe(
       "file:src/index.ts",
     );
-    expect(useGraphStore.getState().activeTarget?.source).toBe("canvas");
+    expect(useGraphStore.getState().activeTarget?.source).toBe("tree");
     expect(useWorkspaceStore.getState().activeRightTab).toBe("code");
     expect(useWorkspaceStore.getState().isRightPanelCollapsed).toBe(false);
   });
