@@ -375,4 +375,188 @@ describe("LayoutWorkerClient", () => {
       expect(client.isBusy).toBe(false);
     });
   });
+
+  describe("Worker instantiation failures and fallback handling", () => {
+    it("falls back to synchronous execution if worker instantiation throws", async () => {
+      (globalThis as unknown as Record<string, unknown>).Worker = class {};
+
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const client = new LayoutWorkerClient(() => {
+        throw new Error("Worker blocked by Content Security Policy");
+      });
+
+      const mockGraph = createMockGraph();
+      const result = await client.computeLayout({
+        graph: mockGraph,
+        filters: {
+          selectedLayers: [],
+          collapsedFolderIds: [],
+          searchQuery: "",
+          hideExternal: false,
+        },
+        options: { direction: "LR" },
+      });
+
+      expect(result.nodes.length).toBeGreaterThan(0);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to instantiate Web Worker"),
+        expect.any(Error),
+      );
+    });
+  });
+
+  describe("Lifecycle termination and message validation", () => {
+    it("cancels active computation and marks in flight request superseded on terminate", async () => {
+      class MockWorker {
+        public isTerminated = false;
+        public postMessage(): void {}
+        public terminate(): void {
+          this.isTerminated = true;
+        }
+      }
+
+      (globalThis as unknown as Record<string, unknown>).Worker = MockWorker;
+
+      let workerInstance: MockWorker | null = null;
+      const client = new LayoutWorkerClient(() => {
+        workerInstance = new MockWorker();
+        return workerInstance as unknown as Worker;
+      });
+
+      const mockGraph = createMockGraph();
+      const layoutPromise = client.computeLayout({
+        graph: mockGraph,
+        filters: {
+          selectedLayers: [],
+          collapsedFolderIds: [],
+          searchQuery: "",
+          hideExternal: false,
+        },
+        options: { direction: "LR" },
+      });
+
+      expect(client.isBusy).toBe(true);
+      expect(client.activeRequestId).toMatch(/^layout-req-\d+$/);
+
+      client.terminate();
+
+      await expect(layoutPromise).rejects.toMatchObject({
+        code: "SUPERSEDED",
+        message: expect.stringContaining("terminated by client"),
+      });
+
+      expect(workerInstance!.isTerminated).toBe(true);
+      expect(client.isBusy).toBe(false);
+      expect(client.activeRequestId).toBeNull();
+    });
+
+    it("ignores response envelopes with mismatched request identifiers", async () => {
+      class MockWorker {
+        public onmessage:
+          ((event: MessageEvent<LayoutWorkerResponse>) => void) | null = null;
+        public isTerminated = false;
+        public postMessage(): void {}
+        public terminate(): void {
+          this.isTerminated = true;
+        }
+      }
+
+      (globalThis as unknown as Record<string, unknown>).Worker = MockWorker;
+
+      let workerInstance: MockWorker | null = null;
+      const client = new LayoutWorkerClient(() => {
+        workerInstance = new MockWorker();
+        return workerInstance as unknown as Worker;
+      });
+
+      const mockGraph = createMockGraph();
+      const layoutPromise = client.computeLayout({
+        graph: mockGraph,
+        filters: {
+          selectedLayers: [],
+          collapsedFolderIds: [],
+          searchQuery: "",
+          hideExternal: false,
+        },
+        options: { direction: "LR" },
+      });
+
+      const activeId = client.activeRequestId!;
+
+      // Send response for an older or different request id
+      workerInstance!.onmessage?.({
+        data: createWorkerSuccessResponse("older-req-id", {
+          nodes: [],
+          edges: [],
+          durationMs: 5,
+        }),
+      } as unknown as MessageEvent<LayoutWorkerResponse>);
+
+      // Active request should remain in flight
+      expect(client.isBusy).toBe(true);
+
+      // Now send response with matching request id
+      workerInstance!.onmessage?.({
+        data: createWorkerSuccessResponse(activeId, {
+          nodes: [],
+          edges: [],
+          durationMs: 25,
+        }),
+      } as unknown as MessageEvent<LayoutWorkerResponse>);
+
+      const result = await layoutPromise;
+      expect(result.durationMs).toBe(25);
+      expect(client.isBusy).toBe(false);
+    });
+
+    it("rejects with INTERNAL_ERROR if worker returns unrecognized envelope structure", async () => {
+      class MockWorker {
+        public onmessage: ((event: MessageEvent<unknown>) => void) | null =
+          null;
+        public isTerminated = false;
+        public postMessage(): void {}
+        public terminate(): void {
+          this.isTerminated = true;
+        }
+      }
+
+      (globalThis as unknown as Record<string, unknown>).Worker = MockWorker;
+
+      let workerInstance: MockWorker | null = null;
+      const client = new LayoutWorkerClient(() => {
+        workerInstance = new MockWorker();
+        return workerInstance as unknown as Worker;
+      });
+
+      const mockGraph = createMockGraph();
+      const layoutPromise = client.computeLayout({
+        graph: mockGraph,
+        filters: {
+          selectedLayers: [],
+          collapsedFolderIds: [],
+          searchQuery: "",
+          hideExternal: false,
+        },
+        options: { direction: "LR" },
+      });
+
+      const activeId = client.activeRequestId!;
+
+      // Send unrecognized payload structure
+      workerInstance!.onmessage?.({
+        data: {
+          id: activeId,
+          type: "UNRECOGNIZED_TYPE",
+        },
+      } as MessageEvent<unknown>);
+
+      await expect(layoutPromise).rejects.toMatchObject({
+        code: "INTERNAL_ERROR",
+        message: expect.stringContaining("Unrecognized response envelope"),
+      });
+
+      expect(client.isBusy).toBe(false);
+    });
+  });
 });

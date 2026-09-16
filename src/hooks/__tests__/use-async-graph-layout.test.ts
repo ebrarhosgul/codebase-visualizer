@@ -8,9 +8,12 @@ import { useGraphStore } from "@/stores/graph-store";
 import type { CodebaseGraph } from "@/entities";
 import {
   createWorkerSuccessResponse,
+  createWorkerErrorResponse,
   type LayoutWorkerRequest,
   type LayoutWorkerResponse,
 } from "@/lib/workers/worker-types";
+
+import { layoutWorkerClient } from "@/graph/layout/layout-worker-client";
 
 function createMockGraph(): CodebaseGraph {
   return {
@@ -54,11 +57,13 @@ describe("useAsyncGraphLayout", () => {
   const originalWorker = globalThis.Worker;
 
   beforeEach(() => {
+    layoutWorkerClient.terminate();
     useGraphStore.getState().reset();
     vi.restoreAllMocks();
   });
 
   afterEach(() => {
+    layoutWorkerClient.terminate();
     if (originalWorker) {
       globalThis.Worker = originalWorker;
     } else {
@@ -166,6 +171,128 @@ describe("useAsyncGraphLayout", () => {
     expect(result.current.isCalculating).toBe(false);
     expect(result.current.nodes[0]?.id).toBe("file:src/updated.ts");
     expect(useGraphStore.getState().isCalculatingLayout).toBe(false);
+
+    vi.useRealTimers();
+  });
+
+  it("surfaces calculation error while preserving existing nodes and edges (AC-4, AC-6)", async () => {
+    vi.useFakeTimers();
+
+    let postedMessage: LayoutWorkerRequest | null = null;
+    let workerOnMessage:
+      ((event: MessageEvent<LayoutWorkerResponse>) => void) | null = null;
+
+    class MockWorker {
+      public set onmessage(
+        fn: (event: MessageEvent<LayoutWorkerResponse>) => void,
+      ) {
+        workerOnMessage = fn;
+      }
+      public postMessage(msg: LayoutWorkerRequest): void {
+        postedMessage = msg;
+      }
+      public terminate(): void {}
+    }
+
+    (globalThis as unknown as Record<string, unknown>).Worker = MockWorker;
+
+    const mockGraph = createMockGraph();
+    let filters = {
+      selectedLayers: [],
+      collapsedFolderIds: [],
+      searchQuery: "",
+      hideExternal: false,
+    };
+
+    const { result, rerender } = renderHook(
+      ({ f }) => useAsyncGraphLayout(mockGraph, f),
+      { initialProps: { f: filters } },
+    );
+
+    const initialNodes = result.current.nodes;
+    expect(initialNodes.length).toBeGreaterThan(0);
+
+    // Trigger filter change
+    filters = { ...filters, searchQuery: "failing-query" };
+    rerender({ f: filters });
+
+    await act(async () => {
+      vi.advanceTimersByTime(LAYOUT_DEBOUNCE_MS);
+    });
+
+    const reqId = (postedMessage as unknown as LayoutWorkerRequest).id;
+
+    // Simulate worker returning a LAYOUT_FAILED error
+    await act(async () => {
+      workerOnMessage?.({
+        data: createWorkerErrorResponse(
+          reqId,
+          "LAYOUT_FAILED",
+          "Layout calculation failed inside worker",
+        ),
+      } as unknown as MessageEvent<LayoutWorkerResponse>);
+    });
+
+    // Error is surfaced, calculating flag is cleared, and previous nodes remain visible
+    expect(result.current.isCalculating).toBe(false);
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.error?.code).toBe("LAYOUT_FAILED");
+    expect(result.current.error?.message).toContain(
+      "Layout calculation failed",
+    );
+    expect(result.current.nodes).toBe(initialNodes);
+    expect(useGraphStore.getState().isCalculatingLayout).toBe(false);
+
+    vi.useRealTimers();
+  });
+
+  it("debounces rapid successive filter updates to execute only once for latest state (AC-3)", async () => {
+    vi.useFakeTimers();
+
+    const postMessageSpy = vi.fn();
+
+    class MockWorker {
+      public set onmessage(
+        _fn: (event: MessageEvent<LayoutWorkerResponse>) => void,
+      ) {}
+      public postMessage(msg: LayoutWorkerRequest): void {
+        postMessageSpy(msg);
+      }
+      public terminate(): void {}
+    }
+
+    (globalThis as unknown as Record<string, unknown>).Worker = MockWorker;
+
+    const mockGraph = createMockGraph();
+    const filters = {
+      selectedLayers: [],
+      collapsedFolderIds: [],
+      searchQuery: "",
+      hideExternal: false,
+    };
+
+    const { rerender } = renderHook(
+      ({ f }) => useAsyncGraphLayout(mockGraph, f),
+      { initialProps: { f: filters } },
+    );
+
+    // Rapid updates before debounce completes
+    rerender({ f: { ...filters, searchQuery: "a" } });
+    vi.advanceTimersByTime(20);
+    rerender({ f: { ...filters, searchQuery: "ab" } });
+    vi.advanceTimersByTime(20);
+    rerender({ f: { ...filters, searchQuery: "abc" } });
+
+    // Advance past the full 50ms window from the last update
+    await act(async () => {
+      vi.advanceTimersByTime(LAYOUT_DEBOUNCE_MS);
+    });
+
+    // Only the final debounced request should have been dispatched
+    expect(postMessageSpy).toHaveBeenCalledTimes(1);
+    const lastRequest = postMessageSpy.mock
+      .calls[0]?.[0] as LayoutWorkerRequest;
+    expect(lastRequest.payload.filters.searchQuery).toBe("abc");
 
     vi.useRealTimers();
   });

@@ -104,15 +104,72 @@ describe("worker-types message envelopes", () => {
       expect(isLayoutWorkerSuccessResponse(validError)).toBe(false);
     });
 
-    it("rejects malformed error envelopes", () => {
-      expect(isLayoutWorkerErrorResponse(null)).toBe(false);
-      expect(isLayoutWorkerErrorResponse({})).toBe(false);
+    it("rejects non object and primitive inputs", () => {
+      expect(isLayoutWorkerSuccessResponse(undefined)).toBe(false);
+      expect(isLayoutWorkerSuccessResponse(42)).toBe(false);
+      expect(isLayoutWorkerSuccessResponse("string")).toBe(false);
+      expect(isLayoutWorkerSuccessResponse(true)).toBe(false);
+
+      expect(isLayoutWorkerErrorResponse(undefined)).toBe(false);
+      expect(isLayoutWorkerErrorResponse(42)).toBe(false);
+      expect(isLayoutWorkerErrorResponse("string")).toBe(false);
+      expect(isLayoutWorkerErrorResponse(true)).toBe(false);
+    });
+
+    it("rejects success envelopes with incomplete payload structures", () => {
+      expect(
+        isLayoutWorkerSuccessResponse({
+          type: "LAYOUT_SUCCESS",
+          id: "req-1",
+          timestamp: Date.now(),
+          payload: { nodes: [], edges: "not-array", durationMs: 10 },
+        }),
+      ).toBe(false);
+
+      expect(
+        isLayoutWorkerSuccessResponse({
+          type: "LAYOUT_SUCCESS",
+          id: "req-1",
+          timestamp: Date.now(),
+          payload: { nodes: [], edges: [] },
+        }),
+      ).toBe(false);
+
+      expect(
+        isLayoutWorkerSuccessResponse({
+          type: "LAYOUT_SUCCESS",
+          id: 123,
+          timestamp: Date.now(),
+          payload: { nodes: [], edges: [], durationMs: 5 },
+        }),
+      ).toBe(false);
+    });
+
+    it("rejects error envelopes with invalid codes or messages", () => {
       expect(
         isLayoutWorkerErrorResponse({
           type: "LAYOUT_ERROR",
           id: "req-1",
           timestamp: Date.now(),
-          payload: { code: 123 },
+          payload: { code: "TIMEOUT" },
+        }),
+      ).toBe(false);
+
+      expect(
+        isLayoutWorkerErrorResponse({
+          type: "LAYOUT_ERROR",
+          id: "req-1",
+          timestamp: Date.now(),
+          payload: { code: 999, message: "Error" },
+        }),
+      ).toBe(false);
+
+      expect(
+        isLayoutWorkerErrorResponse({
+          type: "OTHER_TYPE",
+          id: "req-1",
+          timestamp: Date.now(),
+          payload: { code: "TIMEOUT", message: "Timeout" },
         }),
       ).toBe(false);
     });

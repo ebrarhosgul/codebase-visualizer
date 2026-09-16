@@ -22,7 +22,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 9 | Client cache and ingestion streaming | Slice 5 | done |
 | 10 | AI service stabilization and fallback notices | Slice 6 | in-progress |
 | 11 | Canvas performance optimization | Slice 7 | done |
-| 12 | Web Worker isolation for layout and parsing computations | Slice 8 | in-progress |
+| 12 | Web Worker isolation for layout and parsing computations | Slice 8 | done |
 
 ## Foundations
 
@@ -175,7 +175,7 @@ spec [0011](../specs/0011-canvas-performance-optimization/index.md) · code in `
 
 ## Slice 8: Web Worker isolation for layout and parsing computations
 
-### 12. Web Worker isolation for layout and parsing computations · in-progress
+### 12. Web Worker isolation for layout and parsing computations · done
 Offload Dagre graph layout positioning, tar archive unpacking, and Babel abstract syntax tree parsing into dedicated Web Workers so heavy CPU work runs off the main browser thread. Keeps canvas navigation smooth and prevents UI freezing during repository ingestion and layout calculations.
 **Done when:** repositories with 300 plus nodes parse and position without blocking the main thread for more than 50 milliseconds, frame rates stay above 55 FPS during ingestion and filter toggles, and worker calculated positions match existing graph output.
 spec [0012](../specs/0012-web-worker-isolation/index.md) · code in `src/graph/layout/`, `src/lib/workers/`, `src/components/canvas/`
@@ -185,7 +185,7 @@ spec [0012](../specs/0012-web-worker-isolation/index.md) · code in `src/graph/l
   - [x] Worker client, busy termination and test fallback (AC-3, AC-5, AC-6)
   - [x] Asynchronous canvas hook and progress indicator (AC-4, AC-8)
 - [x] Verify it: `/check verify web worker isolation for layout and parsing computations`
-- [ ] Test it: `/test web worker isolation for layout and parsing computations`
+- [x] Test it: `/test web worker isolation for layout and parsing computations`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.

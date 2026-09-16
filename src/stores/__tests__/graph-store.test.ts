@@ -1114,4 +1114,27 @@ describe("useGraphStore", () => {
     expect(progress?.detail?.totalItems).toBe(10);
     expect(progress?.detail?.currentItemName).toBe("src/main.ts");
   });
+
+  describe("setLayoutCalculationState", () => {
+    it("updates layout calculation status and duration metric", () => {
+      expect(useGraphStore.getState().isCalculatingLayout).toBe(false);
+      expect(useGraphStore.getState().layoutDurationMs).toBeNull();
+
+      useGraphStore.getState().setLayoutCalculationState(true);
+      expect(useGraphStore.getState().isCalculatingLayout).toBe(true);
+      expect(useGraphStore.getState().layoutDurationMs).toBeNull();
+
+      useGraphStore.getState().setLayoutCalculationState(false, 38);
+      expect(useGraphStore.getState().isCalculatingLayout).toBe(false);
+      expect(useGraphStore.getState().layoutDurationMs).toBe(38);
+
+      useGraphStore.getState().setLayoutCalculationState(true);
+      expect(useGraphStore.getState().isCalculatingLayout).toBe(true);
+      expect(useGraphStore.getState().layoutDurationMs).toBe(38);
+
+      useGraphStore.getState().reset();
+      expect(useGraphStore.getState().isCalculatingLayout).toBe(false);
+      expect(useGraphStore.getState().layoutDurationMs).toBeNull();
+    });
+  });
 });
