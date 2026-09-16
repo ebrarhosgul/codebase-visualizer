@@ -1431,4 +1431,240 @@ describe("ArchitectureCanvas", () => {
 
     vi.useRealTimers();
   });
+
+  it("prevents race condition when zooming in and immediately zooming out before throttle fires (AC-3, AC-4)", () => {
+    vi.useFakeTimers();
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 1,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/service.ts": {
+          id: "file:src/service.ts",
+          path: "src/service.ts",
+          name: "service.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/service.ts#doWork"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {
+        "symbol:src/service.ts#doWork": {
+          id: "symbol:src/service.ts#doWork",
+          fileId: "file:src/service.ts",
+          parentSymbolId: null,
+          name: "doWork",
+          kind: "function",
+          range: {
+            startOffset: 0,
+            endOffset: 30,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 3,
+            endColumn: 2,
+          },
+          selectionRange: {
+            startOffset: 0,
+            endOffset: 6,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 1,
+            endColumn: 7,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "export function doWork(): void",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    // Fast zoom in (>= 1.2) followed immediately (within 75ms) by zoom out (< 1.2)
+    act(() => {
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 1.4 });
+      vi.advanceTimersByTime(20);
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 0.8 });
+      vi.advanceTimersByTime(100);
+    });
+
+    const finalNodes = capturedReactFlowProps?.nodes ?? [];
+    const symbolFinal = finalNodes.find(
+      (n) => n.id === "symbol:src/service.ts#doWork",
+    );
+    expect(symbolFinal?.hidden).toBe(true);
+
+    vi.useRealTimers();
+  });
+
+  it("clears pending zoom throttle timer when underlying graph is reloaded or recomputed (AC-3, AC-4)", () => {
+    vi.useFakeTimers();
+
+    const mockGraph1 = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 1,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/service.ts": {
+          id: "file:src/service.ts",
+          path: "src/service.ts",
+          name: "service.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/service.ts#doWork"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {
+        "symbol:src/service.ts#doWork": {
+          id: "symbol:src/service.ts#doWork",
+          fileId: "file:src/service.ts",
+          parentSymbolId: null,
+          name: "doWork",
+          kind: "function",
+          range: {
+            startOffset: 0,
+            endOffset: 30,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 3,
+            endColumn: 2,
+          },
+          selectionRange: {
+            startOffset: 0,
+            endOffset: 6,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 1,
+            endColumn: 7,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "export function doWork(): void",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph1);
+    render(<ArchitectureCanvas />);
+
+    // Zoom in triggers pending 75ms throttle
+    act(() => {
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 1.5 });
+      vi.advanceTimersByTime(20);
+    });
+
+    // Before timer fires, graph changes to a new graph
+    const mockGraph2 = {
+      ...mockGraph1,
+      repository: { ...mockGraph1.repository, commitSha: "sha2" },
+    };
+
+    act(() => {
+      useGraphStore.getState().setGraph(mockGraph2);
+    });
+
+    // Advance past original 75ms timer
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    const nodes = capturedReactFlowProps?.nodes ?? [];
+    const symbolNode = nodes.find(
+      (n) => n.id === "symbol:src/service.ts#doWork",
+    );
+    // At default zoom 1.0 (< 1.2), symbol remains hidden, not revealed by stale timer
+    expect(symbolNode?.hidden).toBe(true);
+
+    vi.useRealTimers();
+  });
+
+  it("cleans up pending zoom throttle timer without errors when unmounting (AC-4)", () => {
+    vi.useFakeTimers();
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {},
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    const { unmount } = render(<ArchitectureCanvas />);
+
+    act(() => {
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 1.5 });
+      vi.advanceTimersByTime(20);
+    });
+
+    unmount();
+
+    expect(() => {
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+    }).not.toThrow();
+
+    vi.useRealTimers();
+  });
 });

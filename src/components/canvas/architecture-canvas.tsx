@@ -287,12 +287,14 @@ function ArchitectureCanvasInner({
         return;
       }
 
+      isSymbolsVisibleRef.current = shouldShowSymbols;
+
       if (zoomThrottleTimerRef.current) {
         clearTimeout(zoomThrottleTimerRef.current);
       }
 
       zoomThrottleTimerRef.current = setTimeout(() => {
-        isSymbolsVisibleRef.current = shouldShowSymbols;
+        zoomThrottleTimerRef.current = null;
         setNodes((currentNodes) => {
           let hasChange = false;
           const nextNodes = currentNodes.map((n) => {
@@ -317,12 +319,18 @@ function ArchitectureCanvasInner({
     return () => {
       if (zoomThrottleTimerRef.current) {
         clearTimeout(zoomThrottleTimerRef.current);
+        zoomThrottleTimerRef.current = null;
       }
     };
   }, []);
 
   // Sync state whenever underlying graph is recomputed
   useEffect(() => {
+    if (zoomThrottleTimerRef.current) {
+      clearTimeout(zoomThrottleTimerRef.current);
+      zoomThrottleTimerRef.current = null;
+    }
+
     const currentZoom = getZoomRef.current ? getZoomRef.current() : 1.0;
     const shouldShowSymbols = currentZoom >= 1.2;
     isSymbolsVisibleRef.current = shouldShowSymbols;
