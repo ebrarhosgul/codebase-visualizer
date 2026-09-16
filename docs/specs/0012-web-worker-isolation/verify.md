@@ -1,46 +1,32 @@
-# 0012. Web Worker isolation for layout and parsing computations (Verify)
+# Verify: Web Worker isolation for layout and parsing computations · spec 0012 · updated 2026-09-16
 
-## Verification steps
+_Steps derived from spec 0012 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
 
-### Automated tests
+## UI / manual
 
-1. **Worker utilities and message contracts**:
-   - Run `npm test src/lib/workers/__tests__/worker-types.test.ts`
-   - Verify request, response, and error envelope type guards and payload structures.
+- [ ] Start dev server with `npm run dev` and load repository `facebook/react` or `zustand` → canvas renders hierarchical cards without freezing main UI thread → AC-1, AC-8
+- [ ] Toggle architectural layers rapidly in canvas filter bar → existing canvas elements remain interactive and progress spinner displays in toolbar during computation → AC-3, AC-4
+- [ ] Enter multiple search query tokens rapidly in succession → previous pending requests are superseded immediately without queued lag → AC-3
+- [ ] Inspect console or simulate 5000ms delay in worker → client terminates worker, logs warning, and surfaces graceful alert banner without locking main thread → AC-6
 
-2. **Layout worker client and synchronous fallback**:
-   - Run `npm test src/graph/layout/__tests__/layout-worker-client.test.ts`
-   - Verify that layoutWorkerClient.computeLayout falls back to synchronous Dagre computation when window.Worker is undefined.
-   - Verify that rapid sequential calls properly supersede previous in flight requests.
-   - Verify that worker timeouts trigger the fallback cleanly and log a structured warning.
+## Commands
 
-3. **Asynchronous graph layout hook**:
-   - Run `npm test src/hooks/__tests__/use-async-graph-layout.test.ts`
-   - Verify that useAsyncGraphLayout manages calculation states, updates nodes and edges on completion, and guards against state updates after unmount.
+- [ ] `npm test src/lib/workers/__tests__/worker-types.test.ts` → validates typed message envelopes and type guards → AC-7
+- [ ] `npm test src/graph/layout/__tests__/layout-worker-client.test.ts` → validates busy worker termination, 5000ms timeout guard, and synchronous test fallback → AC-3, AC-5, AC-6
+- [ ] `npm test src/hooks/__tests__/use-async-graph-layout.test.ts` → validates 50ms debouncing, unmount safety, and background state coordination → AC-3, AC-4
+- [ ] `npm test src/components/canvas/__tests__/graph-controls-toolbar.test.tsx` → validates layout calculation spinner rendering → AC-4
+- [ ] `npm test src/components/canvas/__tests__/architecture-canvas.test.tsx` → validates canvas integration and element persistence during calculation → AC-4, AC-5
+- [ ] `npm run typecheck` → confirms zero TypeScript errors across all worker and canvas modules → AC-1 through AC-8
+- [ ] `npm run lint` → confirms zero ESLint errors or warnings → AC-7
+- [ ] `npm run build` → confirms Next.js production worker chunk bundling and static generation succeed → AC-1
 
-4. **Canvas integration**:
-   - Run `npm test src/components/canvas/__tests__/architecture-canvas.test.ts`
-   - Verify that ArchitectureCanvas renders correctly with asynchronous layout coordinates and displays the calculation status indicator.
+## Acceptance-criteria coverage
 
-5. **Full test suite and typecheck**:
-   - Run `npm run typecheck`
-   - Run `npm test`
-   - Run `npm run lint`
-
-### Manual verification
-
-1. **Large repository ingestion performance**:
-   - Start dev server with `npm run dev`.
-   - Submit a medium or large repository (such as facebook/react or zustand).
-   - Open Chrome DevTools Performance tab and start recording.
-   - Confirm that layout positioning calculates off the main thread in a dedicated Worker thread.
-   - Verify that main thread long tasks during layout stay under 50 milliseconds.
-
-2. **Rapid filter toggles and search responsiveness**:
-   - Toggle architectural layer chips rapidly in the canvas filter bar.
-   - Type multiple search tokens in quick succession.
-   - Confirm that the canvas remains responsive without UI lag, and the final displayed layout matches the latest filter selection.
-
-3. **Fallback verification**:
-   - Disable Web Workers in browser settings or simulate unsupported environment.
-   - Confirm that the application continues to calculate and render layouts smoothly via the synchronous fallback path.
+- AC-1: Dagre layout in Web Worker covered by `npm run build`, `npm test src/graph/layout/__tests__/layout-worker-client.test.ts`, and manual UI check
+- AC-2: Filtering and element adaptation in worker pipeline covered by `npm test src/graph/layout/__tests__/layout-worker-client.test.ts`
+- AC-3: Monotonic request tracking and busy worker termination covered by `npm test src/graph/layout/__tests__/layout-worker-client.test.ts` and rapid filter toggle check
+- AC-4: Non-blanking canvas and toolbar indicator covered by `npm test src/components/canvas/__tests__/graph-controls-toolbar.test.tsx` and manual UI inspection
+- AC-5: Synchronous fallback in test environments covered by `npm test src/hooks/__tests__/use-async-graph-layout.test.ts` and full vitest suite
+- AC-6: 5000ms timeout guard and error banner covered by `npm test src/graph/layout/__tests__/layout-worker-client.test.ts`
+- AC-7: Reusable worker contracts covered by `npm test src/lib/workers/__tests__/worker-types.test.ts`
+- AC-8: Frame rate and performance on 300+ node graphs covered by manual Chrome DevTools inspection
