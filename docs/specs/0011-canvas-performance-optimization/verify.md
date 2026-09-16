@@ -4,18 +4,18 @@ _Steps derived from spec 0011 acceptance criteria. `/check verify` runs these; `
 
 ## UI / manual
 
-- [ ] Load a multi file repository on the canvas → verify offscreen nodes are skipped from DOM rendering via onlyRenderVisibleElements → AC-1
-- [ ] Hover cursor over multiple nodes in rapid succession → verify only the hovered node card re renders without canvas level flicker or re renders → AC-2
-- [ ] View canvas at default zoom (1.0) → verify symbol nodes remain hidden → AC-3
-- [ ] Zoom camera past 1.2 threshold → verify symbol nodes become visible within parent folder containers → AC-3
-- [ ] Rapidly wheel or pinch zoom in and out across the 1.2 threshold → verify visibility toggles smoothly with throttle without dropping frames or UI stuttering → AC-4
+- [x] Load a multi file repository on the canvas → verify offscreen nodes are skipped from DOM rendering via onlyRenderVisibleElements → AC-1
+- [x] Hover cursor over multiple nodes in rapid succession → verify only the hovered node card re renders without canvas level flicker or re renders → AC-2
+- [x] View canvas at default zoom (1.0) → verify symbol nodes remain hidden → AC-3
+- [x] Zoom camera past 1.2 threshold → verify symbol nodes become visible within parent folder containers → AC-3
+- [x] Rapidly wheel or pinch zoom in and out across the 1.2 threshold → verify visibility toggles smoothly with throttle without dropping frames or UI stuttering → AC-4
 
 ## Commands
 
-- [ ] `npm test` → all unit and integration test suites pass cleanly including AC-1 to AC-4 tests → AC-1, AC-2, AC-3, AC-4
-- [ ] `npm run lint` → passes with zero errors and zero warnings → AC-2
-- [ ] `npm run typecheck` → passes with zero type errors → AC-1, AC-2, AC-3, AC-4
-- [ ] `npm run build` → production build compiles successfully in under 3 seconds → AC-1, AC-2, AC-3, AC-4
+- [x] `npm test` → all unit and integration test suites pass cleanly including AC-1 to AC-4 tests → AC-1, AC-2, AC-3, AC-4
+- [x] `npm run lint` → passes with zero errors and zero warnings → AC-2
+- [x] `npm run typecheck` → passes with zero type errors → AC-1, AC-2, AC-3, AC-4
+- [x] `npm run build` → production build compiles successfully in under 3 seconds → AC-1, AC-2, AC-3, AC-4
 
 ## Acceptance-criteria coverage
 

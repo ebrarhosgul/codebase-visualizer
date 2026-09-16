@@ -169,7 +169,7 @@ spec [0011](../specs/0011-canvas-performance-optimization/index.md) · code in `
   - [x] Enable viewport pruning (AC-1)
   - [x] Optimize Zustand selectors (AC-2)
   - [x] Implement progressive disclosure (AC-3, AC-4)
-- [ ] Verify it: `/check verify canvas performance optimization`
+- [x] Verify it: `/check verify canvas performance optimization`
 - [ ] Test it: `/test canvas performance optimization`
 
 ## Deferred
