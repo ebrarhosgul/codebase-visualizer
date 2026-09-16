@@ -186,6 +186,7 @@ spec [0012](../specs/0012-web-worker-isolation/index.md) · code in `src/graph/l
   - [x] Asynchronous canvas hook and progress indicator (AC-4, AC-8)
 - [x] Verify it: `/check verify web worker isolation for layout and parsing computations`
 - [x] Test it: `/test web worker isolation for layout and parsing computations`
+- [x] Review it: `/check review web worker isolation for layout and parsing computations`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
