@@ -22,6 +22,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 9 | Client cache and ingestion streaming | Slice 5 | done |
 | 10 | AI service stabilization and fallback notices | Slice 6 | in-progress |
 | 11 | Canvas performance optimization | Slice 7 | done |
+| 12 | Web Worker isolation for layout and parsing computations | Slice 8 | in-progress |
 
 ## Foundations
 
@@ -172,6 +173,20 @@ spec [0011](../specs/0011-canvas-performance-optimization/index.md) · code in `
 - [x] Verify it: `/check verify canvas performance optimization`
 - [x] Test it: `/test canvas performance optimization`
 
+## Slice 8: Web Worker isolation for layout and parsing computations
+
+### 12. Web Worker isolation for layout and parsing computations · in-progress
+Offload Dagre graph layout positioning, tar archive unpacking, and Babel abstract syntax tree parsing into dedicated Web Workers so heavy CPU work runs off the main browser thread. Keeps canvas navigation smooth and prevents UI freezing during repository ingestion and layout calculations.
+**Done when:** repositories with 300 plus nodes parse and position without blocking the main thread for more than 50 milliseconds, frame rates stay above 55 FPS during ingestion and filter toggles, and worker calculated positions match existing graph output.
+spec [0012](../specs/0012-web-worker-isolation/index.md) · code in `src/graph/layout/`, `src/lib/workers/`, `src/components/canvas/`
+- [x] Design it (spec): `/architect web worker isolation for layout and parsing computations`
+- [ ] Build it: `/develop web worker isolation for layout and parsing computations`
+  - [ ] Worker contracts and background layout execution (AC-1, AC-2, AC-7)
+  - [ ] Worker client, busy termination and test fallback (AC-3, AC-5, AC-6)
+  - [ ] Asynchronous canvas hook and progress indicator (AC-4, AC-8)
+- [ ] Verify it: `/check verify web worker isolation for layout and parsing computations`
+- [ ] Test it: `/test web worker isolation for layout and parsing computations`
+
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
 - User accounts and authentication: sign in, personal repository dashboard, and cloud sync · needs a decision
@@ -182,6 +197,9 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - Vector embeddings: semantic code snippet search and embedding index for large repositories · from spec 0008
 - Web Worker local parsing: client side AST extraction on user uploaded local zip files · from spec 0009
 - Upstream telemetry and analytics: telemetry logging for categorized AI provider errors · from spec 0010
+- WebGL or Canvas 2D rendering engine: rewrite React Flow DOM rendering to WebGL or Canvas 2D · needs a decision
+- Server side layout computation: remote server layout calculation or persistent remote caching beyond IndexedDB · needs a decision
+- Tree sitter or native WebAssembly parser: replace Babel with Tree sitter or WASM parsers · needs a decision
 
 ## Legend
 
