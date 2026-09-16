@@ -1667,4 +1667,196 @@ describe("ArchitectureCanvas", () => {
 
     vi.useRealTimers();
   });
+
+  it("centers camera and zooms to 1.2 when navigation originates from folder tree", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/index.ts": {
+          id: "file:src/index.ts",
+          path: "src/index.ts",
+          name: "index.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 120,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    act(() => {
+      useGraphStore.getState().revealNode("file:src/index.ts", "tree");
+    });
+
+    expect(mockSetCenter).toHaveBeenCalledWith(
+      expect.any(Number),
+      expect.any(Number),
+      expect.objectContaining({ zoom: 1.2, duration: 800 }),
+    );
+  });
+
+  it("prioritizes file node over symbol node when navigating from editor", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 1,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/button.tsx": {
+          id: "file:src/button.tsx",
+          path: "src/button.tsx",
+          name: "button.tsx",
+          extension: ".tsx",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/button.tsx#Button"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {
+        "symbol:src/button.tsx#Button": {
+          id: "symbol:src/button.tsx#Button",
+          fileId: "file:src/button.tsx",
+          parentSymbolId: null,
+          name: "Button",
+          kind: "function",
+          range: {
+            start: { line: 1, column: 0 },
+            end: { line: 5, column: 1 },
+          },
+          selectionRange: {
+            start: { line: 1, column: 16 },
+            end: { line: 1, column: 22 },
+          },
+          isExported: true,
+          isDefaultExport: true,
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/button.tsx",
+        symbolId: "symbol:src/button.tsx#Button",
+        source: "editor",
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(mockSetCenter).toHaveBeenCalledWith(
+      expect.any(Number),
+      expect.any(Number),
+      expect.objectContaining({ zoom: 1.2, duration: 800 }),
+    );
+  });
+
+  it("re-centers camera when zoomed out and editor is clicked again", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/app.ts": {
+          id: "file:src/app.ts",
+          path: "src/app.ts",
+          name: "app.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 150,
+          lineCount: 12,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    // Initial editor click centers camera
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/app.ts",
+        source: "editor",
+        timestamp: Date.now(),
+      });
+    });
+    expect(mockSetCenter).toHaveBeenCalledTimes(1);
+
+    // Zoom out event clears lastCenteredTargetKeyRef
+    act(() => {
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 0.5 });
+    });
+
+    // Clicking editor again re-centers camera even for the same target
+    act(() => {
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:src/app.ts",
+        source: "editor",
+        timestamp: Date.now() + 500,
+      });
+    });
+    expect(mockSetCenter).toHaveBeenCalledTimes(2);
+  });
 });

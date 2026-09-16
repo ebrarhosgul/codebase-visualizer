@@ -282,6 +282,10 @@ function ArchitectureCanvasInner({
 
   const handleViewportChange = useCallback(
     ({ zoom }: { zoom: number }) => {
+      if (zoom < 1.0) {
+        lastCenteredTargetKeyRef.current = null;
+      }
+
       const shouldShowSymbols = zoom >= 1.2;
       if (shouldShowSymbols === isSymbolsVisibleRef.current) {
         return;
@@ -678,13 +682,22 @@ function ArchitectureCanvasInner({
       return;
     }
 
-    // Look for target node in layout initialNodes or current nodes
-    const targetId = activeTarget.symbolId || activeTarget.fileId;
-    const targetNode =
-      initialNodes.find((n) => n.id === targetId) ||
+    // Look for target node in layout initialNodes or current nodes.
+    // For editor and tree navigation, prioritize the file card so the camera centers on the file being inspected.
+    // For explicit symbol navigation (url or search), prioritize the symbol card if available.
+    const fileTargetNode =
       initialNodes.find((n) => n.id === activeTarget.fileId) ||
-      nodesRef.current.find((n) => n.id === targetId) ||
       nodesRef.current.find((n) => n.id === activeTarget.fileId);
+
+    const symbolTargetNode = activeTarget.symbolId
+      ? initialNodes.find((n) => n.id === activeTarget.symbolId) ||
+        nodesRef.current.find((n) => n.id === activeTarget.symbolId)
+      : null;
+
+    const targetNode =
+      activeTarget.source === "editor" || activeTarget.source === "tree"
+        ? fileTargetNode || symbolTargetNode
+        : symbolTargetNode || fileTargetNode;
 
     if (!targetNode) {
       return;
@@ -707,9 +720,11 @@ function ArchitectureCanvasInner({
         return;
       }
 
-      // Check if target node is already visible inside current canvas viewport
+      // Check if target node is already visible inside current canvas viewport at zoom level
       if (typeof window !== "undefined" && getViewport) {
         const viewport = getViewport();
+        const isZoomedIn = viewport.zoom >= 1.0;
+
         const container = document.querySelector(".react-flow");
         const containerWidth =
           container?.clientWidth || window.innerWidth * 0.6;
@@ -728,14 +743,23 @@ function ArchitectureCanvasInner({
           screenX + screenW <= containerWidth - margin &&
           screenY + screenH <= containerHeight - margin;
 
-        // If node is already visible, keep camera steady so flow tracking is not disrupted
-        if (isVisible) {
+        // If node is already visible and we are zoomed in, keep camera steady so flow tracking is not disrupted
+        if (isZoomedIn && isVisible) {
           return;
         }
       }
 
       const targetKey = `editor:${targetNode.id}`;
-      if (lastCenteredTargetKeyRef.current === targetKey) {
+      const currentZoom = getZoomRef.current
+        ? getZoomRef.current()
+        : getViewport
+          ? getViewport().zoom
+          : 1.0;
+
+      if (
+        currentZoom >= 1.0 &&
+        lastCenteredTargetKeyRef.current === targetKey
+      ) {
         return;
       }
       lastCenteredTargetKeyRef.current = targetKey;
@@ -744,7 +768,7 @@ function ArchitectureCanvasInner({
       return;
     }
 
-    // Explicit navigation (url, search)
+    // Explicit navigation (tree, url, search)
     const targetKey = `${activeTarget.source}:${targetNode.id}:${activeTarget.timestamp}`;
     if (lastCenteredTargetKeyRef.current === targetKey) {
       return;
@@ -901,9 +925,18 @@ function ArchitectureCanvasInner({
 
         <div className="pointer-events-auto shrink-0">
           <GraphControlsToolbar
-            onZoomIn={() => zoomIn({ duration: 200 })}
-            onZoomOut={() => zoomOut({ duration: 200 })}
-            onFitView={() => fitView({ padding: 0.2, duration: 300 })}
+            onZoomIn={() => {
+              lastCenteredTargetKeyRef.current = null;
+              zoomIn({ duration: 200 });
+            }}
+            onZoomOut={() => {
+              lastCenteredTargetKeyRef.current = null;
+              zoomOut({ duration: 200 });
+            }}
+            onFitView={() => {
+              lastCenteredTargetKeyRef.current = null;
+              fitView({ padding: 0.2, duration: 300 });
+            }}
             isMinimapVisible={isMinimapVisible}
             onToggleMinimap={() => setIsMinimapVisible(!isMinimapVisible)}
             isFollowCursorActive={isFollowCursorActive}

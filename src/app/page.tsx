@@ -24,7 +24,7 @@ export default function Home(): React.JSX.Element {
   const graph = useGraphStore((state) => state.graph);
   const repository = graph?.repository ?? null;
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
-  const selectNode = useGraphStore((state) => state.selectNode);
+  const revealNode = useGraphStore((state) => state.revealNode);
   const setHoveredNodeId = useGraphStore((state) => state.setHoveredNodeId);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -39,14 +39,14 @@ export default function Home(): React.JSX.Element {
 
   const handleSelectFile = useCallback(
     (fileId: string) => {
-      selectNode(fileId);
+      revealNode(fileId, "tree");
       setActiveRightTab("code");
       useWorkspaceStore.getState().setRightPanelCollapsed(false);
       if (useWorkspaceStore.getState().isSmallScreen) {
         useWorkspaceStore.getState().setRightDrawerOpen(true);
       }
     },
-    [selectNode, setActiveRightTab],
+    [revealNode, setActiveRightTab],
   );
 
   const leftContent = (

@@ -103,7 +103,10 @@ export interface GraphStoreActions {
   readonly migrateLegacyToken: () => Promise<void>;
   readonly checkTokenStatus: () => Promise<void>;
   readonly clearGithubToken: () => Promise<void>;
-  readonly selectNode: (nodeId: string | null) => void;
+  readonly selectNode: (
+    nodeId: string | null,
+    source?: NavigationSource,
+  ) => void;
   readonly setHoveredNodeId: (nodeId: string | null) => void;
   readonly setGraph: (
     graph: CodebaseGraph,
@@ -124,7 +127,7 @@ export interface GraphStoreActions {
   readonly setSearchQuery: (query: string) => void;
   readonly toggleHideExternal: () => void;
   readonly resetAllFilters: () => void;
-  readonly revealNode: (nodeId: string) => void;
+  readonly revealNode: (nodeId: string, source?: NavigationSource) => void;
   readonly setActiveTrace: (trace: PathTrace | null) => void;
   readonly focusTraceStep: (stepIndex: number | null) => void;
   readonly clearTrace: () => void;
@@ -573,7 +576,10 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     }
   },
 
-  selectNode: (nodeId: string | null): void => {
+  selectNode: (
+    nodeId: string | null,
+    source: NavigationSource = "canvas",
+  ): void => {
     if (!nodeId) {
       set({ selectedNodeId: null, selectedFileId: null, activeTarget: null });
       return;
@@ -582,7 +588,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     if (nodeId.startsWith("file:")) {
       const target: NavigationTarget = {
         fileId: nodeId,
-        source: "canvas",
+        source,
         timestamp: Date.now(),
       };
       set({
@@ -605,7 +611,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
             symbolId: nodeId,
             line: symbol?.range.startLine ?? null,
             column: symbol?.range.startColumn ?? null,
-            source: "canvas",
+            source,
             timestamp: Date.now(),
           }
         : null;
@@ -668,6 +674,38 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       }
     }
 
+    let nextCollapsedFolders = state.collapsedFolderIds;
+    let nextSelectedLayers = state.selectedLayers;
+    const graph = state.graph;
+    const file = graph?.files[target.fileId];
+    if (file) {
+      const parts = file.path.split("/");
+      if (parts.length > 1) {
+        const foldersToUncollapse = new Set<string>();
+        for (let i = 1; i < parts.length; i++) {
+          const prefix = parts.slice(0, i).join("/");
+          foldersToUncollapse.add(prefix);
+          foldersToUncollapse.add(`folder-group:${prefix}`);
+        }
+        const needsUncollapse = state.collapsedFolderIds.some((f) =>
+          foldersToUncollapse.has(f),
+        );
+        if (needsUncollapse) {
+          nextCollapsedFolders = Object.freeze(
+            state.collapsedFolderIds.filter((f) => !foldersToUncollapse.has(f)),
+          );
+        }
+      }
+
+      const layer = classifyLayerForPath(file.path);
+      if (
+        state.selectedLayers.length > 0 &&
+        !state.selectedLayers.includes(layer)
+      ) {
+        nextSelectedLayers = Object.freeze([...state.selectedLayers, layer]);
+      }
+    }
+
     const isProgrammatic = target.source !== "editor";
     const newLock = isProgrammatic ? now + 300 : state.lockedUntil;
     const newProgrammaticTarget =
@@ -681,6 +719,8 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       selectedNodeId: target.symbolId ?? target.fileId,
       lockedUntil: newLock,
       lastProgrammaticTarget: newProgrammaticTarget,
+      collapsedFolderIds: nextCollapsedFolders,
+      selectedLayers: nextSelectedLayers,
     });
   },
 
@@ -911,7 +951,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     });
   },
 
-  revealNode: (nodeId: string): void => {
+  revealNode: (nodeId: string, source: NavigationSource = "tree"): void => {
     const state = get();
     const graph = state.graph;
     let targetLayer: ArchitecturalLayerId | null = null;
@@ -965,7 +1005,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       searchQuery: "",
     });
 
-    state.selectNode(nodeId);
+    get().selectNode(nodeId, source);
   },
 
   setActiveTrace: (trace: PathTrace | null): void => {
