@@ -134,6 +134,29 @@ export function toReactFlowElements(
       });
     }
 
+    // Visible symbols under visible files (with initial hidden: true for progressive disclosure)
+    const visibleFileIds = new Set(filtered.visibleFiles.map((f) => f.id));
+    const searchFilter = options.filters.searchQuery?.trim().toLowerCase();
+    for (const sym of Object.values(graph.symbols)) {
+      if (!visibleFileIds.has(sym.fileId)) {
+        continue;
+      }
+      if (searchFilter && !sym.name.toLowerCase().includes(searchFilter)) {
+        continue;
+      }
+      nodes.push({
+        id: sym.id,
+        type: "symbol",
+        position: { x: 0, y: 0 },
+        hidden: true,
+        data: {
+          entityType: "symbol",
+          entity: sym,
+          label: sym.name,
+        },
+      });
+    }
+
     let allowedEdgeKinds: Set<EdgeKind> | null = null;
     if (options.enabledEdgeKinds && options.enabledEdgeKinds.length > 0) {
       allowedEdgeKinds = new Set(options.enabledEdgeKinds);
@@ -278,6 +301,7 @@ export function toReactFlowElements(
       id: sym.id,
       type: "symbol",
       position: { x: 0, y: 0 },
+      hidden: true,
       data: {
         entityType: "symbol",
         entity: sym,

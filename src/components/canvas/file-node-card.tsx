@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import type { CodebaseReactFlowNode } from "@/graph";
+import { useGraphStore } from "@/stores/graph-store";
 import { cn } from "@/lib/utils";
 
 function getFileBadgeVariant(name: string): BadgeVariant {
@@ -32,10 +33,12 @@ function getFileExtension(name: string): string {
  * Custom React Flow card node representing files, directories, and external modules.
  */
 export const FileNodeCard = React.memo(function FileNodeCard({
+  id,
   data,
   selected,
 }: NodeProps<CodebaseReactFlowNode>): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
+  const isHoveredInStore = useGraphStore((state) => state.hoveredNodeId === id);
   const entityType = data.entityType;
   const label = data.label;
 
@@ -61,7 +64,8 @@ export const FileNodeCard = React.memo(function FileNodeCard({
     subtitle = data.entity.path;
   }
 
-  const isHovered = Boolean((data as Record<string, unknown>).isHovered);
+  const isHovered =
+    isHoveredInStore || Boolean((data as Record<string, unknown>).isHovered);
   const isConnected = Boolean((data as Record<string, unknown>).isConnected);
   const isDimmed = Boolean((data as Record<string, unknown>).isDimmed);
 

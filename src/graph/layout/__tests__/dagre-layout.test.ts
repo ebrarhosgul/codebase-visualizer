@@ -462,4 +462,92 @@ describe("computeDagreLayout", () => {
       );
     }
   });
+
+  it("clusters symbol nodes inside their parent file directory container (AC-3, AC-4)", () => {
+    const fileNode: CodebaseReactFlowNode = {
+      id: "file:src/service.ts",
+      type: "file",
+      position: { x: 0, y: 0 },
+      data: {
+        entityType: "file",
+        label: "service.ts",
+        entity: {
+          id: "file:src/service.ts",
+          path: "src/service.ts",
+          name: "service.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 100,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/service.ts#fetchData"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+    };
+
+    const symbolNode: CodebaseReactFlowNode = {
+      id: "symbol:src/service.ts#fetchData",
+      type: "symbol",
+      position: { x: 0, y: 0 },
+      hidden: true,
+      data: {
+        entityType: "symbol",
+        label: "fetchData",
+        entity: {
+          id: "symbol:src/service.ts#fetchData",
+          fileId: "file:src/service.ts",
+          parentSymbolId: null,
+          name: "fetchData",
+          kind: "function",
+          range: {
+            startOffset: 0,
+            endOffset: 50,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 5,
+            endColumn: 2,
+          },
+          selectionRange: {
+            startOffset: 0,
+            endOffset: 10,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 1,
+            endColumn: 10,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "export function fetchData(): Promise<void>",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+    };
+
+    const laidOut = computeDagreLayout(
+      {
+        nodes: Object.freeze([fileNode, symbolNode]),
+        edges: Object.freeze([]),
+      },
+      { direction: "LR", groupByFolder: true, nodeWidth: 240 },
+    );
+
+    const folderNode = laidOut.nodes.find((n) => n.type === "folderGroup");
+    expect(folderNode).toBeDefined();
+
+    const laidOutSymbol = laidOut.nodes.find(
+      (n) => n.id === "symbol:src/service.ts#fetchData",
+    );
+    expect(laidOutSymbol).toBeDefined();
+
+    const folderLeft = folderNode?.position.x ?? 0;
+    const folderWidth = Number(folderNode?.style?.width ?? 0);
+    expect(laidOutSymbol?.position.x).toBeGreaterThanOrEqual(folderLeft);
+    expect(laidOutSymbol!.position.x + 240).toBeLessThanOrEqual(
+      folderLeft + folderWidth,
+    );
+  });
 });

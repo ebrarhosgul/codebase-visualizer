@@ -13,11 +13,20 @@ const mockZoomIn = vi.fn();
 const mockZoomOut = vi.fn();
 
 let capturedReactFlowProps: ReactFlowProps | null = null;
+let capturedViewportChangeHandler:
+  ((viewport: { x: number; y: number; zoom: number }) => void) | null = null;
 
 vi.mock("@xyflow/react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@xyflow/react")>();
   return {
     ...actual,
+    useOnViewportChange: (options: {
+      onChange?: (viewport: { x: number; y: number; zoom: number }) => void;
+    }) => {
+      if (options.onChange) {
+        capturedViewportChangeHandler = options.onChange;
+      }
+    },
     ReactFlow: (props: ReactFlowProps) => {
       capturedReactFlowProps = props;
       return <actual.ReactFlow {...props} />;
@@ -37,6 +46,7 @@ describe("ArchitectureCanvas", () => {
     useGraphStore.getState().reset();
     useWorkspaceStore.getState().resetLayout();
     capturedReactFlowProps = null;
+    capturedViewportChangeHandler = null;
     mockSetCenter.mockClear();
     mockFitView.mockClear();
     mockZoomIn.mockClear();
@@ -1088,5 +1098,237 @@ describe("ArchitectureCanvas", () => {
     const appNode = renderedNodes.find((n) => n.id === "file:src/App.tsx");
     expect(appNode?.data?.isConnected).toBe(true);
     expect(appNode?.data?.isDimmed).toBe(false);
+  });
+
+  it("enables viewport pruning via onlyRenderVisibleElements prop on ReactFlow (AC-1)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/main.ts": {
+          id: "file:src/main.ts",
+          path: "src/main.ts",
+          name: "main.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    expect(capturedReactFlowProps?.onlyRenderVisibleElements).toBe(true);
+  });
+
+  it("does not trigger full canvas re-render or regenerate node objects when hovering a node (AC-2)", () => {
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 2,
+        totalSymbols: 0,
+        languages: { typescript: 2 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/a.ts": {
+          id: "file:src/a.ts",
+          path: "src/a.ts",
+          name: "a.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+        "file:src/b.ts": {
+          id: "file:src/b.ts",
+          path: "src/b.ts",
+          name: "b.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 150,
+          lineCount: 10,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    const initialRenderedNodes = capturedReactFlowProps?.nodes;
+
+    // Hovering node B updates store state atomically
+    act(() => {
+      useGraphStore.getState().setHoveredNodeId("file:src/b.ts");
+    });
+
+    expect(useGraphStore.getState().hoveredNodeId).toBe("file:src/b.ts");
+
+    // The canvas nodes array reference is preserved because hover does not trigger canvas setNodes
+    expect(capturedReactFlowProps?.nodes).toBe(initialRenderedNodes);
+  });
+
+  it("hides symbol nodes below zoom 1.2 and reveals them with throttling when zooming in (AC-3, AC-4)", () => {
+    vi.useFakeTimers();
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 1,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/service.ts": {
+          id: "file:src/service.ts",
+          path: "src/service.ts",
+          name: "service.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: ["symbol:src/service.ts#doWork"],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {
+        "symbol:src/service.ts#doWork": {
+          id: "symbol:src/service.ts#doWork",
+          fileId: "file:src/service.ts",
+          parentSymbolId: null,
+          name: "doWork",
+          kind: "function",
+          range: {
+            startOffset: 0,
+            endOffset: 30,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 3,
+            endColumn: 2,
+          },
+          selectionRange: {
+            startOffset: 0,
+            endOffset: 6,
+            startLine: 1,
+            startColumn: 1,
+            endLine: 1,
+            endColumn: 7,
+          },
+          isExported: true,
+          isDefaultExport: false,
+          signature: "export function doWork(): void",
+          documentation: null,
+          visibility: "public",
+          childSymbolIds: [],
+        },
+      },
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    // 1. At default zoom (1.0 < 1.2), symbol nodes are hidden
+    const initialNodes = capturedReactFlowProps?.nodes ?? [];
+    const symbolNodeInitial = initialNodes.find(
+      (n) => n.id === "symbol:src/service.ts#doWork",
+    );
+    expect(symbolNodeInitial).toBeDefined();
+    expect(symbolNodeInitial?.hidden).toBe(true);
+
+    // 2. Zoom in past 1.2 threshold (e.g. 1.4)
+    expect(capturedViewportChangeHandler).toBeDefined();
+    act(() => {
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 1.4 });
+    });
+
+    // Before throttle expires (within 75ms), symbols should still be hidden
+    act(() => {
+      vi.advanceTimersByTime(30);
+    });
+    const midNodes = capturedReactFlowProps?.nodes ?? [];
+    const symbolNodeMid = midNodes.find(
+      (n) => n.id === "symbol:src/service.ts#doWork",
+    );
+    expect(symbolNodeMid?.hidden).toBe(true);
+
+    // Advance past throttle duration (75ms total)
+    act(() => {
+      vi.advanceTimersByTime(50);
+    });
+
+    // Symbol node is now revealed
+    const zoomedNodes = capturedReactFlowProps?.nodes ?? [];
+    const symbolNodeRevealed = zoomedNodes.find(
+      (n) => n.id === "symbol:src/service.ts#doWork",
+    );
+    expect(symbolNodeRevealed?.hidden).toBe(false);
+
+    // 3. Zoom back out below 1.2 threshold
+    act(() => {
+      capturedViewportChangeHandler!({ x: 0, y: 0, zoom: 0.8 });
+      vi.advanceTimersByTime(75);
+    });
+
+    const zoomedOutNodes = capturedReactFlowProps?.nodes ?? [];
+    const symbolNodeHiddenAgain = zoomedOutNodes.find(
+      (n) => n.id === "symbol:src/service.ts#doWork",
+    );
+    expect(symbolNodeHiddenAgain?.hidden).toBe(true);
+
+    vi.useRealTimers();
   });
 });

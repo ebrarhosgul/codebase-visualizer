@@ -6,6 +6,7 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useOnViewportChange,
   ReactFlowProvider,
   type NodeMouseHandler,
   Background,
@@ -13,6 +14,7 @@ import {
   MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { useShallow } from "zustand/react/shallow";
 import { Sparkles, Network, FilterX, RotateCcw } from "lucide-react";
 import { codebaseNodeTypes } from "./node-types";
 import { GraphControlsToolbar } from "./graph-controls-toolbar";
@@ -39,36 +41,58 @@ function ArchitectureCanvasInner({
   const graph = useGraphStore((state) => state.graph);
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
-  const hoveredNodeId = useGraphStore((state) => state.hoveredNodeId);
   const selectNode = useGraphStore((state) => state.selectNode);
   const setHoveredNodeId = useGraphStore((state) => state.setHoveredNodeId);
   const isIngesting = useGraphStore((state) => state.isIngesting);
-  const selectedLayers = useGraphStore((state) => state.selectedLayers);
-  const collapsedFolderIds = useGraphStore((state) => state.collapsedFolderIds);
-  const searchQuery = useGraphStore((state) => state.searchQuery);
-  const hideExternal = useGraphStore((state) => state.hideExternal);
   const resetAllFilters = useGraphStore((state) => state.resetAllFilters);
-  const activeTrace = useGraphStore((state) => state.activeTrace);
-  const activeStepIndex = useGraphStore((state) => state.activeStepIndex);
-  const highlightedNodeIds = useGraphStore((state) => state.highlightedNodeIds);
-  const highlightedEdgeIds = useGraphStore((state) => state.highlightedEdgeIds);
-  const isSmallScreen = useWorkspaceStore((state) => state.isSmallScreen);
-  const isLeftCollapsed = useWorkspaceStore(
-    (state) => state.isLeftSidebarCollapsed,
+  const activeTarget = useGraphStore((state) => state.activeTarget);
+
+  const { selectedLayers, collapsedFolderIds, searchQuery, hideExternal } =
+    useGraphStore(
+      useShallow((state) => ({
+        selectedLayers: state.selectedLayers,
+        collapsedFolderIds: state.collapsedFolderIds,
+        searchQuery: state.searchQuery,
+        hideExternal: state.hideExternal,
+      })),
+    );
+
+  const {
+    activeTrace,
+    activeStepIndex,
+    highlightedNodeIds,
+    highlightedEdgeIds,
+  } = useGraphStore(
+    useShallow((state) => ({
+      activeTrace: state.activeTrace,
+      activeStepIndex: state.activeStepIndex,
+      highlightedNodeIds: state.highlightedNodeIds,
+      highlightedEdgeIds: state.highlightedEdgeIds,
+    })),
   );
-  const isRightCollapsed = useWorkspaceStore(
-    (state) => state.isRightPanelCollapsed,
+
+  const {
+    isSmallScreen,
+    isLeftCollapsed,
+    isRightCollapsed,
+    setActiveRightTab,
+    theme,
+  } = useWorkspaceStore(
+    useShallow((state) => ({
+      isSmallScreen: state.isSmallScreen,
+      isLeftCollapsed: state.isLeftSidebarCollapsed,
+      isRightCollapsed: state.isRightPanelCollapsed,
+      setActiveRightTab: state.setActiveRightTab,
+      theme: state.theme,
+    })),
   );
-  const setActiveRightTab = useWorkspaceStore(
-    (state) => state.setActiveRightTab,
-  );
-  const theme = useWorkspaceStore((state) => state.theme);
 
   const [isMinimapVisible, setIsMinimapVisible] = React.useState(true);
   const [isFollowCursorActive, setIsFollowCursorActive] = React.useState(true);
   const { fitView, zoomIn, zoomOut, getZoom, setCenter, getViewport } =
     useReactFlow();
-  const activeTarget = useGraphStore((state) => state.activeTarget);
+  const getZoomRef = React.useRef(getZoom);
+  getZoomRef.current = getZoom;
 
   // Compute positioned React Flow elements using pure transformation and Dagre layout with compound folders
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -127,9 +151,8 @@ function ArchitectureCanvasInner({
   const nodesRef = React.useRef(nodes);
   nodesRef.current = nodes;
 
-  // Active target for dependency highlighting (hover takes visual priority, falling back to selection/target)
+  // Active target for dependency highlighting (selection takes visual priority, falling back to activeTarget)
   const rawHighlightId =
-    hoveredNodeId ||
     selectedNodeId ||
     (activeTarget ? activeTarget.symbolId || activeTarget.fileId : null);
 
@@ -253,9 +276,64 @@ function ArchitectureCanvasInner({
     };
   }, [highlightNodeId, graph, edgeIndex]);
 
+  // Progressive disclosure: hide symbol nodes when zoom < 1.2, reveal when zoom >= 1.2 (AC-3, AC-4)
+  const isSymbolsVisibleRef = React.useRef(false);
+  const zoomThrottleTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleViewportChange = useCallback(
+    ({ zoom }: { zoom: number }) => {
+      const shouldShowSymbols = zoom >= 1.2;
+      if (shouldShowSymbols === isSymbolsVisibleRef.current) {
+        return;
+      }
+
+      if (zoomThrottleTimerRef.current) {
+        clearTimeout(zoomThrottleTimerRef.current);
+      }
+
+      zoomThrottleTimerRef.current = setTimeout(() => {
+        isSymbolsVisibleRef.current = shouldShowSymbols;
+        setNodes((currentNodes) => {
+          let hasChange = false;
+          const nextNodes = currentNodes.map((n) => {
+            if (n.type === "symbol" && n.hidden !== !shouldShowSymbols) {
+              hasChange = true;
+              return { ...n, hidden: !shouldShowSymbols };
+            }
+            return n;
+          });
+          return hasChange ? nextNodes : currentNodes;
+        });
+      }, 75);
+    },
+    [setNodes],
+  );
+
+  useOnViewportChange({
+    onChange: handleViewportChange,
+  });
+
+  useEffect(() => {
+    return () => {
+      if (zoomThrottleTimerRef.current) {
+        clearTimeout(zoomThrottleTimerRef.current);
+      }
+    };
+  }, []);
+
   // Sync state whenever underlying graph is recomputed
   useEffect(() => {
-    setNodes(initialNodes);
+    const currentZoom = getZoomRef.current ? getZoomRef.current() : 1.0;
+    const shouldShowSymbols = currentZoom >= 1.2;
+    isSymbolsVisibleRef.current = shouldShowSymbols;
+
+    const adjustedNodes = shouldShowSymbols
+      ? initialNodes.map((n) =>
+          n.type === "symbol" ? { ...n, hidden: false } : n,
+        )
+      : initialNodes;
+
+    setNodes(adjustedNodes);
     setEdges(initialEdges);
 
     if (initialNodes.length > 0) {
@@ -272,7 +350,7 @@ function ArchitectureCanvasInner({
     }
   }, [initialNodes, initialEdges, setNodes, setEdges, fitView]);
 
-  // Sync node selection, active folder container, and hover/connection visual states
+  // Sync node selection, active folder container, and connection visual states
   useEffect(() => {
     const isHighlightActive = Boolean(highlightNodeId);
     const isTraceActive = Boolean(activeTrace);
@@ -318,7 +396,7 @@ function ArchitectureCanvasInner({
           const isTraceNode = traceNodeSet.has(n.id);
           const isStepFocused = activeStepNodeId === n.id;
           const isSelected = n.id === selectedNodeId || isStepFocused;
-          const isHovered = isStepFocused || hoveredNodeId === n.id;
+          const isHovered = isStepFocused;
           const isConnected = isTraceNode;
           const isDimmed = !isTraceNode;
 
@@ -350,7 +428,7 @@ function ArchitectureCanvasInner({
           n.id === highlightNodeId ||
           (activeTarget != null &&
             (n.id === activeTarget.symbolId || n.id === activeTarget.fileId));
-        const isHovered = isTarget && hoveredNodeId === n.id;
+        const isHovered = false;
         const isDimmed = isHighlightActive && !isTarget && !isConnected;
 
         if (
@@ -381,7 +459,6 @@ function ArchitectureCanvasInner({
     activeTarget,
     highlightNodeId,
     connectedNodeIds,
-    hoveredNodeId,
     activeTrace,
     activeStepIndex,
     highlightedNodeIds,

@@ -56,6 +56,18 @@ function getFolderForNode(
     };
   }
 
+  if (entityData.entityType === "symbol") {
+    const symbol = entityData.entity;
+    const fileId = symbol.fileId || "";
+    const path = fileId.replace(/^file:/, "");
+    const parts = path.split("/");
+    const folder = parts.length > 1 ? parts.slice(0, -1).join("/") : "(root)";
+    return {
+      key: `folder-group:${folder}`,
+      label: folder === "(root)" ? "root files" : folder,
+    };
+  }
+
   return null;
 }
 
@@ -181,8 +193,13 @@ export function computeDagreLayout(
         };
       }
 
-      // Sort files alphabetically for predictable, neat placement
+      // Sort files and symbols for predictable, neat placement (files first, then symbols)
       c.nodes.sort((a, b) => {
+        const typeOrderA = a.type === "symbol" ? 1 : 0;
+        const typeOrderB = b.type === "symbol" ? 1 : 0;
+        if (typeOrderA !== typeOrderB) {
+          return typeOrderA - typeOrderB;
+        }
         const nameA = a.data?.label || a.id;
         const nameB = b.data?.label || b.id;
         return nameA.localeCompare(nameB);
