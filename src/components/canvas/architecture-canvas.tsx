@@ -475,7 +475,7 @@ function ArchitectureCanvasInner({
               e.animated === true &&
               e.style?.stroke === "#38bdf8" &&
               e.style?.strokeWidth === 3 &&
-              e.style?.opacity === 1 &&
+              e.style?.strokeOpacity === 1 &&
               getMarkerColor(e.markerEnd) === "#38bdf8"
             ) {
               return e;
@@ -488,7 +488,7 @@ function ArchitectureCanvasInner({
                 stroke: "#38bdf8",
                 strokeWidth: 3,
                 filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4))",
-                opacity: 1,
+                strokeOpacity: 1,
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
@@ -502,8 +502,8 @@ function ArchitectureCanvasInner({
             e.animated === false &&
             e.style?.stroke === "#1e293b" &&
             e.style?.strokeWidth === 1 &&
-            e.style?.opacity === 0.15 &&
-            getMarkerColor(e.markerEnd) === "#334155"
+            e.style?.strokeOpacity === 0.15 &&
+            getMarkerColor(e.markerEnd) === "rgba(51, 65, 85, 0.15)"
           ) {
             return e;
           }
@@ -514,11 +514,11 @@ function ArchitectureCanvasInner({
             style: {
               stroke: "#1e293b",
               strokeWidth: 1,
-              opacity: 0.15,
+              strokeOpacity: 0.15,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: "#334155",
+              color: "rgba(51, 65, 85, 0.15)",
               width: 10,
               height: 10,
             },
@@ -536,7 +536,7 @@ function ArchitectureCanvasInner({
               e.animated === true &&
               e.style?.stroke === "#38bdf8" &&
               e.style?.strokeWidth === 3 &&
-              e.style?.opacity === 1 &&
+              e.style?.strokeOpacity === 1 &&
               getMarkerColor(e.markerEnd) === "#38bdf8"
             ) {
               return e;
@@ -549,7 +549,7 @@ function ArchitectureCanvasInner({
                 stroke: "#38bdf8",
                 strokeWidth: 3,
                 filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4))",
-                opacity: 1,
+                strokeOpacity: 1,
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
@@ -564,7 +564,7 @@ function ArchitectureCanvasInner({
               e.animated === true &&
               e.style?.stroke === "#a78bfa" &&
               e.style?.strokeWidth === 2.5 &&
-              e.style?.opacity === 1 &&
+              e.style?.strokeOpacity === 1 &&
               getMarkerColor(e.markerEnd) === "#a78bfa"
             ) {
               return e;
@@ -576,7 +576,7 @@ function ArchitectureCanvasInner({
               style: {
                 stroke: "#a78bfa",
                 strokeWidth: 2.5,
-                opacity: 1,
+                strokeOpacity: 1,
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
@@ -590,8 +590,8 @@ function ArchitectureCanvasInner({
             e.animated === false &&
             e.style?.stroke === "#1e293b" &&
             e.style?.strokeWidth === 1 &&
-            e.style?.opacity === 0.2 &&
-            getMarkerColor(e.markerEnd) === "#334155"
+            e.style?.strokeOpacity === 0.2 &&
+            getMarkerColor(e.markerEnd) === "rgba(51, 65, 85, 0.2)"
           ) {
             return e;
           }
@@ -602,11 +602,11 @@ function ArchitectureCanvasInner({
             style: {
               stroke: "#1e293b",
               strokeWidth: 1,
-              opacity: 0.2,
+              strokeOpacity: 0.2,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: "#334155",
+              color: "rgba(51, 65, 85, 0.2)",
               width: 10,
               height: 10,
             },
@@ -618,8 +618,8 @@ function ArchitectureCanvasInner({
           e.animated === false &&
           e.style?.stroke === "#475569" &&
           e.style?.strokeWidth === 1.5 &&
-          e.style?.opacity === 0.6 &&
-          getMarkerColor(e.markerEnd) === "#64748b"
+          e.style?.strokeOpacity === 0.6 &&
+          getMarkerColor(e.markerEnd) === "rgba(100, 116, 139, 0.6)"
         ) {
           return e;
         }
@@ -630,11 +630,11 @@ function ArchitectureCanvasInner({
           style: {
             stroke: "#475569",
             strokeWidth: 1.5,
-            opacity: 0.6,
+            strokeOpacity: 0.6,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "#64748b",
+            color: "rgba(100, 116, 139, 0.6)",
             width: 12,
             height: 12,
           },
@@ -957,10 +957,10 @@ function ArchitectureCanvasInner({
         defaultEdgeOptions={{
           type: "smoothstep",
           animated: false,
-          style: { stroke: "#475569", strokeWidth: 1.5, opacity: 0.6 },
+          style: { stroke: "#475569", strokeWidth: 1.5, strokeOpacity: 0.6 },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "#64748b",
+            color: "rgba(100, 116, 139, 0.6)",
             width: 12,
             height: 12,
           },

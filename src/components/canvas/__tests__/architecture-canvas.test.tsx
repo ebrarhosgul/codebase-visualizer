@@ -876,7 +876,7 @@ describe("ArchitectureCanvas", () => {
     expect(idleEdgeAB).toBeDefined();
     expect(idleEdgeAB?.style?.stroke).toBe("#475569");
     const idleMarker = idleEdgeAB?.markerEnd as { color?: string } | undefined;
-    expect(idleMarker?.color).toBe("#64748b");
+    expect(idleMarker?.color).toBe("rgba(100, 116, 139, 0.6)");
     // Ensure marker colors use valid hex without CSS var syntax that corrupts SVG marker URLs
     expect(idleMarker?.color).not.toContain("var(");
 
@@ -900,7 +900,7 @@ describe("ArchitectureCanvas", () => {
     expect(outgoingEdge?.animated).toBe(true);
     expect(outgoingEdge?.style?.stroke).toBe("#38bdf8");
     expect(outgoingEdge?.style?.strokeWidth).toBe(3);
-    expect(outgoingEdge?.style?.opacity).toBe(1);
+    expect(outgoingEdge?.style?.strokeOpacity).toBe(1);
     expect(outgoingEdge?.style?.filter).toContain("drop-shadow");
     const outgoingMarker = outgoingEdge?.markerEnd as
       { color?: string } | undefined;
@@ -910,10 +910,10 @@ describe("ArchitectureCanvas", () => {
     expect(dimmedEdge).toBeDefined();
     expect(dimmedEdge?.animated).toBe(false);
     expect(dimmedEdge?.style?.stroke).toBe("#1e293b");
-    expect(dimmedEdge?.style?.opacity).toBe(0.2);
+    expect(dimmedEdge?.style?.strokeOpacity).toBe(0.2);
     const dimmedMarker = dimmedEdge?.markerEnd as
       { color?: string } | undefined;
-    expect(dimmedMarker?.color).toBe("#334155");
+    expect(dimmedMarker?.color).toBe("rgba(51, 65, 85, 0.2)");
 
     // 3. Select node B: edge A->B becomes active incoming
     act(() => {
@@ -928,7 +928,7 @@ describe("ArchitectureCanvas", () => {
     expect(incomingEdge?.animated).toBe(true);
     expect(incomingEdge?.style?.stroke).toBe("#a78bfa");
     expect(incomingEdge?.style?.strokeWidth).toBe(2.5);
-    expect(incomingEdge?.style?.opacity).toBe(1);
+    expect(incomingEdge?.style?.strokeOpacity).toBe(1);
     const incomingMarker = incomingEdge?.markerEnd as
       { color?: string } | undefined;
     expect(incomingMarker?.color).toBe("#a78bfa");
@@ -952,15 +952,55 @@ describe("ArchitectureCanvas", () => {
     const outgoingEdgeFromEditor = activeEdgesFromEditor.find(
       (e: Edge) => e.source === "file:src/a.ts",
     );
-    // The connecting arrow must stay active and clearly visible, not dimmed to 0.2 opacity
+    // The connecting arrow must stay active and clearly visible, not dimmed to 0.2 stroke opacity
     expect(outgoingEdgeFromEditor).toBeDefined();
     expect(outgoingEdgeFromEditor?.animated).toBe(true);
     expect(outgoingEdgeFromEditor?.style?.stroke).toBe("#38bdf8");
     expect(outgoingEdgeFromEditor?.style?.strokeWidth).toBe(3);
-    expect(outgoingEdgeFromEditor?.style?.opacity).toBe(1);
+    expect(outgoingEdgeFromEditor?.style?.strokeOpacity).toBe(1);
     const editorMarker = outgoingEdgeFromEditor?.markerEnd as
       { color?: string } | undefined;
     expect(editorMarker?.color).toBe("#38bdf8");
+
+    // 5. Regression: edge alpha must live in the stroke paint, never in element opacity.
+    // Element opacity on a path that also carries an arrow marker forces the rasterizer to
+    // allocate an offscreen layer per edge on every zoom frame, which drops zoom out to ~22 FPS.
+    const expectPaintLevelAlphaOnly = (edges: readonly Edge[]): void => {
+      expect(edges.length).toBeGreaterThan(0);
+      for (const edge of edges) {
+        expect(edge.style?.opacity).toBeUndefined();
+        expect(typeof edge.style?.strokeOpacity).toBe("number");
+      }
+    };
+    expectPaintLevelAlphaOnly(idleEdges);
+    expectPaintLevelAlphaOnly(activeEdgesA);
+    expectPaintLevelAlphaOnly(activeEdgesB);
+    expectPaintLevelAlphaOnly(activeEdgesFromEditor);
+
+    act(() => {
+      useGraphStore.getState().setActiveTrace({
+        id: "trace:file:src/a.ts->file:src/b.ts",
+        sourceNodeId: "file:src/a.ts",
+        targetNodeId: "file:src/b.ts",
+        stepNodeIds: Object.freeze(["file:src/a.ts", "file:src/b.ts"]),
+        stepEdgeIds: Object.freeze([
+          "edge:file:src/a.ts->file:src/b.ts:file_import",
+        ]),
+        hopCount: 1,
+        rationale: "test trace",
+        createdAt: new Date().toISOString(),
+      });
+    });
+    const traceEdges = (capturedReactFlowProps?.edges ?? []) as Edge[];
+    const traceEdge = traceEdges.find(
+      (e: Edge) => e.source === "file:src/a.ts",
+    );
+    const traceDimmedEdge = traceEdges.find(
+      (e: Edge) => e.source === "file:src/c.ts",
+    );
+    expect(traceEdge?.style?.strokeOpacity).toBe(1);
+    expect(traceDimmedEdge?.style?.strokeOpacity).toBe(0.15);
+    expectPaintLevelAlphaOnly(traceEdges);
   });
 
   it("renders internal local import edges between TSX files and highlights connected nodes", () => {
