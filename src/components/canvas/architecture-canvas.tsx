@@ -67,12 +67,14 @@ function ArchitectureCanvasInner({
     activeStepIndex,
     highlightedNodeIds,
     highlightedEdgeIds,
+    highlightSource,
   } = useGraphStore(
     useShallow((state) => ({
       activeTrace: state.activeTrace,
       activeStepIndex: state.activeStepIndex,
       highlightedNodeIds: state.highlightedNodeIds,
       highlightedEdgeIds: state.highlightedEdgeIds,
+      highlightSource: state.highlightSource,
     })),
   );
 
@@ -126,6 +128,16 @@ function ArchitectureCanvasInner({
   const lastCenteredTargetKeyRef = React.useRef<string | null>(null);
   const nodesRef = React.useRef(nodes);
   nodesRef.current = nodes;
+
+  // Publish visible file IDs from laid-out nodes when layout completes (AC-7)
+  useEffect(() => {
+    if (!isCalculatingLayout) {
+      const fileIds = layoutNodes
+        .filter((n) => n.type === "file")
+        .map((n) => n.id);
+      useGraphStore.getState().setVisibleFileIds(fileIds);
+    }
+  }, [layoutNodes, isCalculatingLayout]);
 
   // Active target for dependency highlighting (selection takes visual priority, falling back to activeTarget)
   const rawHighlightId =
@@ -342,6 +354,7 @@ function ArchitectureCanvasInner({
   useEffect(() => {
     const isHighlightActive = Boolean(highlightNodeId);
     const isTraceActive = Boolean(activeTrace);
+    const isAnswerHighlight = highlightSource === "answer";
     const traceNodeSet = new Set(highlightedNodeIds);
     const activeStepNodeId =
       activeTrace && activeStepIndex !== null && activeStepIndex >= 0
@@ -357,7 +370,7 @@ function ArchitectureCanvasInner({
           const childIds = entity?.childFileIds ?? [];
           const hasActiveChild = childIds.some(
             (id) =>
-              (isTraceActive && traceNodeSet.has(id)) ||
+              ((isTraceActive || isAnswerHighlight) && traceNodeSet.has(id)) ||
               id === highlightNodeId ||
               id === selectedNodeId ||
               id === activeTarget?.fileId ||
@@ -380,13 +393,13 @@ function ArchitectureCanvasInner({
           };
         }
 
-        if (isTraceActive) {
-          const isTraceNode = traceNodeSet.has(n.id);
-          const isStepFocused = activeStepNodeId === n.id;
+        if (isTraceActive || isAnswerHighlight) {
+          const isKeyNode = traceNodeSet.has(n.id);
+          const isStepFocused = isTraceActive && activeStepNodeId === n.id;
           const isSelected = n.id === selectedNodeId || isStepFocused;
           const isHovered = isStepFocused;
-          const isConnected = isTraceNode;
-          const isDimmed = !isTraceNode;
+          const isConnected = isKeyNode;
+          const isDimmed = !isKeyNode;
 
           if (
             n.selected === isSelected &&
@@ -450,6 +463,7 @@ function ArchitectureCanvasInner({
     activeTrace,
     activeStepIndex,
     highlightedNodeIds,
+    highlightSource,
     setNodes,
   ]);
 

@@ -34,25 +34,33 @@ import type {
   AiQueryMessage,
   CitationRef,
 } from "@/lib/ai/types";
+import type { DemoIntent } from "@/lib/ai/demo/intents";
+import type { DemoPromptChip } from "@/lib/ai/demo/types";
+import { DEMO_PROMPT_CHIPS } from "@/lib/ai/demo/chips";
 import type { PathTrace } from "@/entities";
 import { FallbackNoticeCard } from "./fallback-notice-card";
 import { MarkdownMessage } from "./markdown-message";
-
-const SUGGESTED_PROMPTS = [
-  "How do stores connect to canvas?",
-  "Trace path between entrypoint and services",
-  "What is the architectural layer structure?",
-  "How does ingestion data flow into the graph?",
-];
+import { PromptChips } from "./prompt-chips";
+import { DemoAnswerFooter } from "./demo-answer-footer";
 
 export function TracePanel(): React.JSX.Element {
   const repository = useGraphStore((state) => state.repository);
   const graph = useGraphStore((state) => state.graph);
   const activeTrace = useGraphStore((state) => state.activeTrace);
   const activeStepIndex = useGraphStore((state) => state.activeStepIndex);
+  const highlightedNodeIds = useGraphStore((state) => state.highlightedNodeIds);
+  const highlightSource = useGraphStore((state) => state.highlightSource);
+  const visibleFileIds = useGraphStore((state) => state.visibleFileIds);
+  const isCalculatingLayout = useGraphStore(
+    (state) => state.isCalculatingLayout,
+  );
   const setActiveTrace = useGraphStore((state) => state.setActiveTrace);
   const focusTraceStep = useGraphStore((state) => state.focusTraceStep);
   const clearTrace = useGraphStore((state) => state.clearTrace);
+  const setAnswerHighlight = useGraphStore((state) => state.setAnswerHighlight);
+  const clearLayerFilters = useGraphStore((state) => state.clearLayerFilters);
+  const expandAllFolders = useGraphStore((state) => state.expandAllFolders);
+  const setSearchQuery = useGraphStore((state) => state.setSearchQuery);
   const navigateToTarget = useGraphStore((state) => state.navigateToTarget);
   const setActiveRightTab = useWorkspaceStore(
     (state) => state.setActiveRightTab,
@@ -70,25 +78,67 @@ export function TracePanel(): React.JSX.Element {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isStreaming, streamQuery, abortQuery } = useAiQueryStream();
 
-  // Load thread from sessionStorage bound to repository (AC-1)
+  // Load thread from sessionStorage bound to repository (AC-1, AC-12)
   const repoKey = repository?.fullName ?? "default";
   const storageKey = `cv:thread:${repoKey}`;
 
+  const prevRepoKeyRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
+    abortQuery();
     if (typeof window === "undefined") return;
+
+    if (
+      prevRepoKeyRef.current !== undefined &&
+      prevRepoKeyRef.current !== repoKey
+    ) {
+      setMessages((prev) => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg && lastMsg.status === "streaming") {
+          const finalized =
+            lastMsg.content && lastMsg.content.trim().length > 0
+              ? { ...lastMsg, status: "complete" as const }
+              : null;
+          const updated = finalized
+            ? [...prev.slice(0, -1), finalized]
+            : prev.slice(0, -1);
+          try {
+            sessionStorage.setItem(
+              `cv:thread:${prevRepoKeyRef.current}`,
+              JSON.stringify(updated),
+            );
+          } catch {
+            // ignore
+          }
+        }
+        return prev;
+      });
+    }
+    prevRepoKeyRef.current = repoKey;
+
     try {
       const saved = sessionStorage.getItem(storageKey);
       if (saved) {
-        const parsed = JSON.parse(saved) as AiQueryMessage[];
-        setMessages(parsed);
+        setMessages(JSON.parse(saved));
       } else {
         setMessages([]);
       }
     } catch {
       setMessages([]);
     }
-  }, [storageKey]);
+  }, [storageKey, repoKey, abortQuery]);
 
+  const visibleSet = useMemo(() => new Set(visibleFileIds), [visibleFileIds]);
+  const hiddenCount = useMemo(() => {
+    if (highlightSource !== "answer") return 0;
+    return highlightedNodeIds.filter((id) => !visibleSet.has(id)).length;
+  }, [highlightSource, highlightedNodeIds, visibleSet]);
+
+  const handleShowAll = useCallback(() => {
+    clearLayerFilters();
+    expandAllFolders();
+    setSearchQuery("");
+  }, [clearLayerFilters, expandAllFolders, setSearchQuery]);
   // Persist messages to sessionStorage when updated (AC-1)
   const saveMessages = (msgs: AiQueryMessage[]) => {
     setMessages(msgs);
@@ -176,12 +226,14 @@ export function TracePanel(): React.JSX.Element {
     textToSend: string,
     targetAssistantMsgId?: string,
     demoOverride?: boolean,
+    demoIntent?: DemoIntent,
   ) => {
     if (!textToSend || !graph || !repository) {
       return;
     }
 
     abortQuery();
+    clearTrace();
     setWarningMessage(null);
 
     const activeDemo = demoOverride ?? isDemoMode;
@@ -210,6 +262,7 @@ export function TracePanel(): React.JSX.Element {
         status: "streaming",
         citations: Object.freeze([]),
         isPathVerified: true,
+        provenance: activeDemo ? "heuristic" : "model",
         createdAt: new Date().toISOString(),
       };
 
@@ -227,6 +280,7 @@ export function TracePanel(): React.JSX.Element {
               fallbackNotice: null,
               pathTrace: null,
               citations: Object.freeze([]),
+              provenance: activeDemo ? "heuristic" : "model",
             }
           : m,
       );
@@ -238,6 +292,21 @@ export function TracePanel(): React.JSX.Element {
     });
 
     let currentText = "";
+    let pendingText = "";
+    let rafId: number | null = null;
+
+    const flushText = () => {
+      if (pendingText !== currentText) {
+        currentText = pendingText;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMsgId ? { ...m, content: currentText } : m,
+          ),
+        );
+      }
+      rafId = null;
+    };
+
     let receivedTrace: PathTrace | null = null;
     let receivedCitations: readonly CitationRef[] = [];
     let receivedWarning: string | null = null;
@@ -262,13 +331,12 @@ export function TracePanel(): React.JSX.Element {
       messages: messagesToSend,
       isDemo: activeDemo,
       provider: selectedProvider,
+      demoIntent: activeDemo ? demoIntent : undefined,
       onTextChunk: (chunk) => {
-        currentText += chunk;
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId ? { ...m, content: currentText } : m,
-          ),
-        );
+        pendingText += chunk;
+        if (rafId === null && typeof window !== "undefined") {
+          rafId = requestAnimationFrame(flushText);
+        }
       },
       onTrace: (trace) => {
         receivedTrace = trace;
@@ -289,6 +357,11 @@ export function TracePanel(): React.JSX.Element {
           ),
         );
       },
+      onHighlight: (nodeIds) => {
+        if (activeDemo) {
+          setAnswerHighlight(nodeIds);
+        }
+      },
       onWarning: (warning) => {
         receivedWarning = warning;
         setWarningMessage(warning);
@@ -301,6 +374,11 @@ export function TracePanel(): React.JSX.Element {
         );
       },
       onError: (error) => {
+        if (rafId !== null && typeof window !== "undefined") {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        flushText();
         receivedError = error;
         setMessages((prev) =>
           prev.map((m) =>
@@ -311,6 +389,11 @@ export function TracePanel(): React.JSX.Element {
         );
       },
       onErrorNotice: (notice) => {
+        if (rafId !== null && typeof window !== "undefined") {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        flushText();
         receivedNotice = notice;
         receivedError = notice.message;
         setMessages((prev) =>
@@ -327,6 +410,11 @@ export function TracePanel(): React.JSX.Element {
         );
       },
       onComplete: () => {
+        if (rafId !== null && typeof window !== "undefined") {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        flushText();
         setMessages((prev) => {
           const finalMessages = prev.map((m) =>
             m.id === assistantMsgId
@@ -335,12 +423,15 @@ export function TracePanel(): React.JSX.Element {
                   status: (receivedError || m.status === "error"
                     ? "error"
                     : "complete") as "error" | "complete",
-                  content: currentText,
+                  content: currentText || pendingText,
                   errorMessage: receivedError ?? m.errorMessage,
                   fallbackNotice: receivedNotice ?? m.fallbackNotice,
                   pathTrace: receivedTrace,
                   citations: receivedCitations,
                   isPathVerified: !receivedWarning,
+                  provenance: activeDemo
+                    ? ("heuristic" as const)
+                    : ("model" as const),
                 }
               : m,
           );
@@ -357,12 +448,21 @@ export function TracePanel(): React.JSX.Element {
     });
   };
 
-  const handleSend = async (queryText?: string) => {
+  const handleSend = async (queryText?: string, intentHint?: DemoIntent) => {
     const textToSend = (queryText || prompt).trim();
     if (!textToSend || isStreaming || !graph || !repository) {
       return;
     }
-    await executeAssistantQuery(textToSend);
+    await executeAssistantQuery(textToSend, undefined, undefined, intentHint);
+  };
+
+  const handleSelectChip = (chip: DemoPromptChip) => {
+    if (!graph || !repository) return;
+    if (isDemoMode) {
+      void handleSend(chip.promptText, chip.intent);
+    } else {
+      void handleSend(chip.promptText);
+    }
   };
 
   const handleSwitchToDemoAndRetry = (assistantMsgId: string) => {
@@ -385,8 +485,9 @@ export function TracePanel(): React.JSX.Element {
   };
 
   const handleClearChat = () => {
-    saveMessages([]);
+    abortQuery();
     clearTrace();
+    saveMessages([]);
     setWarningMessage(null);
   };
 
@@ -403,19 +504,24 @@ export function TracePanel(): React.JSX.Element {
           <Badge
             variant={isDemoMode ? "default" : "accent"}
             className="text-[10px] h-4.5 px-1.5"
+            title={
+              isDemoMode
+                ? "Answers are computed from the loaded dependency graph in your browser. No AI model is involved."
+                : undefined
+            }
           >
             {isDemoMode ? "Demo Mode" : selectedProvider.toUpperCase()}
           </Badge>
         </div>
 
         <div className="flex items-center gap-1">
-          {activeTrace && (
+          {(Boolean(activeTrace) || highlightSource === "answer") && (
             <Button
               variant="ghost"
               size="sm"
               onClick={clearTrace}
               className="h-6 px-1.5 text-[10px] text-zinc-400 hover:text-zinc-200"
-              title="Clear active trace glow on canvas"
+              title="Clear active trace or highlight glow on canvas"
             >
               Clear Glow
             </Button>
@@ -483,39 +589,16 @@ export function TracePanel(): React.JSX.Element {
               </p>
             </div>
 
-            {/* Suggested prompt pills (AC-2) */}
-            <div className="pt-2 space-y-1.5 max-w-xs mx-auto text-left">
-              <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-                Suggested Prompts
-              </div>
-              <div className="flex flex-col gap-1">
-                {SUGGESTED_PROMPTS.map((promptText, i) => (
-                  <button
-                    type="button"
-                    key={i}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleSend(promptText);
-                    }}
-                    disabled={!graph}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs text-zinc-400 transition-colors cursor-pointer border border-transparent ${
-                      !graph
-                        ? "opacity-50 cursor-not-allowed"
-                        : "hover:text-zinc-200 hover:bg-zinc-800/50 hover:border-zinc-800/50"
-                    }`}
-                    title={
-                      !graph ? "Load a repository to ask questions" : undefined
-                    }
-                  >
-                    {promptText}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Suggested prompt chips (AC-1, AC-11) */}
+            <PromptChips
+              chips={DEMO_PROMPT_CHIPS}
+              variant="empty"
+              disabled={!graph}
+              onSelect={handleSelectChip}
+            />
           </div>
         ) : (
-          messages.map((msg) => (
+          messages.map((msg, msgIdx) => (
             <div
               key={msg.id}
               className={`flex flex-col space-y-2 ${
@@ -688,12 +771,37 @@ export function TracePanel(): React.JSX.Element {
                     </div>
                   </div>
                 )}
+
+                {/* Heuristic demo footer (AC-7, AC-8) */}
+                {msg.role === "assistant" && msg.provenance === "heuristic" && (
+                  <DemoAnswerFooter
+                    hiddenCount={hiddenCount}
+                    isMostRecentAnswer={
+                      msgIdx === messages.length - 1 ||
+                      (msgIdx === messages.length - 2 &&
+                        messages[messages.length - 1].role === "user")
+                    }
+                    isCalculatingLayout={isCalculatingLayout}
+                    onShowAll={handleShowAll}
+                    onAddKey={() => setIsKeyDialogOpen(true)}
+                  />
+                )}
               </div>
             </div>
           ))
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Compact prompt chips when thread has messages (AC-11) */}
+      {messages.length > 0 && (
+        <PromptChips
+          chips={DEMO_PROMPT_CHIPS}
+          variant="compact"
+          disabled={!graph || isStreaming}
+          onSelect={handleSelectChip}
+        />
+      )}
 
       {/* Query input footer */}
       <div className="p-3 border-t border-zinc-800/60 bg-[#121417]">

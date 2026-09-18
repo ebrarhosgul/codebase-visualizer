@@ -1,4 +1,5 @@
 import type { Repository, CodebaseGraph, PathTrace } from "@/entities";
+import type { DemoIntent } from "./demo/intents";
 
 export type AiProviderId = "gemini" | "openai" | "claude";
 
@@ -50,6 +51,7 @@ export interface AiQueryMessage {
   readonly pathTrace?: PathTrace | null;
   readonly citations: readonly CitationRef[];
   readonly isPathVerified: boolean;
+  readonly provenance?: "heuristic" | "model";
   readonly createdAt: string;
 }
 
@@ -66,6 +68,7 @@ export type AIStreamEvent =
   | { readonly type: "text"; readonly text: string }
   | { readonly type: "trace"; readonly trace: PathTrace }
   | { readonly type: "citations"; readonly citations: readonly CitationRef[] }
+  | { readonly type: "highlight"; readonly nodeIds: readonly string[] }
   | { readonly type: "warning"; readonly message: string }
   | {
       readonly type: "error";
@@ -94,5 +97,6 @@ export interface AIProvider {
     context: AIRequestContext,
     apiKey?: string,
     signal?: AbortSignal,
+    hints?: { readonly intent?: DemoIntent },
   ): AsyncGenerator<AIStreamEvent, void, unknown>;
 }

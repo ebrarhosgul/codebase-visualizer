@@ -196,12 +196,12 @@ Let a visitor or reviewer explore the AI query panel with no API key: answers co
 **Done when:** with no key set, clicking a chip such as "Architecture & layer breakdown", "Core bottleneck / central files", or "State management flow" streams a repository specific answer derived from the loaded graph, highlights the cited nodes on the canvas, keeps the canvas at 60 FPS while streaming, costs nothing server side, and the panel states plainly that the answer is a local heuristic with a one click path to BYOK.
 spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/ai/demo/`, `src/graph/heuristic-index.ts`, `src/hooks/use-ai-query-stream.ts`, `src/components/trace/`, `src/stores/graph-store.ts`
 - [x] Design it (spec): `/architect zero friction demo mode with graph heuristics`
-- [ ] Build it: `/develop zero friction demo mode with graph heuristics`
-  - [ ] Thin thread: one chip end to end through every layer, memoized heuristic index, streaming cadence and render cost (AC-1, AC-3, AC-5, AC-6, AC-8, AC-13)
-  - [ ] Thicken the answers: layer breakdown, state flow, overview, and the intent router (AC-2, AC-4, AC-9, AC-10)
-  - [ ] Chip surface: catalog, empty and compact variants, BYOK behavior, badge tooltip (AC-1, AC-8, AC-10, AC-11)
-  - [ ] Hidden node awareness: visible file tracking and the "Show all" footer action (AC-7)
-  - [ ] Lifecycle, interrupts, and verification: clear controls, repository change abort, headed frame trace (AC-12, locks AC-5 and AC-13)
+- [x] Build it: `/develop zero friction demo mode with graph heuristics`
+  - [x] Thin thread: one chip end to end through every layer, memoized heuristic index, streaming cadence and render cost (AC-1, AC-3, AC-5, AC-6, AC-8, AC-13)
+  - [x] Thicken the answers: layer breakdown, state flow, overview, and the intent router (AC-2, AC-4, AC-9, AC-10)
+  - [x] Chip surface: catalog, empty and compact variants, BYOK behavior, badge tooltip (AC-1, AC-8, AC-10, AC-11)
+  - [x] Hidden node awareness: visible file tracking and the "Show all" footer action (AC-7)
+  - [x] Lifecycle, interrupts, and verification: clear controls, repository change abort, headed frame trace (AC-12, locks AC-5 and AC-13)
 - [ ] Verify it: `/check verify zero friction demo mode with graph heuristics`
 - [ ] Test it: `/test zero friction demo mode with graph heuristics`
 

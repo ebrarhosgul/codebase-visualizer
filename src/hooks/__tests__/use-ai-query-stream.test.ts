@@ -70,7 +70,6 @@ describe("useAiQueryStream", () => {
         graph: mockGraph,
         contextSummary: "Summary",
         messages: [{ role: "user", content: "Explain system" }],
-        isDemo: true,
         onTextChunk,
         onComplete,
         onError,

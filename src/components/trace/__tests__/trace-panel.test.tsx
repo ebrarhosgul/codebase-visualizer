@@ -79,48 +79,34 @@ describe("TracePanel", () => {
     expect(screen.getByText("Demo Mode")).toBeInTheDocument();
     expect(screen.getByText("Suggested Prompts")).toBeInTheDocument();
     expect(
-      screen.getByText("How do stores connect to canvas?"),
+      screen.getByText("Architecture & layer breakdown"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Core bottleneck / central files"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("State management flow")).toBeInTheDocument();
   });
 
   it("submits a query when a suggested prompt pill is clicked", async () => {
-    // Mock global fetch for /api/ai/query
-    const sseChunks = [
-      'data: {"type":"text","text":"Analysis of stores and canvas..."}\n\n',
-      'data: {"type":"trace","trace":{"id":"trace:file:src/index.ts->file:src/api.ts","sourceNodeId":"file:src/index.ts","targetNodeId":"file:src/api.ts","stepNodeIds":["file:src/index.ts","file:src/api.ts"],"stepEdgeIds":["edge:index->api"],"hopCount":1,"rationale":"Import","createdAt":"2026-01-01T00:00:00.000Z"}}\n\n',
-      'data: {"type":"citations","citations":[{"id":"cite:file:src/index.ts_1","fileId":"file:src/index.ts","line":1,"label":"index.ts"}]}\n\n',
-      'data: {"type":"done"}\n\n',
-    ];
-
-    const stream = new ReadableStream({
-      start(controller) {
-        for (const chunk of sseChunks) {
-          controller.enqueue(new TextEncoder().encode(chunk));
-        }
-        controller.close();
-      },
-    });
-
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      body: stream,
-    } as unknown as Response);
-
     render(<TracePanel />);
 
-    const pill = screen.getByText("How do stores connect to canvas?");
+    const pill = screen
+      .getByText("Core bottleneck / central files")
+      .closest("button")!;
     fireEvent.click(pill);
 
-    await waitFor(() => {
-      expect(
-        screen.getByText("Analysis of stores and canvas..."),
-      ).toBeInTheDocument();
-    });
-
-    // Check that path trace card and citation chip rendered
-    expect(screen.getByTestId("path-trace-card")).toBeInTheDocument();
-    expect(screen.getByText("index.ts:1")).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getByText(/Core Central Files/i)).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            "Which files are the core bottlenecks or most central modules?",
+          ),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/src\/api\.ts/i)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
   });
 
   it("executes dual action navigation and focuses code tab when citation chip is clicked", async () => {
@@ -348,7 +334,9 @@ describe("TracePanel", () => {
 
     render(<TracePanel />);
 
-    const promptButton = screen.getByText("How do stores connect to canvas?");
+    const promptButton = screen
+      .getByText("Architecture & layer breakdown")
+      .closest("button");
     expect(promptButton).toBeDisabled();
     expect(promptButton).toHaveAttribute(
       "title",
@@ -362,32 +350,22 @@ describe("TracePanel", () => {
   });
 
   it("switches to demo mode and retries query when Switch to Demo Mode is clicked on fallback notice card (covers: AC-3, AC-5)", async () => {
-    const sseChunks = [
-      'data: {"type":"text","text":"Demo fallback answer resolved successfully"}\n\n',
-      'data: {"type":"done"}\n\n',
-    ];
-
-    const stream = new ReadableStream({
-      start(controller) {
-        for (const chunk of sseChunks) {
-          controller.enqueue(new TextEncoder().encode(chunk));
-        }
-        controller.close();
-      },
-    });
-
     global.fetch = vi.fn().mockImplementation((url: string) => {
       if (url === "/api/ai/keys") {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: async () => ({ hasKey: false }),
+          json: async () => ({ hasKey: true, provider: "gemini" }),
         } as unknown as Response);
       }
       return Promise.resolve({
         ok: true,
         status: 200,
-        body: stream,
+        body: new ReadableStream({
+          start(c) {
+            c.close();
+          },
+        }),
       } as unknown as Response);
     });
 
@@ -429,45 +407,52 @@ describe("TracePanel", () => {
 
     render(<TracePanel />);
 
+    await waitFor(() => {
+      expect(screen.getByText("GEMINI")).toBeInTheDocument();
+    });
+
     const switchBtn = screen.getByRole("button", {
       name: /switch to demo mode/i,
     });
     fireEvent.click(switchBtn);
 
-    await waitFor(() => {
-      expect(
-        screen.getByText("Demo fallback answer resolved successfully"),
-      ).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText(/Architecture & Layer Breakdown/i),
+        ).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
+    expect(screen.getByText("Demo Mode")).toBeInTheDocument();
   });
 
   it("retries assistant query when retry button is clicked on fallback notice card (covers: AC-3)", async () => {
-    const sseChunks = [
-      'data: {"type":"text","text":"Retried response completed"}\n\n',
-      'data: {"type":"done"}\n\n',
-    ];
-
-    const stream = new ReadableStream({
-      start(controller) {
-        for (const chunk of sseChunks) {
-          controller.enqueue(new TextEncoder().encode(chunk));
-        }
-        controller.close();
-      },
-    });
+    const createStream = () =>
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(
+            new TextEncoder().encode(
+              'data: {"type":"text","text":"Retried response completed"}\n\n' +
+                'data: {"type":"done"}\n\n',
+            ),
+          );
+          controller.close();
+        },
+      });
 
     global.fetch = vi.fn().mockImplementation((url: string) => {
       if (url === "/api/ai/keys") {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: async () => ({ hasKey: false }),
+          json: async () => ({ hasKey: true, provider: "gemini" }),
         } as unknown as Response);
       }
       return Promise.resolve({
         ok: true,
         status: 200,
-        body: stream,
+        body: createStream(),
       } as unknown as Response);
     });
 
@@ -507,6 +492,10 @@ describe("TracePanel", () => {
     );
 
     render(<TracePanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText("GEMINI")).toBeInTheDocument();
+    });
 
     const retryBtn = screen.getByRole("button", { name: /retry now/i });
     fireEvent.click(retryBtn);
