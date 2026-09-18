@@ -62,11 +62,11 @@ export function executeLayoutComputation(
     style: {
       stroke: "#475569",
       strokeWidth: 1.5,
-      opacity: 0.6,
+      strokeOpacity: 0.6,
     },
     markerEnd: {
       type: "arrowclosed",
-      color: "#64748b",
+      color: "rgba(100, 116, 139, 0.6)",
       width: 12,
       height: 12,
     },

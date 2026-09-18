@@ -97,9 +97,11 @@ describe("executeLayoutComputation", () => {
     expect(firstEdge?.type).toBe("smoothstep");
     expect(firstEdge?.style?.stroke).toBe("#475569");
     expect(firstEdge?.style?.strokeWidth).toBe(1.5);
+    expect(firstEdge?.style?.strokeOpacity).toBe(0.6);
+    expect(firstEdge?.style?.opacity).toBeUndefined();
     expect(firstEdge?.markerEnd).toEqual({
       type: "arrowclosed",
-      color: "#64748b",
+      color: "rgba(100, 116, 139, 0.6)",
       width: 12,
       height: 12,
     });
