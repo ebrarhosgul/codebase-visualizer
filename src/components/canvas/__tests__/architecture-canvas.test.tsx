@@ -1,9 +1,15 @@
 import { render, screen, act } from "@testing-library/react";
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ArchitectureCanvas } from "../architecture-canvas";
 import { useGraphStore } from "@/stores/graph-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import type { CodebaseGraph } from "@/entities";
+import { layoutWorkerClient } from "@/graph/layout/layout-worker-client";
+import {
+  createWorkerErrorResponse,
+  type LayoutWorkerRequest,
+  type LayoutWorkerResponse,
+} from "@/lib/workers/worker-types";
 
 import type { ReactFlowProps, Edge } from "@xyflow/react";
 
@@ -42,7 +48,10 @@ vi.mock("@xyflow/react", async (importOriginal) => {
 });
 
 describe("ArchitectureCanvas", () => {
+  const originalWorker = globalThis.Worker;
+
   beforeEach(() => {
+    layoutWorkerClient.terminate();
     useGraphStore.getState().reset();
     useWorkspaceStore.getState().resetLayout();
     capturedReactFlowProps = null;
@@ -51,6 +60,15 @@ describe("ArchitectureCanvas", () => {
     mockFitView.mockClear();
     mockZoomIn.mockClear();
     mockZoomOut.mockClear();
+  });
+
+  afterEach(() => {
+    layoutWorkerClient.terminate();
+    if (originalWorker) {
+      globalThis.Worker = originalWorker;
+    } else {
+      delete (globalThis as Record<string, unknown>).Worker;
+    }
   });
 
   it("renders empty canvas welcome state when no graph is loaded", () => {
@@ -1858,5 +1876,162 @@ describe("ArchitectureCanvas", () => {
       });
     });
     expect(mockSetCenter).toHaveBeenCalledTimes(2);
+  });
+
+  it("renders layout calculating indicator in toolbar during background calculation (AC-4)", () => {
+    class MockWorker {
+      public onmessage:
+        ((event: MessageEvent<LayoutWorkerResponse>) => void) | null = null;
+      public postMessage(): void {}
+      public terminate(): void {}
+    }
+
+    (globalThis as unknown as Record<string, unknown>).Worker = MockWorker;
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/main.ts": {
+          id: "file:src/main.ts",
+          path: "src/main.ts",
+          name: "main.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    // In worker supported environments, layout calculation starts on mount and indicator appears
+    expect(
+      screen.getByTestId("layout-calculating-indicator"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders layout error alert banner while retaining visible canvas elements on failure (AC-4, AC-6)", async () => {
+    vi.useFakeTimers();
+
+    let postedMessage: LayoutWorkerRequest | null = null;
+    let workerOnMessage:
+      ((event: MessageEvent<LayoutWorkerResponse>) => void) | null = null;
+
+    class MockWorker {
+      public set onmessage(
+        fn: (event: MessageEvent<LayoutWorkerResponse>) => void,
+      ) {
+        workerOnMessage = fn;
+      }
+      public postMessage(msg: LayoutWorkerRequest): void {
+        postedMessage = msg;
+      }
+      public terminate(): void {}
+    }
+
+    (globalThis as unknown as Record<string, unknown>).Worker = MockWorker;
+
+    const mockGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 1,
+        totalSymbols: 0,
+        languages: { typescript: 1 },
+        schemaVersion: 1,
+      },
+      directories: {},
+      files: {
+        "file:src/main.ts": {
+          id: "file:src/main.ts",
+          path: "src/main.ts",
+          name: "main.ts",
+          extension: ".ts",
+          language: "typescript",
+          sizeBytes: 200,
+          lineCount: 15,
+          directoryId: "dir:src",
+          symbolIds: [],
+          importIds: [],
+          exportIds: [],
+        },
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    useGraphStore.getState().setGraph(mockGraph);
+    render(<ArchitectureCanvas />);
+
+    expect(screen.getByTestId("architecture-canvas")).toBeInTheDocument();
+    expect(screen.queryByTestId("canvas-layout-error")).not.toBeInTheDocument();
+
+    // Trigger filter update
+    act(() => {
+      useGraphStore.getState().setSearchQuery("trigger-worker");
+    });
+
+    // Advance through debounce window
+    await act(async () => {
+      vi.advanceTimersByTime(60);
+    });
+
+    expect(postedMessage).not.toBeNull();
+    const requestId = (postedMessage as unknown as LayoutWorkerRequest).id;
+
+    // Simulate worker returning layout error response
+    await act(async () => {
+      workerOnMessage?.({
+        data: createWorkerErrorResponse(
+          requestId,
+          "TIMEOUT",
+          "Layout calculation timed out after 5000ms",
+        ),
+      } as unknown as MessageEvent<LayoutWorkerResponse>);
+    });
+
+    // Error banner is rendered with accessible role and message
+    const errorBanner = screen.getByTestId("canvas-layout-error");
+    expect(errorBanner).toBeInTheDocument();
+    expect(errorBanner).toHaveAttribute("role", "alert");
+    expect(errorBanner.textContent).toContain(
+      "Background layout calculation failed",
+    );
+    expect(errorBanner.textContent).toContain("Showing previous layout");
+
+    // Canvas container remains present and interactive
+    expect(screen.getByTestId("architecture-canvas")).toBeInTheDocument();
+
+    vi.useRealTimers();
   });
 });

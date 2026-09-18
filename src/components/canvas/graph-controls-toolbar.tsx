@@ -8,6 +8,7 @@ import {
   Map,
   RotateCcw,
   LocateFixed,
+  Loader2,
 } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ export interface GraphControlsToolbarProps {
   readonly currentZoom?: number;
   readonly isFollowCursorActive?: boolean;
   readonly onToggleFollowCursor?: () => void;
+  readonly isCalculatingLayout?: boolean;
   readonly className?: string;
 }
 
@@ -41,6 +43,7 @@ export function GraphControlsToolbar({
   currentZoom,
   isFollowCursorActive,
   onToggleFollowCursor,
+  isCalculatingLayout,
   className,
 }: GraphControlsToolbarProps): React.JSX.Element {
   const formattedZoom =
@@ -56,6 +59,17 @@ export function GraphControlsToolbar({
         className,
       )}
     >
+      {isCalculatingLayout && (
+        <div
+          data-testid="layout-calculating-indicator"
+          className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded font-mono select-none"
+          title="Calculating graph layout in background worker"
+        >
+          <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+          <span className="sr-only">Calculating layout</span>
+        </div>
+      )}
+
       <IconButton
         icon={ZoomIn}
         label="Zoom in"
