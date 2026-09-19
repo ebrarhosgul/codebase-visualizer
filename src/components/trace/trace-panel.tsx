@@ -88,10 +88,9 @@ export function TracePanel(): React.JSX.Element {
     abortQuery();
     if (typeof window === "undefined") return;
 
-    if (
-      prevRepoKeyRef.current !== undefined &&
-      prevRepoKeyRef.current !== repoKey
-    ) {
+    // Captured now because the updater below runs later, after the ref is reassigned.
+    const prevRepoKey = prevRepoKeyRef.current;
+    if (prevRepoKey !== undefined && prevRepoKey !== repoKey) {
       setMessages((prev) => {
         const lastMsg = prev[prev.length - 1];
         if (lastMsg && lastMsg.status === "streaming") {
@@ -104,7 +103,7 @@ export function TracePanel(): React.JSX.Element {
             : prev.slice(0, -1);
           try {
             sessionStorage.setItem(
-              `cv:thread:${prevRepoKeyRef.current}`,
+              `cv:thread:${prevRepoKey}`,
               JSON.stringify(updated),
             );
           } catch {
@@ -587,6 +586,11 @@ export function TracePanel(): React.JSX.Element {
                 Explore module dependencies and visual call paths in natural
                 language.
               </p>
+              {!graph && (
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  Load a repository to ask questions.
+                </p>
+              )}
             </div>
 
             {/* Suggested prompt chips (AC-1, AC-11) */}
