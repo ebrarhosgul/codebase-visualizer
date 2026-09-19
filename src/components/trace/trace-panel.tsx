@@ -83,35 +83,45 @@ export function TracePanel(): React.JSX.Element {
   const storageKey = `cv:thread:${repoKey}`;
 
   const prevRepoKeyRef = useRef<string | undefined>(undefined);
+  const messagesRef = useRef<AiQueryMessage[]>(messages);
+  messagesRef.current = messages;
+
+  const activeAssistantIdRef = useRef<string | null>(null);
+  const pendingTextRef = useRef<string>("");
+  const currentTextRef = useRef<string>("");
+  const rafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     abortQuery();
     if (typeof window === "undefined") return;
 
-    // Captured now because the updater below runs later, after the ref is reassigned.
     const prevRepoKey = prevRepoKeyRef.current;
     if (prevRepoKey !== undefined && prevRepoKey !== repoKey) {
-      setMessages((prev) => {
-        const lastMsg = prev[prev.length - 1];
-        if (lastMsg && lastMsg.status === "streaming") {
-          const finalized =
-            lastMsg.content && lastMsg.content.trim().length > 0
-              ? { ...lastMsg, status: "complete" as const }
-              : null;
-          const updated = finalized
-            ? [...prev.slice(0, -1), finalized]
-            : prev.slice(0, -1);
-          try {
-            sessionStorage.setItem(
-              `cv:thread:${prevRepoKey}`,
-              JSON.stringify(updated),
-            );
-          } catch {
-            // ignore
-          }
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      const prevMsgs = messagesRef.current;
+      const lastMsg = prevMsgs[prevMsgs.length - 1];
+      if (lastMsg && lastMsg.status === "streaming") {
+        const finalContent = pendingTextRef.current || lastMsg.content;
+        const finalized =
+          finalContent && finalContent.trim().length > 0
+            ? { ...lastMsg, content: finalContent, status: "complete" as const }
+            : null;
+        const updated = finalized
+          ? [...prevMsgs.slice(0, -1), finalized]
+          : prevMsgs.slice(0, -1);
+        try {
+          sessionStorage.setItem(
+            `cv:thread:${prevRepoKey}`,
+            JSON.stringify(updated),
+          );
+        } catch {
+          // ignore
         }
-        return prev;
-      });
+      }
+      activeAssistantIdRef.current = null;
     }
     prevRepoKeyRef.current = repoKey;
 
@@ -126,6 +136,16 @@ export function TracePanel(): React.JSX.Element {
       setMessages([]);
     }
   }, [storageKey, repoKey, abortQuery]);
+
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null && typeof window !== "undefined") {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      abortQuery();
+    };
+  }, [abortQuery]);
 
   const visibleSet = useMemo(() => new Set(visibleFileIds), [visibleFileIds]);
   const hiddenCount = useMemo(() => {
@@ -290,20 +310,25 @@ export function TracePanel(): React.JSX.Element {
       tokenBudget: activeDemo ? 10000 : 20000,
     });
 
-    let currentText = "";
-    let pendingText = "";
-    let rafId: number | null = null;
+    activeAssistantIdRef.current = assistantMsgId;
+    pendingTextRef.current = "";
+    currentTextRef.current = "";
+    if (rafIdRef.current !== null && typeof window !== "undefined") {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
 
     const flushText = () => {
-      if (pendingText !== currentText) {
-        currentText = pendingText;
+      if (pendingTextRef.current !== currentTextRef.current) {
+        currentTextRef.current = pendingTextRef.current;
+        const text = currentTextRef.current;
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMsgId ? { ...m, content: currentText } : m,
+            m.id === assistantMsgId ? { ...m, content: text } : m,
           ),
         );
       }
-      rafId = null;
+      rafIdRef.current = null;
     };
 
     let receivedTrace: PathTrace | null = null;
@@ -332,9 +357,9 @@ export function TracePanel(): React.JSX.Element {
       provider: selectedProvider,
       demoIntent: activeDemo ? demoIntent : undefined,
       onTextChunk: (chunk) => {
-        pendingText += chunk;
-        if (rafId === null && typeof window !== "undefined") {
-          rafId = requestAnimationFrame(flushText);
+        pendingTextRef.current += chunk;
+        if (rafIdRef.current === null && typeof window !== "undefined") {
+          rafIdRef.current = requestAnimationFrame(flushText);
         }
       },
       onTrace: (trace) => {
@@ -373,11 +398,12 @@ export function TracePanel(): React.JSX.Element {
         );
       },
       onError: (error) => {
-        if (rafId !== null && typeof window !== "undefined") {
-          cancelAnimationFrame(rafId);
-          rafId = null;
+        if (rafIdRef.current !== null && typeof window !== "undefined") {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
         }
         flushText();
+        activeAssistantIdRef.current = null;
         receivedError = error;
         setMessages((prev) =>
           prev.map((m) =>
@@ -388,11 +414,12 @@ export function TracePanel(): React.JSX.Element {
         );
       },
       onErrorNotice: (notice) => {
-        if (rafId !== null && typeof window !== "undefined") {
-          cancelAnimationFrame(rafId);
-          rafId = null;
+        if (rafIdRef.current !== null && typeof window !== "undefined") {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
         }
         flushText();
+        activeAssistantIdRef.current = null;
         receivedNotice = notice;
         receivedError = notice.message;
         setMessages((prev) =>
@@ -409,11 +436,12 @@ export function TracePanel(): React.JSX.Element {
         );
       },
       onComplete: () => {
-        if (rafId !== null && typeof window !== "undefined") {
-          cancelAnimationFrame(rafId);
-          rafId = null;
+        if (rafIdRef.current !== null && typeof window !== "undefined") {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
         }
         flushText();
+        activeAssistantIdRef.current = null;
         setMessages((prev) => {
           const finalMessages = prev.map((m) =>
             m.id === assistantMsgId
@@ -422,7 +450,7 @@ export function TracePanel(): React.JSX.Element {
                   status: (receivedError || m.status === "error"
                     ? "error"
                     : "complete") as "error" | "complete",
-                  content: currentText || pendingText,
+                  content: currentTextRef.current || pendingTextRef.current,
                   errorMessage: receivedError ?? m.errorMessage,
                   fallbackNotice: receivedNotice ?? m.fallbackNotice,
                   pathTrace: receivedTrace,
@@ -483,7 +511,43 @@ export function TracePanel(): React.JSX.Element {
     void executeAssistantQuery(userText, assistantMsgId);
   };
 
+  const handleStopQuery = useCallback(() => {
+    if (rafIdRef.current !== null && typeof window !== "undefined") {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    const assistantId = activeAssistantIdRef.current;
+    const finalContent = pendingTextRef.current || currentTextRef.current;
+    if (assistantId) {
+      setMessages((prev) => {
+        const updated = prev.map((m) => {
+          if (m.id !== assistantId) return m;
+          return {
+            ...m,
+            content: finalContent || m.content,
+            status: "complete" as const,
+          };
+        });
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem(storageKey, JSON.stringify(updated));
+          } catch {
+            // ignore
+          }
+        }
+        return updated;
+      });
+    }
+    activeAssistantIdRef.current = null;
+    abortQuery();
+  }, [abortQuery, storageKey]);
+
   const handleClearChat = () => {
+    if (rafIdRef.current !== null && typeof window !== "undefined") {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    activeAssistantIdRef.current = null;
     abortQuery();
     clearTrace();
     saveMessages([]);
@@ -840,7 +904,7 @@ export function TracePanel(): React.JSX.Element {
               type="button"
               variant="danger"
               size="sm"
-              onClick={abortQuery}
+              onClick={handleStopQuery}
               className="h-14 px-3 shrink-0 gap-1"
               title="Stop response"
             >

@@ -1262,6 +1262,34 @@ export function useTelemetry() { return {}; }
       expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
     });
 
+    it("finalizes an in flight assistant message and persists it when Stop response is clicked", async () => {
+      mockNoKeyFetch();
+      render(<TracePanel />);
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /Core bottleneck \/ central files/,
+        }),
+      );
+      await screen.findByText(/Core Central Files/, {}, { timeout: 5000 });
+      const stopButton = screen.getByTitle("Stop response");
+      expect(stopButton).toBeInTheDocument();
+
+      fireEvent.click(stopButton);
+
+      await waitFor(() => {
+        expect(screen.queryByTitle("Stop response")).not.toBeInTheDocument();
+      });
+
+      const saved = JSON.parse(
+        sessionStorage.getItem("cv:thread:test/app") ?? "[]",
+      ) as { role: string; status: string; content: string }[];
+      const assistant = saved.filter((m) => m.role === "assistant");
+      expect(assistant).toHaveLength(1);
+      expect(assistant[0].status).toBe("complete");
+      expect(assistant[0].content).toContain("Core Central Files");
+      expect(saved.some((m) => m.status === "streaming")).toBe(false);
+    });
+
     it("does not write the old repository's mid stream thread into the new repository's storage (covers: AC-12)", async () => {
       mockNoKeyFetch();
 

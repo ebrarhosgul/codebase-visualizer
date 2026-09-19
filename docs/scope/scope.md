@@ -204,6 +204,7 @@ spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/
   - [x] Lifecycle, interrupts, and verification: clear controls, repository change abort, headed frame trace (AC-12, locks AC-5 and AC-13)
 - [x] Verify it: `/check verify zero friction demo mode with graph heuristics`
 - [x] Test it: `/test zero friction demo mode with graph heuristics`
+- [x] Review it: `/check review zero friction demo mode with graph heuristics`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
