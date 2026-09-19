@@ -23,7 +23,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 10 | AI service stabilization and fallback notices | Slice 6 | in-progress |
 | 11 | Canvas performance optimization | Slice 7 | done |
 | 12 | Web Worker isolation for layout and parsing computations | Slice 8 | done |
-| 13 | Zero friction demo mode with graph heuristics | Slice 9 | in-progress |
+| 13 | Zero friction demo mode with graph heuristics | Slice 9 | done |
 
 ## Foundations
 
@@ -191,7 +191,7 @@ spec [0012](../specs/0012-web-worker-isolation/index.md) · code in `src/graph/l
 
 ## Slice 9: Zero friction demo mode with graph heuristics
 
-### 13. Zero friction demo mode with graph heuristics
+### 13. Zero friction demo mode with graph heuristics · done
 Let a visitor or reviewer explore the AI query panel with no API key: answers come from the client side AST and dependency graph already in memory (nodes, edges, layers, in and out degree) instead of canned text, stream token by token without dropping canvas frames, and start from clickable prompt chips that also highlight the relevant nodes on the canvas. A clear notice says the demo runs on local graph heuristics and invites power users to add their own key for full semantic reasoning. Builds on the demo provider from feature 8 and the offline demo runtime from feature 10; BYOK settings and the provider registry keep working unchanged.
 **Done when:** with no key set, clicking a chip such as "Architecture & layer breakdown", "Core bottleneck / central files", or "State management flow" streams a repository specific answer derived from the loaded graph, highlights the cited nodes on the canvas, keeps the canvas at 60 FPS while streaming, costs nothing server side, and the panel states plainly that the answer is a local heuristic with a one click path to BYOK.
 spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/ai/demo/`, `src/graph/heuristic-index.ts`, `src/hooks/use-ai-query-stream.ts`, `src/components/trace/`, `src/stores/graph-store.ts`
@@ -202,8 +202,8 @@ spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/
   - [x] Chip surface: catalog, empty and compact variants, BYOK behavior, badge tooltip (AC-1, AC-8, AC-10, AC-11)
   - [x] Hidden node awareness: visible file tracking and the "Show all" footer action (AC-7)
   - [x] Lifecycle, interrupts, and verification: clear controls, repository change abort, headed frame trace (AC-12, locks AC-5 and AC-13)
-- [ ] Verify it: `/check verify zero friction demo mode with graph heuristics`
-- [ ] Test it: `/test zero friction demo mode with graph heuristics`
+- [x] Verify it: `/check verify zero friction demo mode with graph heuristics`
+- [x] Test it: `/test zero friction demo mode with graph heuristics`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.

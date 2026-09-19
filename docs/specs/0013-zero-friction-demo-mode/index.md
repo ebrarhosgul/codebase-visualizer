@@ -1,7 +1,7 @@
 # 0013. Zero friction demo mode with graph heuristics
 
 **Date**: 2026-09-18
-**Status**: Implemented
+**Status**: Accepted
 **Code area**: `src/lib/ai/demo/`, `src/graph/heuristic-index.ts`, `src/hooks/use-ai-query-stream.ts`, `src/components/trace/`, `src/stores/graph-store.ts`
 
 ## Summary
