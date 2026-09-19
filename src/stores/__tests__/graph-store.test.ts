@@ -1115,6 +1115,210 @@ describe("useGraphStore", () => {
     expect(progress?.detail?.currentItemName).toBe("src/main.ts");
   });
 
+  describe("answer highlight (0013 zero friction demo mode)", () => {
+    const fakeTrace = {
+      sourceNodeId: "file:a",
+      targetNodeId: "file:b",
+      stepNodeIds: ["file:a", "file:b"],
+      stepEdgeIds: ["edge:a->b"],
+      hopCount: 1,
+    } as unknown as import("@/entities").PathTrace;
+
+    it("starts with no highlight, no source, and no visible file ids (covers: AC-6)", () => {
+      const state = useGraphStore.getState();
+
+      expect(state.highlightedNodeIds).toEqual([]);
+      expect(state.highlightSource).toBeNull();
+      expect(state.visibleFileIds).toEqual([]);
+    });
+
+    it("setAnswerHighlight stores the ids and marks the source as answer (covers: AC-6)", () => {
+      useGraphStore.getState().setAnswerHighlight(["file:a", "file:b"]);
+
+      const state = useGraphStore.getState();
+      expect(state.highlightedNodeIds).toEqual(["file:a", "file:b"]);
+      expect(state.highlightSource).toBe("answer");
+    });
+
+    it("setAnswerHighlight leaves edges untouched by emptying highlighted edge ids (covers: AC-6)", () => {
+      useGraphStore.getState().setActiveTrace(fakeTrace);
+      expect(useGraphStore.getState().highlightedEdgeIds).toEqual([
+        "edge:a->b",
+      ]);
+
+      useGraphStore.getState().setAnswerHighlight(["file:c"]);
+
+      expect(useGraphStore.getState().highlightedEdgeIds).toEqual([]);
+    });
+
+    it("setAnswerHighlight clears an active trace so only one highlight shows at a time (covers: AC-6)", () => {
+      useGraphStore.getState().setActiveTrace(fakeTrace);
+
+      useGraphStore.getState().setAnswerHighlight(["file:c"]);
+
+      const state = useGraphStore.getState();
+      expect(state.activeTrace).toBeNull();
+      expect(state.activeStepIndex).toBeNull();
+      expect(state.highlightSource).toBe("answer");
+    });
+
+    it("setActiveTrace replaces an answer highlight and marks the source as trace (covers: AC-6)", () => {
+      useGraphStore.getState().setAnswerHighlight(["file:c"]);
+
+      useGraphStore.getState().setActiveTrace(fakeTrace);
+
+      const state = useGraphStore.getState();
+      expect(state.highlightSource).toBe("trace");
+      expect(state.highlightedNodeIds).toEqual(["file:a", "file:b"]);
+    });
+
+    it("setActiveTrace(null) clears the highlight and its source (covers: AC-6)", () => {
+      useGraphStore.getState().setAnswerHighlight(["file:c"]);
+
+      useGraphStore.getState().setActiveTrace(null);
+
+      const state = useGraphStore.getState();
+      expect(state.highlightedNodeIds).toEqual([]);
+      expect(state.highlightSource).toBeNull();
+    });
+
+    it("clearTrace clears an answer highlight (covers: AC-6, AC-12)", () => {
+      useGraphStore.getState().setAnswerHighlight(["file:a"]);
+
+      useGraphStore.getState().clearTrace();
+
+      const state = useGraphStore.getState();
+      expect(state.highlightedNodeIds).toEqual([]);
+      expect(state.highlightSource).toBeNull();
+    });
+
+    it("selecting a node on the canvas clears an answer highlight (covers: AC-6)", () => {
+      useGraphStore.getState().setAnswerHighlight(["file:a", "file:b"]);
+
+      useGraphStore.getState().selectNode("file:a");
+
+      const state = useGraphStore.getState();
+      expect(state.highlightedNodeIds).toEqual([]);
+      expect(state.highlightSource).toBeNull();
+      expect(state.selectedNodeId).toBe("file:a");
+    });
+
+    it("deselecting with a null node also clears an answer highlight (covers: AC-6)", () => {
+      useGraphStore.getState().setAnswerHighlight(["file:a"]);
+
+      useGraphStore.getState().selectNode(null);
+
+      expect(useGraphStore.getState().highlightSource).toBeNull();
+      expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
+    });
+
+    it("navigateToTarget clears an answer highlight (covers: AC-6)", () => {
+      useGraphStore.getState().setAnswerHighlight(["file:a"]);
+
+      useGraphStore.getState().navigateToTarget({
+        fileId: "file:a",
+        line: 1,
+        source: "canvas",
+        timestamp: Date.now(),
+      });
+
+      const state = useGraphStore.getState();
+      expect(state.highlightedNodeIds).toEqual([]);
+      expect(state.highlightSource).toBeNull();
+    });
+
+    it("selecting a node keeps an active trace highlight untouched (covers: AC-6)", () => {
+      useGraphStore.getState().setActiveTrace(fakeTrace);
+
+      useGraphStore.getState().selectNode("file:a");
+
+      const state = useGraphStore.getState();
+      expect(state.highlightSource).toBe("trace");
+      expect(state.highlightedNodeIds).toEqual(["file:a", "file:b"]);
+    });
+
+    it("setGraph resets an answer highlight and visible file ids so nothing survives a repository change (covers: AC-6, AC-12)", () => {
+      useGraphStore.getState().setAnswerHighlight(["file:a"]);
+      useGraphStore.getState().setVisibleFileIds(["file:a", "file:b"]);
+      const nextGraph = {
+        schemaVersion: 1,
+        repository: {
+          id: "repo:other/repo",
+          owner: "other",
+          name: "repo",
+          fullName: "other/repo",
+          defaultBranch: "main",
+          commitSha: "sha2",
+          analyzedAt: "2026-01-01T00:00:00.000Z",
+          totalFiles: 0,
+          totalSymbols: 0,
+          languages: {},
+          schemaVersion: 1,
+        },
+        directories: {},
+        files: {},
+        symbols: {},
+        externalModules: {},
+        edges: {},
+      } as unknown as CodebaseGraph;
+
+      useGraphStore.getState().setGraph(nextGraph);
+
+      const state = useGraphStore.getState();
+      expect(state.highlightedNodeIds).toEqual([]);
+      expect(state.highlightSource).toBeNull();
+      expect(state.visibleFileIds).toEqual([]);
+    });
+
+    it("stores and replaces visible file ids without touching the highlight (covers: AC-7)", () => {
+      useGraphStore.getState().setAnswerHighlight(["file:a"]);
+
+      useGraphStore.getState().setVisibleFileIds(["file:a", "file:b"]);
+      expect(useGraphStore.getState().visibleFileIds).toEqual([
+        "file:a",
+        "file:b",
+      ]);
+
+      useGraphStore.getState().setVisibleFileIds(["file:b"]);
+      expect(useGraphStore.getState().visibleFileIds).toEqual(["file:b"]);
+      expect(useGraphStore.getState().highlightSource).toBe("answer");
+    });
+
+    it("copies input arrays so later caller mutation cannot change store state (covers: AC-6)", () => {
+      const ids = ["file:a", "file:b"];
+
+      useGraphStore.getState().setAnswerHighlight(ids);
+      ids.push("file:evil");
+
+      expect(useGraphStore.getState().highlightedNodeIds).toEqual([
+        "file:a",
+        "file:b",
+      ]);
+    });
+
+    it("never holds highlighted ids while highlight source is null across the whole lifecycle (covers: AC-6)", () => {
+      const assertInvariant = () => {
+        const state = useGraphStore.getState();
+        if (state.highlightSource === null) {
+          expect(state.highlightedNodeIds).toEqual([]);
+        }
+      };
+
+      assertInvariant();
+      useGraphStore.getState().setAnswerHighlight(["file:a"]);
+      assertInvariant();
+      useGraphStore.getState().setActiveTrace(fakeTrace);
+      assertInvariant();
+      useGraphStore.getState().setAnswerHighlight(["file:b"]);
+      assertInvariant();
+      useGraphStore.getState().selectNode("file:b");
+      assertInvariant();
+      useGraphStore.getState().setActiveTrace(fakeTrace);
+      useGraphStore.getState().clearTrace();
+      assertInvariant();
+    });
+  });
+
   describe("setLayoutCalculationState", () => {
     it("updates layout calculation status and duration metric", () => {
       expect(useGraphStore.getState().isCalculatingLayout).toBe(false);

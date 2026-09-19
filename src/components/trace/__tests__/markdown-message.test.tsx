@@ -290,4 +290,24 @@ describe("MarkdownMessage", () => {
     expect(fullText).toContain("vertical_rate");
     expect(fullText).toContain("flight_plan_id");
   });
+
+  describe("memoization (0013 AC-5)", () => {
+    it("is wrapped in React.memo so an unchanged parent render skips it", () => {
+      expect(
+        (MarkdownMessage as unknown as { $$typeof: symbol }).$$typeof,
+      ).toBe(Symbol.for("react.memo"));
+    });
+
+    it("re-renders the new text when the content grows during streaming", () => {
+      const { rerender } = render(<MarkdownMessage content="Core files" />);
+      expect(screen.getByText("Core files")).toBeInTheDocument();
+
+      rerender(<MarkdownMessage content="Core files ranked by fan in" />);
+
+      expect(
+        screen.getByText("Core files ranked by fan in"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Core files")).not.toBeInTheDocument();
+    });
+  });
 });
