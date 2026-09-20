@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Check, Copy, FileCode, Terminal } from "lucide-react";
 
 /**
@@ -760,14 +760,14 @@ function CodeBlock({
 /**
  * Renders structured markdown content for AI responses with code highlighting and navigation.
  */
-export function MarkdownMessage({
+function MarkdownMessageComponent({
   content,
   isStreaming = false,
   onFileClick,
   knownFilePaths,
   className = "",
 }: MarkdownMessageProps): React.JSX.Element {
-  const blocks = parseMarkdown(content);
+  const blocks = useMemo(() => parseMarkdown(content), [content]);
 
   if (!content.trim() && isStreaming) {
     return (
@@ -1032,3 +1032,6 @@ export function MarkdownMessage({
     </div>
   );
 }
+
+export const MarkdownMessage = React.memo(MarkdownMessageComponent);
+MarkdownMessage.displayName = "MarkdownMessage";

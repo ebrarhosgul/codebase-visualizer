@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useAiQueryStream } from "../use-ai-query-stream";
 import type { CodebaseGraph, Repository } from "@/entities";
+import type { CitationRef } from "@/lib/ai/types";
 
 // covers: AC-1
 describe("useAiQueryStream", () => {
@@ -70,7 +71,6 @@ describe("useAiQueryStream", () => {
         graph: mockGraph,
         contextSummary: "Summary",
         messages: [{ role: "user", content: "Explain system" }],
-        isDemo: true,
         onTextChunk,
         onComplete,
         onError,
@@ -327,6 +327,298 @@ describe("useAiQueryStream", () => {
         writable: true,
       });
     }
+  });
+
+  describe("demo mode heuristics (0013 zero friction demo mode)", () => {
+    const file = (id: string, path: string) => ({
+      id,
+      path,
+      name: path.split("/").pop() ?? path,
+      extension: ".ts",
+      language: "typescript",
+      sizeBytes: 100,
+      lineCount: 20,
+      directoryId: "dir:src",
+      symbolIds: [],
+      importIds: [],
+      exportIds: [],
+    });
+    const edge = (id: string, sourceId: string, targetId: string) => ({
+      id,
+      sourceId,
+      targetId,
+      kind: "file_import",
+      isExternal: false,
+      weight: 1,
+    });
+
+    const connectedGraph = {
+      schemaVersion: 1,
+      repository: mockRepo,
+      directories: {},
+      files: {
+        "file:api": file("file:api", "src/api/client.ts"),
+        "file:a": file("file:a", "src/components/A.tsx"),
+        "file:b": file("file:b", "src/components/B.tsx"),
+      },
+      symbols: {},
+      externalModules: {},
+      edges: {
+        e1: edge("e1", "file:a", "file:api"),
+        e2: edge("e2", "file:b", "file:api"),
+      },
+    } as unknown as CodebaseGraph;
+
+    const edgelessGraph = {
+      ...connectedGraph,
+      edges: {},
+    } as unknown as CodebaseGraph;
+
+    const centralQuestion = [
+      {
+        role: "user" as const,
+        content: "Which files are the core bottlenecks?",
+      },
+    ];
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("never calls fetch, even while the browser reports it is online (covers: AC-1)", async () => {
+      const fetchSpy = vi.fn();
+      global.fetch = fetchSpy;
+      const { result } = renderHook(() => useAiQueryStream());
+
+      await act(async () => {
+        const run = result.current.streamQuery({
+          repository: mockRepo,
+          graph: connectedGraph,
+          contextSummary: "Summary",
+          messages: centralQuestion,
+          isDemo: true,
+        });
+        await vi.runAllTimersAsync();
+        await run;
+      });
+
+      expect(navigator.onLine).toBe(true);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("calls onHighlight once with the cited file ids after the text finished (covers: AC-6)", async () => {
+      const { result } = renderHook(() => useAiQueryStream());
+      const order: string[] = [];
+      const onHighlight = vi.fn((ids: readonly string[]) => {
+        order.push(`highlight:${ids.join(",")}`);
+      });
+      const onCitations = vi.fn<(citations: readonly CitationRef[]) => void>();
+      const onTextChunk = vi.fn(() => order.push("text"));
+
+      await act(async () => {
+        const run = result.current.streamQuery({
+          repository: mockRepo,
+          graph: connectedGraph,
+          contextSummary: "Summary",
+          messages: centralQuestion,
+          isDemo: true,
+          onTextChunk,
+          onCitations: (citations) => {
+            order.push("citations");
+            onCitations(citations);
+          },
+          onHighlight,
+        });
+        await vi.runAllTimersAsync();
+        await run;
+      });
+
+      expect(onHighlight).toHaveBeenCalledTimes(1);
+      const highlightedIds = onHighlight.mock.calls[0][0];
+      expect(highlightedIds[0]).toBe("file:api");
+      expect(onCitations.mock.calls[0][0].map((c) => c.fileId)).toEqual(
+        highlightedIds,
+      );
+      const highlightPosition = order.findIndex((o) =>
+        o.startsWith("highlight:"),
+      );
+      expect(order.lastIndexOf("text")).toBeLessThan(highlightPosition);
+    });
+
+    it("does not call onHighlight for a fallback answer with no internal edges (covers: AC-6, AC-10)", async () => {
+      const { result } = renderHook(() => useAiQueryStream());
+      const onHighlight = vi.fn();
+      const onCitations = vi.fn();
+
+      await act(async () => {
+        const run = result.current.streamQuery({
+          repository: mockRepo,
+          graph: edgelessGraph,
+          contextSummary: "Summary",
+          messages: centralQuestion,
+          isDemo: true,
+          onHighlight,
+          onCitations,
+        });
+        await vi.runAllTimersAsync();
+        await run;
+      });
+
+      expect(onHighlight).not.toHaveBeenCalled();
+      expect(onCitations).not.toHaveBeenCalled();
+    });
+
+    it("calls onComplete exactly once per demo stream (covers: AC-12)", async () => {
+      const { result } = renderHook(() => useAiQueryStream());
+      const onComplete = vi.fn();
+
+      await act(async () => {
+        const run = result.current.streamQuery({
+          repository: mockRepo,
+          graph: connectedGraph,
+          contextSummary: "Summary",
+          messages: centralQuestion,
+          isDemo: true,
+          onComplete,
+        });
+        await vi.runAllTimersAsync();
+        await run;
+      });
+
+      expect(onComplete).toHaveBeenCalledTimes(1);
+      expect(result.current.isStreaming).toBe(false);
+    });
+
+    it("routes a chip click by its explicit demoIntent instead of the prompt keywords (covers: AC-9, AC-11)", async () => {
+      const { result } = renderHook(() => useAiQueryStream());
+      let text = "";
+
+      await act(async () => {
+        const run = result.current.streamQuery({
+          repository: mockRepo,
+          graph: connectedGraph,
+          contextSummary: "Summary",
+          messages: centralQuestion,
+          isDemo: true,
+          demoIntent: "layer_breakdown",
+          onTextChunk: (chunk) => {
+            text += chunk;
+          },
+        });
+        await vi.runAllTimersAsync();
+        await run;
+      });
+
+      expect(text).not.toContain("Core Central Files");
+      expect(text).toMatch(/layer/i);
+    });
+
+    it("stops streaming and skips onComplete and onHighlight when aborted mid stream (covers: AC-12)", async () => {
+      const { result } = renderHook(() => useAiQueryStream());
+      const onComplete = vi.fn();
+      const onHighlight = vi.fn();
+      const onTextChunk = vi.fn();
+
+      await act(async () => {
+        const run = result.current.streamQuery({
+          repository: mockRepo,
+          graph: connectedGraph,
+          contextSummary: "Summary",
+          messages: centralQuestion,
+          isDemo: true,
+          onComplete,
+          onHighlight,
+          onTextChunk,
+        });
+        await vi.advanceTimersByTimeAsync(65);
+        result.current.abortQuery();
+        const chunksBeforeAbort = onTextChunk.mock.calls.length;
+        await vi.runAllTimersAsync();
+        await run;
+
+        expect(chunksBeforeAbort).toBeGreaterThan(0);
+        expect(onTextChunk.mock.calls.length).toBeLessThanOrEqual(
+          chunksBeforeAbort + 1,
+        );
+      });
+
+      expect(onComplete).not.toHaveBeenCalled();
+      expect(onHighlight).not.toHaveBeenCalled();
+      expect(result.current.isStreaming).toBe(false);
+    });
+
+    it("aborts the previous demo stream when a new query starts (covers: AC-12)", async () => {
+      const { result } = renderHook(() => useAiQueryStream());
+      const firstComplete = vi.fn();
+      const firstHighlight = vi.fn();
+      const secondComplete = vi.fn();
+
+      await act(async () => {
+        const first = result.current.streamQuery({
+          repository: mockRepo,
+          graph: connectedGraph,
+          contextSummary: "Summary",
+          messages: centralQuestion,
+          isDemo: true,
+          onComplete: firstComplete,
+          onHighlight: firstHighlight,
+        });
+        await vi.advanceTimersByTimeAsync(65);
+        const second = result.current.streamQuery({
+          repository: mockRepo,
+          graph: connectedGraph,
+          contextSummary: "Summary",
+          messages: centralQuestion,
+          isDemo: true,
+          onComplete: secondComplete,
+        });
+        await vi.runAllTimersAsync();
+        await Promise.all([first, second]);
+      });
+
+      expect(firstComplete).not.toHaveBeenCalled();
+      expect(firstHighlight).not.toHaveBeenCalled();
+      expect(secondComplete).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("delivers a highlight event from a server SSE stream to onHighlight without breaking the parser (covers: AC-12)", async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          [
+            'data: {"type":"text","text":"Hello"}',
+            'data: {"type":"highlight","nodeIds":["file:a","file:b"]}',
+            'data: {"type":"text","text":" world"}',
+            'data: {"type":"done"}',
+            "",
+          ].join("\n\n"),
+          { status: 200, headers: { "Content-Type": "text/event-stream" } },
+        ),
+      );
+    const { result } = renderHook(() => useAiQueryStream());
+    const onHighlight = vi.fn();
+    const onTextChunk = vi.fn();
+
+    await act(async () => {
+      await result.current.streamQuery({
+        repository: mockRepo,
+        graph: mockGraph,
+        contextSummary: "Summary",
+        messages: [{ role: "user", content: "Hi" }],
+        provider: "gemini",
+        onHighlight,
+        onTextChunk,
+      });
+    });
+
+    expect(onHighlight).toHaveBeenCalledWith(["file:a", "file:b"]);
+    expect(onTextChunk).toHaveBeenCalledTimes(2);
   });
 
   it("caches options and allows retryLastQuery (covers: AC-3)", async () => {
