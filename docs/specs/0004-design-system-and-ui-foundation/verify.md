@@ -1,4 +1,4 @@
-# Verify: Design system and UI foundation · spec 0004 · updated 2026-09-02
+# Verify: Design system and UI foundation · spec 0004 · updated 2026-09-20
 
 _Steps derived from spec 0004 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
 
