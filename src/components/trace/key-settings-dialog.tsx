@@ -126,7 +126,7 @@ export function KeySettingsDialog({
       <form onSubmit={handleSaveKey} className="space-y-4 pt-2">
         {/* Provider selection */}
         <div className="space-y-2">
-          <label className="text-xs font-medium text-zinc-200">
+          <label className="text-xs font-medium text-text-primary">
             Active Provider
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -142,8 +142,8 @@ export function KeySettingsDialog({
                   }}
                   className={`p-2 rounded-md border text-left text-xs transition-colors cursor-pointer ${
                     isSelected
-                      ? "border-blue-500/60 bg-zinc-800 text-zinc-100 font-medium"
-                      : "border-zinc-800 bg-[#0B0C0E] text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
+                      ? "border-accent-border bg-surface-active text-text-primary font-medium"
+                      : "border-border-default bg-surface-canvas text-text-secondary hover:text-text-primary hover:border-border-strong"
                   }`}
                 >
                   <div>{p.name}</div>
@@ -151,15 +151,15 @@ export function KeySettingsDialog({
               );
             })}
           </div>
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-text-muted">
             {PROVIDERS.find((p) => p.id === selectedProvider)?.hint}
           </p>
         </div>
 
         {/* API key input */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-200 flex items-center gap-1.5">
-            <Key className="w-3.5 h-3.5 text-zinc-400" />
+          <label className="text-xs font-medium text-text-primary flex items-center gap-1.5">
+            <Key className="w-3.5 h-3.5 text-text-secondary" />
             <span>API Key</span>
           </label>
           <Input
@@ -177,18 +177,18 @@ export function KeySettingsDialog({
           <div
             className={`p-2.5 rounded-md text-xs flex items-center gap-2 ${
               statusMessage.type === "success"
-                ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
+                ? "bg-status-success/10 border border-status-success/20 text-status-success"
                 : "bg-red-500/10 border border-red-500/20 text-red-300"
             }`}
           >
             {statusMessage.type === "success" && (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-status-success" />
             )}
             <span>{statusMessage.text}</span>
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60">
+        <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
           <Button
             type="button"
             variant="ghost"

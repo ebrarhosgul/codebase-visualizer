@@ -55,14 +55,14 @@ export function GraphControlsToolbar({
       aria-label="Canvas zoom and view controls"
       className={cn(
         "flex items-center gap-1 p-1 rounded-lg select-none shadow-sm transition-all",
-        "bg-[#121417] border border-zinc-800/60",
+        "bg-surface-panel border border-border-subtle",
         className,
       )}
     >
       {isCalculatingLayout && (
         <div
           data-testid="layout-calculating-indicator"
-          className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded font-mono select-none"
+          className="flex items-center gap-1 px-1.5 py-0.5 text-[11px] text-accent-text bg-accent-subtle border border-accent-border rounded-sm font-mono select-none"
           title="Calculating graph layout in background worker"
         >
           <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
@@ -88,7 +88,7 @@ export function GraphControlsToolbar({
 
       {formattedZoom && (
         <span
-          className="px-1.5 text-[11px] font-mono font-medium text-zinc-400 select-none"
+          className="px-1.5 text-[11px] font-mono font-medium text-text-secondary select-none"
           aria-live="polite"
           title="Current canvas zoom"
         >
@@ -96,7 +96,7 @@ export function GraphControlsToolbar({
         </span>
       )}
 
-      <div className="w-px h-4 bg-zinc-800 my-auto" />
+      <div className="w-px h-4 bg-surface-active my-auto" />
 
       <IconButton
         icon={Maximize}
@@ -129,8 +129,8 @@ export function GraphControlsToolbar({
           onClick={onToggleFollowCursor}
           className={
             isFollowCursorActive
-              ? "text-blue-400 border-blue-500/30 bg-blue-500/10"
-              : "text-zinc-500 hover:text-zinc-300"
+              ? "text-accent-text border-accent-border bg-accent-subtle"
+              : "text-text-muted hover:text-text-secondary"
           }
         />
       )}
@@ -143,8 +143,8 @@ export function GraphControlsToolbar({
         onClick={onToggleMinimap}
         className={
           isMinimapVisible
-            ? "text-blue-400 border-blue-500/30 bg-blue-500/10"
-            : "text-zinc-400 hover:text-zinc-200"
+            ? "text-accent-text border-accent-border bg-accent-subtle"
+            : "text-text-secondary hover:text-text-primary"
         }
       />
     </div>

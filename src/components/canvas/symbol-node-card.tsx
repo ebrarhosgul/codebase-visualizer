@@ -66,33 +66,33 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
       aria-label={`Symbol node: ${symbol.name} (${kind})`}
       className={cn(
         "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-colors duration-150 shadow-xs",
-        "bg-[#15171b] border",
+        "bg-surface-card border",
         selected
           ? "border-[var(--accent-primary)] ring-1 ring-[var(--accent-primary)]/50 z-20"
           : isHovered
-            ? "border-zinc-700 bg-zinc-900/90 z-10"
-            : "border-zinc-800/80 hover:border-zinc-700",
+            ? "border-border-strong bg-surface-card/90 z-10"
+            : "border-border-default hover:border-border-strong",
       )}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -left-[4px]"
+        className="w-2 h-2 !bg-text-secondary border border-surface-card rounded-full -left-[4px]"
       />
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="p-1 rounded-md bg-zinc-900 border border-zinc-800 shrink-0 text-zinc-400">
+          <div className="p-1 rounded-md bg-surface-panel-secondary border border-border-default shrink-0 text-text-secondary">
             <Icon className="w-3.5 h-3.5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
             <h4
-              className="text-xs font-mono font-medium text-zinc-100 truncate"
+              className="text-xs font-mono font-medium text-text-primary truncate"
               title={symbol.name}
             >
               {symbol.name}
             </h4>
-            <p className="text-[10px] text-zinc-500 truncate font-mono">
+            <p className="text-[10px] text-text-muted truncate font-mono">
               {symbol.signature || kind}
             </p>
           </div>
@@ -106,9 +106,9 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
       </div>
 
       {symbol.isExported && (
-        <div className="mt-2 pt-1 border-t border-zinc-800/80 flex items-center justify-between text-[10px] text-zinc-400 font-mono">
+        <div className="mt-2 pt-1 border-t border-border-default flex items-center justify-between text-[10px] text-text-secondary font-mono">
           <span>exported</span>
-          <span className="text-emerald-400 text-[9px] uppercase font-mono">
+          <span className="text-status-success text-[9px] uppercase font-mono">
             {symbol.visibility}
           </span>
         </div>
@@ -117,7 +117,7 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
       <Handle
         type="source"
         position={Position.Right}
-        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -right-[4px]"
+        className="w-2 h-2 !bg-text-secondary border border-surface-card rounded-full -right-[4px]"
       />
     </div>
   );

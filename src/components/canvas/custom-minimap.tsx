@@ -50,7 +50,7 @@ export function CustomMiniMap({
       ariaLabel="Overview minimap of architecture graph"
       className={cn(
         "rounded-lg overflow-hidden select-none transition-all shadow-sm",
-        "!bg-[#121417] !border !border-zinc-800/60",
+        "!bg-surface-panel !border !border-border-subtle",
         className,
       )}
     />

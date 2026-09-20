@@ -556,14 +556,16 @@ export function TracePanel(): React.JSX.Element {
 
   return (
     <div
-      className="flex flex-col h-full w-full bg-[#121417] select-none text-xs overflow-hidden"
+      className="flex flex-col h-full w-full bg-surface-panel select-none text-xs overflow-hidden"
       data-testid="trace-panel"
     >
       {/* Top action header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/60 bg-[#121417]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle bg-surface-panel">
         <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
-          <span className="font-semibold text-zinc-100">Semantic Trace</span>
+          <Sparkles className="w-3.5 h-3.5 text-text-secondary" />
+          <span className="font-semibold text-text-primary">
+            Semantic Trace
+          </span>
           <Badge
             variant={isDemoMode ? "default" : "accent"}
             className="text-[10px] h-4.5 px-1.5"
@@ -583,7 +585,7 @@ export function TracePanel(): React.JSX.Element {
               variant="ghost"
               size="sm"
               onClick={clearTrace}
-              className="h-6 px-1.5 text-[10px] text-zinc-400 hover:text-zinc-200"
+              className="h-6 px-1.5 text-[10px] text-text-secondary hover:text-text-primary"
               title="Clear active trace or highlight glow on canvas"
             >
               Clear Glow
@@ -594,7 +596,7 @@ export function TracePanel(): React.JSX.Element {
             variant="ghost"
             size="sm"
             onClick={() => setIsDemoMode((prev) => !prev)}
-            className="h-6 px-2 text-[10px] text-zinc-400 hover:text-zinc-200"
+            className="h-6 px-2 text-[10px] text-text-secondary hover:text-text-primary"
             title="Toggle between Zero Cost Demo and Live BYOK"
           >
             {isDemoMode ? "Enable BYOK" : "Switch to Demo"}
@@ -604,7 +606,7 @@ export function TracePanel(): React.JSX.Element {
             variant="ghost"
             size="sm"
             onClick={() => setIsKeyDialogOpen(true)}
-            className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-200"
+            className="h-6 w-6 p-0 text-text-secondary hover:text-text-primary"
             title="Configure API Keys"
           >
             <Key className="w-3.5 h-3.5" />
@@ -615,7 +617,7 @@ export function TracePanel(): React.JSX.Element {
               variant="ghost"
               size="sm"
               onClick={handleClearChat}
-              className="h-6 w-6 p-0 text-zinc-500 hover:text-red-400"
+              className="h-6 w-6 p-0 text-text-muted hover:text-red-400"
               title="Clear thread history"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -627,10 +629,10 @@ export function TracePanel(): React.JSX.Element {
       {/* Warning banner (AC-4, AC-7) */}
       {warningMessage && (
         <div
-          className="mx-3 mt-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-200 text-[11px] flex items-start gap-2"
+          className="mx-3 mt-2 p-2 rounded-md bg-status-warning/10 border border-status-warning/20 text-status-warning text-[11px] flex items-start gap-2"
           data-testid="trace-warning-banner"
         >
-          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+          <AlertTriangle className="w-4 h-4 shrink-0 text-status-warning mt-0.5" />
           <div className="flex-1">{warningMessage}</div>
         </div>
       )}
@@ -639,19 +641,19 @@ export function TracePanel(): React.JSX.Element {
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
         {messages.length === 0 ? (
           <div className="py-6 text-center space-y-3">
-            <div className="w-10 h-10 mx-auto rounded-full bg-zinc-900 border border-zinc-800/80 flex items-center justify-center text-zinc-400">
+            <div className="w-10 h-10 mx-auto rounded-full bg-surface-panel-secondary border border-border-default flex items-center justify-center text-text-secondary">
               <Compass className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-medium text-zinc-100">
+              <div className="font-medium text-text-primary">
                 Ask Architectural Questions
               </div>
-              <p className="text-[11px] text-zinc-400 max-w-xs mx-auto mt-1">
+              <p className="text-[11px] text-text-secondary max-w-xs mx-auto mt-1">
                 Explore module dependencies and visual call paths in natural
                 language.
               </p>
               {!graph && (
-                <p className="text-[11px] text-zinc-500 mt-1">
+                <p className="text-[11px] text-text-muted mt-1">
                   Load a repository to ask questions.
                 </p>
               )}
@@ -676,8 +678,8 @@ export function TracePanel(): React.JSX.Element {
               <div
                 className={`max-w-[90%] rounded-lg p-3 text-xs ${
                   msg.role === "user"
-                    ? "bg-zinc-800 text-zinc-100 border border-zinc-700/60 rounded-br-none"
-                    : "bg-[#15171B] border border-zinc-800/80 text-zinc-200 rounded-bl-none shadow-xs"
+                    ? "bg-surface-active text-text-primary border border-border-strong rounded-br-none"
+                    : "bg-surface-card border border-border-default text-text-primary rounded-bl-none shadow-xs"
                 }`}
               >
                 {/* Message body */}
@@ -687,16 +689,16 @@ export function TracePanel(): React.JSX.Element {
                   </div>
                 ) : (
                   <div>
-                    <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-zinc-800/60 text-[10px] text-zinc-500">
-                      <div className="flex items-center gap-1.5 font-medium text-zinc-300">
-                        <Sparkles className="w-3 h-3 text-zinc-400" />
+                    <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-border-subtle text-[10px] text-text-muted">
+                      <div className="flex items-center gap-1.5 font-medium text-text-secondary">
+                        <Sparkles className="w-3 h-3 text-text-secondary" />
                         <span>Semantic Assistant</span>
                       </div>
                       {msg.content && msg.status !== "streaming" && (
                         <button
                           type="button"
                           onClick={() => handleCopyMessage(msg.content, msg.id)}
-                          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors cursor-pointer"
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] text-text-secondary hover:text-text-primary hover:bg-surface-active transition-colors cursor-pointer"
                           title="Copy response"
                           aria-label={
                             copiedMessageId === msg.id
@@ -706,8 +708,10 @@ export function TracePanel(): React.JSX.Element {
                         >
                           {copiedMessageId === msg.id ? (
                             <>
-                              <Check className="w-2.5 h-2.5 text-emerald-400" />
-                              <span className="text-emerald-400">Copied</span>
+                              <Check className="w-2.5 h-2.5 text-status-success" />
+                              <span className="text-status-success">
+                                Copied
+                              </span>
                             </>
                           ) : (
                             <>
@@ -751,12 +755,12 @@ export function TracePanel(): React.JSX.Element {
                 {/* Path Trace summary card (AC-5) */}
                 {msg.pathTrace && (
                   <div
-                    className="mt-3 p-2.5 rounded-md bg-[#0B0C0E] border border-zinc-800/60 space-y-2"
+                    className="mt-3 p-2.5 rounded-md bg-surface-canvas border border-border-subtle space-y-2"
                     data-testid="path-trace-card"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-200">
-                        <Layers className="w-3.5 h-3.5 text-zinc-400" />
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-primary">
+                        <Layers className="w-3.5 h-3.5 text-text-secondary" />
                         <span>Verified Dependency Path</span>
                       </div>
                       <Badge
@@ -785,17 +789,17 @@ export function TracePanel(): React.JSX.Element {
                                 }
                                 focusTraceStep(idx);
                               }}
-                              className={`px-1.5 py-0.5 rounded text-[10px] transition-colors border ${
+                              className={`px-1.5 py-0.5 rounded-sm text-[10px] transition-colors border ${
                                 isFocused
-                                  ? "bg-blue-600 text-white border-blue-600"
-                                  : "bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-zinc-100 hover:border-zinc-700"
+                                  ? "bg-accent-primary-hover text-white border-accent-primary"
+                                  : "bg-surface-panel-secondary text-text-secondary border-border-default hover:text-text-primary hover:border-border-strong"
                               }`}
                               title={`Step ${idx + 1}: ${fileEntity?.path ?? nodeId}`}
                             >
                               {label}
                             </button>
                             {idx < msg.pathTrace!.stepNodeIds.length - 1 && (
-                              <ArrowRight className="w-2.5 h-2.5 text-zinc-600 shrink-0" />
+                              <ArrowRight className="w-2.5 h-2.5 text-text-muted shrink-0" />
                             )}
                           </React.Fragment>
                         );
@@ -807,7 +811,7 @@ export function TracePanel(): React.JSX.Element {
                         variant="ghost"
                         size="sm"
                         onClick={() => setActiveTrace(msg.pathTrace!)}
-                        className="h-5 px-2 text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
+                        className="h-5 px-2 text-[10px] text-text-secondary hover:text-text-primary hover:bg-surface-active"
                       >
                         Highlight On Canvas
                       </Button>
@@ -817,8 +821,8 @@ export function TracePanel(): React.JSX.Element {
 
                 {/* Citations section (AC-6) */}
                 {msg.citations && msg.citations.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-zinc-800/60 space-y-1.5">
-                    <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                  <div className="mt-3 pt-2 border-t border-border-subtle space-y-1.5">
+                    <div className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                       Code Citations
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -826,10 +830,10 @@ export function TracePanel(): React.JSX.Element {
                         <button
                           key={cite.id}
                           onClick={() => handleCitationClick(cite)}
-                          className="flex items-center gap-1 px-2 py-1 rounded bg-[#0B0C0E] border border-zinc-800/80 text-[11px] text-zinc-300 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800/50 transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 rounded-sm bg-surface-canvas border border-border-default text-[11px] text-text-secondary hover:text-text-primary hover:border-border-strong hover:bg-surface-hover transition-colors"
                           title={`Click to view ${cite.label} at line ${cite.line || 1}`}
                         >
-                          <FileCode className="w-3 h-3 text-zinc-400" />
+                          <FileCode className="w-3 h-3 text-text-secondary" />
                           <span>
                             {cite.label}
                             {cite.line ? `:${cite.line}` : ""}
@@ -872,7 +876,7 @@ export function TracePanel(): React.JSX.Element {
       )}
 
       {/* Query input footer */}
-      <div className="p-3 border-t border-zinc-800/60 bg-[#121417]">
+      <div className="p-3 border-t border-border-subtle bg-surface-panel">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -896,7 +900,7 @@ export function TracePanel(): React.JSX.Element {
             }
             disabled={!graph || isStreaming}
             rows={2}
-            className="flex-1 p-2 rounded-md bg-[#0B0C0E] border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 resize-none disabled:opacity-50 transition-all"
+            className="flex-1 p-2 rounded-md bg-surface-canvas border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-hidden focus:border-accent-primary focus:ring-1 focus:ring-border-focus/30 resize-none disabled:opacity-50 transition-all"
           />
 
           {isStreaming ? (

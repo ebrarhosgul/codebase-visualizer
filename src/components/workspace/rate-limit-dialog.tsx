@@ -134,13 +134,13 @@ export function RateLimitDialog({
         data-testid="rate-limit-dialog"
       >
         {/* Countdown display banner */}
-        <div className="p-3 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200 flex items-center justify-between gap-3">
+        <div className="p-3 rounded-md bg-status-warning/10 border border-status-warning/30 text-status-warning flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+            <Clock className="w-4 h-4 text-status-warning shrink-0" />
             <span className="font-medium">Automatic reset countdown:</span>
           </div>
           <span
-            className="font-mono text-sm font-bold text-amber-300"
+            className="font-mono text-sm font-bold text-status-warning"
             data-testid="rate-limit-countdown"
           >
             {formatCountdown(secondsRemaining)}
@@ -149,7 +149,7 @@ export function RateLimitDialog({
 
         {/* Security & permissions explanation */}
         <div className="flex items-start gap-2.5 p-3 rounded-md bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          <ShieldCheck className="w-4 h-4 text-status-success shrink-0 mt-0.5" />
           <p className="leading-relaxed">
             Unauthenticated requests share a public quota of 60 requests per
             hour. Supplying a Personal Access Token increases your limit to
@@ -186,7 +186,7 @@ export function RateLimitDialog({
             />
             {tokenError && (
               <p
-                className="text-rose-400 text-[11px] mt-1.5 flex items-center gap-1"
+                className="text-status-error text-[11px] mt-1.5 flex items-center gap-1"
                 data-testid="rate-limit-token-error"
               >
                 <AlertTriangle className="w-3 h-3 shrink-0" />

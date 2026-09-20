@@ -177,21 +177,21 @@ export function LayerFilterBar({
     <nav
       aria-label="Architectural filter and canvas controls"
       className={cn(
-        "flex items-center gap-2 max-w-full overflow-x-auto overflow-y-hidden p-1.5 rounded-xl border border-zinc-800/60 bg-[#121417]/90 backdrop-blur-md shadow-sm select-none",
+        "flex items-center gap-2 max-w-full overflow-x-auto overflow-y-hidden p-1.5 rounded-xl border border-border-subtle bg-surface-panel shadow-sm select-none",
         className,
       )}
       data-testid="layer-filter-bar"
     >
       {/* Real-time Debounced Search Input (AC-6) */}
       <div className="relative flex items-center shrink-0 min-w-[170px] sm:min-w-[210px]">
-        <Search className="absolute left-2.5 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+        <Search className="absolute left-2.5 w-3.5 h-3.5 text-text-muted pointer-events-none" />
         <input
           type="text"
           value={localSearch}
           onChange={(e) => setLocalSearch(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Filter files or symbols..."
-          className="w-full h-7 pl-8 pr-7 text-xs font-mono bg-[#0B0C0E] text-zinc-200 border border-zinc-800 rounded-lg placeholder:text-zinc-500 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all"
+          className="w-full h-7 pl-8 pr-7 text-xs font-mono bg-surface-canvas text-text-primary border border-border-default rounded-lg placeholder:text-text-muted focus:outline-hidden focus:border-accent-primary focus:ring-1 focus:ring-border-focus/30 transition-all"
           data-testid="canvas-search-input"
           aria-label="Filter canvas by file or symbol name"
         />
@@ -199,7 +199,7 @@ export function LayerFilterBar({
           <button
             type="button"
             onClick={handleClearSearch}
-            className="absolute right-2 p-0.5 rounded text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="absolute right-2 p-0.5 rounded-sm text-text-muted hover:text-text-secondary transition-colors"
             aria-label="Clear search"
           >
             <X className="w-3 h-3" />
@@ -207,7 +207,7 @@ export function LayerFilterBar({
         )}
       </div>
 
-      <div className="h-4 w-px bg-zinc-800 shrink-0" />
+      <div className="h-4 w-px bg-surface-active shrink-0" />
 
       {/* Discovered Architectural Layer Filter Chips (AC-2) */}
       <div
@@ -231,8 +231,8 @@ export function LayerFilterBar({
                 isSelected
                   ? "border-current shadow-xs"
                   : isFiltering
-                    ? "border-transparent opacity-40 hover:opacity-80 bg-[#0B0C0E]"
-                    : "border-zinc-800/60 bg-[#0B0C0E] hover:border-zinc-700 text-zinc-400 hover:text-zinc-200",
+                    ? "border-transparent opacity-40 hover:opacity-80 bg-surface-canvas"
+                    : "border-border-subtle bg-surface-canvas hover:border-border-strong text-text-secondary hover:text-text-primary",
               )}
               style={
                 isSelected
@@ -260,7 +260,7 @@ export function LayerFilterBar({
           <button
             type="button"
             onClick={clearLayerFilters}
-            className="text-[11px] font-mono text-zinc-400 hover:text-zinc-200 underline px-1.5 py-0.5 transition-colors shrink-0"
+            className="text-[11px] font-mono text-text-secondary hover:text-text-primary underline px-1.5 py-0.5 transition-colors shrink-0"
             data-testid="clear-layer-filters"
           >
             All layers
@@ -268,14 +268,14 @@ export function LayerFilterBar({
         )}
       </div>
 
-      <div className="h-4 w-px bg-zinc-800 shrink-0" />
+      <div className="h-4 w-px bg-surface-active shrink-0" />
 
       {/* Bulk Directory Operations (AC-2) */}
       <div className="flex items-center gap-1 shrink-0">
         <button
           type="button"
           onClick={collapseAllFolders}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 border border-transparent hover:border-zinc-800/60 transition-colors shrink-0"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-text-secondary hover:text-text-primary hover:bg-surface-active border border-transparent hover:border-border-subtle transition-colors shrink-0"
           title="Collapse all folders into summary cards"
           data-testid="collapse-all-folders"
           aria-label="Collapse all folders"
@@ -287,7 +287,7 @@ export function LayerFilterBar({
         <button
           type="button"
           onClick={expandAllFolders}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 border border-transparent hover:border-zinc-800/60 transition-colors shrink-0"
+          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-text-secondary hover:text-text-primary hover:bg-surface-active border border-transparent hover:border-border-subtle transition-colors shrink-0"
           title="Expand all folders"
           data-testid="expand-all-folders"
           aria-label="Expand all folders"
@@ -304,8 +304,8 @@ export function LayerFilterBar({
           className={cn(
             "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono border transition-colors shrink-0",
             hideExternal
-              ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
-              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 border-transparent hover:border-zinc-800/60",
+              ? "bg-accent-subtle text-accent-text border-accent-border"
+              : "text-text-secondary hover:text-text-primary hover:bg-surface-active border-transparent hover:border-border-subtle",
           )}
           title={
             hideExternal ? "Show external modules" : "Hide external modules"
@@ -327,7 +327,7 @@ export function LayerFilterBar({
           <button
             type="button"
             onClick={resetAllFilters}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 border border-zinc-800/80 transition-colors shrink-0"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-text-secondary hover:text-text-primary hover:bg-surface-hover border border-border-default transition-colors shrink-0"
             title="Reset all filters and search query"
             data-testid="reset-all-filters"
           >
