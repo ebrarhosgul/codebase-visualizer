@@ -36,14 +36,14 @@ export function Tooltip({
             side={side}
             sideOffset={sideOffset}
             className={cn(
-              "z-50 px-2.5 py-1 text-xs font-medium rounded-md select-none",
-              "bg-[var(--surface-panel-secondary)] text-[var(--text-primary)] border border-[var(--border-default)] shadow-md",
+              "z-50 px-2 py-1 text-xs font-medium rounded-md select-none",
+              "bg-surface-panel-secondary text-text-primary border border-border-default shadow-md",
               "animate-in fade-in-0 zoom-in-95",
               className,
             )}
           >
             {content}
-            <TooltipPrimitive.Arrow className="fill-[var(--surface-panel-secondary)]" />
+            <TooltipPrimitive.Arrow className="fill-surface-panel-secondary" />
           </TooltipPrimitive.Content>
         </TooltipPrimitive.Portal>
       </TooltipPrimitive.Root>

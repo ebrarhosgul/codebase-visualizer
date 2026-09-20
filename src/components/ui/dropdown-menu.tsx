@@ -55,8 +55,8 @@ export function DropdownMenu({
           side={side}
           sideOffset={sideOffset}
           className={cn(
-            "z-50 min-w-[160px] p-1 rounded-md select-none",
-            "bg-[var(--surface-panel-secondary)] border border-[var(--border-default)] shadow-lg",
+            "z-50 min-w-[160px] p-0.5 rounded-lg select-none",
+            "bg-surface-panel-secondary border border-border-default shadow-lg",
             "animate-in fade-in-0 zoom-in-95",
             className,
           )}
@@ -66,7 +66,7 @@ export function DropdownMenu({
               return (
                 <DropdownPrimitive.Separator
                   key={`sep-${index}`}
-                  className="h-px my-1 bg-[var(--border-subtle)]"
+                  className="h-px my-0.5 bg-border-subtle"
                 />
               );
             }
@@ -80,19 +80,17 @@ export function DropdownMenu({
                 disabled={item.disabled}
                 onSelect={item.onSelect}
                 className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 text-xs rounded font-medium cursor-pointer transition-colors outline-none",
-                  "text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus:bg-[var(--surface-hover)]",
+                  "flex items-center gap-2 px-2 py-1 text-xs rounded-sm font-medium cursor-pointer transition-colors outline-none",
+                  "text-text-primary hover:bg-surface-active focus:bg-surface-active",
                   item.danger &&
-                    "text-[var(--status-error)] hover:bg-rose-950/30 focus:bg-rose-950/30",
+                    "text-status-error hover:bg-status-error/10 focus:bg-status-error/10",
                   "disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed",
                 )}
               >
-                {Icon && (
-                  <Icon className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
-                )}
+                {Icon && <Icon className="w-3.5 h-3.5 text-text-secondary" />}
                 <span className="flex-1">{item.label}</span>
                 {item.shortcut && (
-                  <span className="text-[10px] text-[var(--text-muted)] font-mono ml-auto">
+                  <span className="text-[10px] text-text-muted font-mono ml-auto">
                     {item.shortcut}
                   </span>
                 )}

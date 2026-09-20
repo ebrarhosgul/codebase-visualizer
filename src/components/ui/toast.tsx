@@ -25,23 +25,19 @@ const variantStyles: Record<
   { container: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   info: {
-    container:
-      "bg-[var(--surface-panel)] border-[var(--accent-primary)] text-[var(--text-primary)]",
+    container: "bg-surface-panel border-accent-border text-text-primary",
     icon: Info,
   },
   success: {
-    container:
-      "bg-[var(--surface-panel)] border-emerald-500/50 text-[var(--text-primary)]",
+    container: "bg-surface-panel border-status-success/40 text-text-primary",
     icon: CheckCircle2,
   },
   warning: {
-    container:
-      "bg-[var(--surface-panel)] border-amber-500/50 text-[var(--text-primary)]",
+    container: "bg-surface-panel border-status-warning/40 text-text-primary",
     icon: AlertTriangle,
   },
   error: {
-    container:
-      "bg-[var(--surface-panel)] border-rose-500/50 text-[var(--text-primary)]",
+    container: "bg-surface-panel border-status-error/40 text-text-primary",
     icon: AlertCircle,
   },
 };
@@ -76,15 +72,15 @@ export function Toast({
     <div
       role="status"
       aria-live="polite"
-      className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border shadow-xl text-xs backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-2 ${container} ${className ?? ""}`}
+      className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-3 py-2 rounded-lg border shadow-xl text-xs transition-all animate-in fade-in slide-in-from-bottom-2 ${container} ${className ?? ""}`}
       data-testid="toast-notification"
     >
-      <Icon className="w-4 h-4 shrink-0 text-[var(--accent-primary)]" />
+      <Icon className="w-4 h-4 shrink-0 text-accent-text" />
       <span className="leading-snug max-w-sm">{message}</span>
       <button
         type="button"
         onClick={onClose}
-        className="ml-2 p-1 rounded hover:bg-[var(--surface-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+        className="ml-2 p-1 rounded-sm hover:bg-surface-active text-text-muted hover:text-text-primary transition-colors cursor-pointer"
         aria-label="Dismiss notification"
       >
         <X className="w-3.5 h-3.5" />
