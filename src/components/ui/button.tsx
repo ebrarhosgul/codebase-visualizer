@@ -26,19 +26,19 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--accent-primary)] text-[var(--accent-primary-foreground)] font-medium hover:bg-[var(--accent-primary-hover)] shadow-xs border border-transparent",
+    "bg-accent-primary text-accent-primary-foreground hover:bg-accent-primary-hover border border-accent-primary hover:border-accent-primary-hover",
   secondary:
-    "bg-zinc-900 text-zinc-200 border border-zinc-800/80 hover:bg-zinc-800 hover:text-zinc-100 shadow-xs",
+    "bg-surface-panel-secondary text-text-primary border border-border-default hover:bg-surface-active hover:border-border-strong",
   ghost:
-    "bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50",
+    "bg-transparent text-text-secondary border border-transparent hover:text-text-primary hover:bg-surface-hover",
   danger:
-    "bg-[var(--status-error)] text-white font-medium hover:opacity-90 shadow-xs",
+    "bg-status-error-solid text-white border border-status-error-solid hover:brightness-110",
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: "h-7 px-2.5 text-xs gap-1.5 rounded-md",
-  md: "h-8 px-3 text-sm gap-2 rounded-md",
-  lg: "h-10 px-4 text-base gap-2.5 rounded-lg",
+  sm: "h-6 px-2 text-xs gap-1.5 rounded-md",
+  md: "h-7 px-2.5 text-xs gap-1.5 rounded-md",
+  lg: "h-8 px-3.5 text-sm gap-2 rounded-md",
 };
 
 /**
@@ -65,7 +65,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isDisabled}
         aria-busy={loading}
         className={cn(
-          "inline-flex items-center justify-center font-medium transition-colors select-none",
+          "inline-flex items-center justify-center font-medium transition-colors select-none cursor-pointer",
           "focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] focus-visible:outline-offset-2",
           "disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed",
           VARIANT_CLASSES[variant],
@@ -75,7 +75,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {loading && (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+          <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
         )}
         {children}
       </button>

@@ -2,74 +2,93 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Design tokens (Spec 0004, AC-1). Component code reads these through the
+ * semantic utilities registered in `@theme inline` below and never carries
+ * raw hex values.
+ *
+ * Tuning notes: neutrals are near achromatic with a faint cool tint, accents
+ * and status hues sit at roughly 40 to 65 percent saturation, and borders are
+ * opaque one pixel rules so panel edges stay crisp instead of smearing.
+ */
 :root {
-  --background: #0b0c0e;
-  --foreground: #f4f4f5;
+  --background: #0e0f11;
+  --foreground: #e6e8eb;
 
-  --surface-canvas: #0b0c0e;
-  --surface-panel: #121417;
-  --surface-panel-secondary: #181b1f;
-  --surface-card: #15171b;
-  --surface-hover: rgba(255, 255, 255, 0.04);
+  --surface-canvas: #0e0f11;
+  --surface-panel: #141518;
+  --surface-panel-secondary: #1a1c20;
+  --surface-card: #17181c;
+  --surface-hover: rgba(255, 255, 255, 0.045);
   --surface-active: rgba(255, 255, 255, 0.08);
 
-  --border-subtle: rgba(255, 255, 255, 0.07);
-  --border-default: rgba(255, 255, 255, 0.12);
-  --border-focus: #3b82f6;
+  --border-subtle: #23262b;
+  --border-default: #2f333a;
+  --border-strong: #444a54;
+  --border-focus: #5b93e8;
 
-  --text-primary: #f4f4f5;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  --text-primary: #e6e8eb;
+  --text-secondary: #a0a6b0;
+  --text-muted: #838a96;
 
-  --accent-primary: #3b82f6;
-  --accent-primary-hover: #2563eb;
+  --accent-primary: #3a6fc4;
+  --accent-primary-hover: #335fa8;
   --accent-primary-foreground: #ffffff;
+  --accent-text: #7fa8e8;
+  --accent-subtle: rgba(91, 147, 232, 0.12);
+  --accent-border: rgba(91, 147, 232, 0.4);
 
-  --status-success: #10b981;
-  --status-warning: #f59e0b;
-  --status-error: #ef4444;
-  --status-info: #3b82f6;
+  --status-success: #5bb98b;
+  --status-warning: #d6a24e;
+  --status-error: #e0706c;
+  --status-error-solid: #b23c3a;
+  --status-info: #7fa8e8;
 
-  --syntax-ts: #a1a1aa;
-  --syntax-js: #a1a1aa;
-  --syntax-fn: #d4d4d8;
-  --syntax-class: #e4e4e7;
-  --syntax-type: #a1a1aa;
+  --syntax-ts: #a0a6b0;
+  --syntax-js: #a0a6b0;
+  --syntax-fn: #cdd1d8;
+  --syntax-class: #dde0e5;
+  --syntax-type: #a0a6b0;
 }
 
 .light {
-  --background: #fafafa;
-  --foreground: #18181b;
+  --background: #f4f5f7;
+  --foreground: #1b1e23;
 
-  --surface-canvas: #f4f4f5;
+  --surface-canvas: #eceef1;
   --surface-panel: #ffffff;
-  --surface-panel-secondary: #f4f4f5;
+  --surface-panel-secondary: #f4f5f7;
   --surface-card: #ffffff;
-  --surface-hover: rgba(0, 0, 0, 0.04);
+  --surface-hover: rgba(0, 0, 0, 0.045);
   --surface-active: rgba(0, 0, 0, 0.08);
 
-  --border-subtle: #e4e4e7;
-  --border-default: #d4d4d8;
-  --border-focus: #2563eb;
+  --border-subtle: #e3e6ea;
+  --border-default: #d0d5db;
+  --border-strong: #aab1ba;
+  --border-focus: #2b62b8;
 
-  --text-primary: #18181b;
-  --text-secondary: #71717a;
-  --text-muted: #a1a1aa;
+  --text-primary: #1b1e23;
+  --text-secondary: #4f5763;
+  --text-muted: #626a77;
 
-  --accent-primary: #2563eb;
-  --accent-primary-hover: #1d4ed8;
+  --accent-primary: #2b62b8;
+  --accent-primary-hover: #234f96;
   --accent-primary-foreground: #ffffff;
+  --accent-text: #2b62b8;
+  --accent-subtle: rgba(43, 98, 184, 0.1);
+  --accent-border: rgba(43, 98, 184, 0.4);
 
-  --status-success: #059669;
-  --status-warning: #d97706;
-  --status-error: #dc2626;
-  --status-info: #2563eb;
+  --status-success: #26704e;
+  --status-warning: #91620f;
+  --status-error: #b83a36;
+  --status-error-solid: #b23c3a;
+  --status-info: #2b62b8;
 
-  --syntax-ts: #71717a;
-  --syntax-js: #71717a;
-  --syntax-fn: #52525b;
-  --syntax-class: #3f3f46;
-  --syntax-type: #71717a;
+  --syntax-ts: #626a77;
+  --syntax-js: #626a77;
+  --syntax-fn: #414851;
+  --syntax-class: #2c3138;
+  --syntax-type: #626a77;
 }
 
 @theme inline {
@@ -84,6 +103,7 @@
 
   --color-border-subtle: var(--border-subtle);
   --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
   --color-border-focus: var(--border-focus);
 
   --color-text-primary: var(--text-primary);
@@ -93,10 +113,14 @@
   --color-accent-primary: var(--accent-primary);
   --color-accent-primary-hover: var(--accent-primary-hover);
   --color-accent-primary-foreground: var(--accent-primary-foreground);
+  --color-accent-text: var(--accent-text);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
 
   --color-status-success: var(--status-success);
   --color-status-warning: var(--status-warning);
   --color-status-error: var(--status-error);
+  --color-status-error-solid: var(--status-error-solid);
   --color-status-info: var(--status-info);
 
   --color-syntax-ts: var(--syntax-ts);
@@ -109,11 +133,75 @@
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
+/*
+ * Radius and elevation scale. Tighter corners and short, hard shadows read as
+ * an editor surface rather than a soft card layout. `rounded-full` is left
+ * alone for dots and handles.
+ */
+@theme {
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+
+  --shadow-xs: 0 1px 1px rgb(0 0 0 / 0.35);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.45);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 4px 10px rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 8px 18px rgb(0 0 0 / 0.55);
+  --shadow-2xl: 0 12px 26px rgb(0 0 0 / 0.6);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow: hidden;
+}
+
+@layer base {
+  /*
+   * Tailwind's preflight resets every button to the default cursor. Restore
+   * the pointer for anything that acts like a button, and mark disabled
+   * controls as unavailable. Radix marks disabled items with `data-disabled`.
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([data-disabled]),
+  [role="menuitem"]:not([data-disabled]),
+  [role="option"]:not([aria-disabled="true"]),
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
+  summary,
+  select,
+  label[for],
+  input:is(
+      [type="button"],
+      [type="submit"],
+      [type="reset"],
+      [type="checkbox"],
+      [type="radio"],
+      [type="range"]
+    ):not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  ::selection {
+    background: var(--accent-border);
+  }
 }
 
 /* Accessible focus ring utilities */
@@ -125,12 +213,12 @@ body {
 /* Monaco pulse line decoration (AC-2) */
 @keyframes monaco-pulse-fade {
   0% {
-    background-color: rgba(59, 130, 246, 0.2);
-    border-left: 2px solid #3b82f6;
+    background-color: rgba(91, 147, 232, 0.2);
+    border-left: 2px solid var(--border-focus);
   }
   70% {
-    background-color: rgba(59, 130, 246, 0.12);
-    border-left: 2px solid #3b82f6;
+    background-color: rgba(91, 147, 232, 0.12);
+    border-left: 2px solid var(--border-focus);
   }
   100% {
     background-color: transparent;

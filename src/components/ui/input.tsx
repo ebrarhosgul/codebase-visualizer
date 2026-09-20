@@ -48,7 +48,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
         <div className="relative flex items-center">
           {Icon && (
-            <div className="absolute left-2.5 pointer-events-none text-[var(--text-muted)]">
+            <div className="absolute left-2 pointer-events-none text-[var(--text-muted)]">
               <Icon className="w-4 h-4" aria-hidden="true" />
             </div>
           )}
@@ -59,13 +59,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             aria-invalid={Boolean(error)}
             aria-describedby={error ? errorId : helperId}
             className={cn(
-              "w-full h-8 px-2.5 rounded-md text-xs text-zinc-100 bg-[#0b0c0e] border border-zinc-800 transition-colors",
-              "placeholder:text-zinc-500",
-              "focus-visible:outline-none focus-visible:border-[var(--border-focus)] focus-visible:ring-1 focus-visible:ring-[var(--border-focus)]/40",
+              "w-full h-7 px-2 rounded-md text-xs text-text-primary bg-surface-canvas border border-border-default hover:border-border-strong transition-colors",
+              "placeholder:text-text-muted",
+              "focus-visible:outline-none focus-visible:border-border-focus focus-visible:ring-1 focus-visible:ring-border-focus/40",
               "disabled:opacity-50 disabled:cursor-not-allowed",
-              Icon && "pl-8",
+              Icon && "pl-7",
               error &&
-                "border-[var(--status-error)] focus-visible:border-[var(--status-error)] focus-visible:ring-[var(--status-error)]/30",
+                "border-status-error focus-visible:border-status-error focus-visible:ring-status-error/30",
               className,
             )}
             {...props}

@@ -130,7 +130,7 @@ export function WorkspaceLayout({
           <button
             type="button"
             onClick={() => setLeftDrawerOpen(true)}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
+            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
             aria-label="Open repository tree drawer"
             aria-expanded={isLeftDrawerOpen}
           >
@@ -145,7 +145,7 @@ export function WorkspaceLayout({
           <button
             type="button"
             onClick={() => setRightDrawerOpen(true)}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
+            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
             aria-label="Open inspector and code drawer"
             aria-expanded={isRightDrawerOpen}
           >
@@ -178,7 +178,7 @@ export function WorkspaceLayout({
             aria-label="Repository navigation"
           >
             <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+              className="fixed inset-0 bg-black/60 transition-opacity"
               onClick={() => setLeftDrawerOpen(false)}
               aria-hidden="true"
             />
@@ -190,7 +190,7 @@ export function WorkspaceLayout({
                 <button
                   type="button"
                   onClick={() => setLeftDrawerOpen(false)}
-                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
+                  className="p-1 rounded-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
                   aria-label="Close navigation drawer"
                 >
                   <X className="w-4 h-4" />
@@ -210,7 +210,7 @@ export function WorkspaceLayout({
             aria-label="Inspector and code pane"
           >
             <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+              className="fixed inset-0 bg-black/60 transition-opacity"
               onClick={() => setRightDrawerOpen(false)}
               aria-hidden="true"
             />
@@ -222,7 +222,7 @@ export function WorkspaceLayout({
                 <button
                   type="button"
                   onClick={() => setRightDrawerOpen(false)}
-                  className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
+                  className="p-1 rounded-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
                   aria-label="Close inspector drawer"
                 >
                   <X className="w-4 h-4" />
@@ -251,13 +251,13 @@ export function WorkspaceLayout({
       content: (
         <aside className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-r border-[var(--border-subtle)]">
           <div className="h-9 px-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
-            <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
+            <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">
               Explorer
             </span>
             <button
               type="button"
               onClick={toggleLeftSidebar}
-              className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
+              className="p-1 rounded-sm text-text-secondary hover:text-text-primary hover:bg-surface-active focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
               aria-label="Collapse explorer panel"
             >
               <PanelLeftClose className="w-3.5 h-3.5" />
@@ -290,7 +290,7 @@ export function WorkspaceLayout({
             ref={expandLeftButtonRef}
             type="button"
             onClick={toggleLeftSidebar}
-            className="absolute top-3 left-3 z-30 p-1.5 rounded-md bg-[#121417] border border-zinc-800 shadow-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
+            className="absolute top-3 left-3 z-30 p-1.5 rounded-md bg-surface-panel border border-border-default shadow-md text-text-secondary hover:text-text-primary hover:bg-surface-active focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
             aria-label="Expand explorer panel"
           >
             <PanelLeftOpen className="w-4 h-4" />
@@ -302,7 +302,7 @@ export function WorkspaceLayout({
             ref={expandRightButtonRef}
             type="button"
             onClick={toggleRightPanel}
-            className="absolute top-3 right-3 z-30 p-1.5 rounded-md bg-[#121417] border border-zinc-800 shadow-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
+            className="absolute top-3 right-3 z-30 p-1.5 rounded-md bg-surface-panel border border-border-default shadow-md text-text-secondary hover:text-text-primary hover:bg-surface-active focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
             aria-label="Expand inspector panel"
           >
             <PanelRightOpen className="w-4 h-4" />
@@ -324,13 +324,13 @@ export function WorkspaceLayout({
       content: (
         <aside className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-l border-[var(--border-subtle)]">
           <div className="h-9 px-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
-            <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
+            <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">
               Inspector
             </span>
             <button
               type="button"
               onClick={toggleRightPanel}
-              className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
+              className="p-1 rounded-sm text-text-secondary hover:text-text-primary hover:bg-surface-active focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
               aria-label="Collapse inspector panel"
             >
               <PanelRightClose className="w-3.5 h-3.5" />

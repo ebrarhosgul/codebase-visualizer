@@ -33,28 +33,28 @@ const NOTICE_STYLE_MAP: Record<
   }
 > = {
   rate_limit: {
-    border: "border-amber-500/20",
-    bg: "bg-amber-500/5",
+    border: "border-status-warning/20",
+    bg: "bg-status-warning/5",
     badgeVariant: "warning",
   },
   auth_error: {
-    border: "border-rose-500/20",
-    bg: "bg-rose-500/5",
+    border: "border-status-error/20",
+    bg: "bg-status-error/5",
     badgeVariant: "error",
   },
   provider_outage: {
-    border: "border-blue-500/20",
-    bg: "bg-blue-500/5",
+    border: "border-accent-border",
+    bg: "bg-accent-subtle",
     badgeVariant: "info",
   },
   network_timeout: {
-    border: "border-amber-500/20",
-    bg: "bg-amber-500/5",
+    border: "border-status-warning/20",
+    bg: "bg-status-warning/5",
     badgeVariant: "warning",
   },
   unknown: {
-    border: "border-zinc-800/80",
-    bg: "bg-[#0B0C0E]",
+    border: "border-border-default",
+    bg: "bg-surface-canvas",
     badgeVariant: "default",
   },
 };
@@ -116,13 +116,13 @@ export function FallbackNoticeCard({
   const renderIcon = () => {
     switch (notice.code) {
       case "rate_limit":
-        return <Clock className="w-4 h-4 text-amber-400 shrink-0" />;
+        return <Clock className="w-4 h-4 text-status-warning shrink-0" />;
       case "auth_error":
-        return <Key className="w-4 h-4 text-rose-400 shrink-0" />;
+        return <Key className="w-4 h-4 text-status-error shrink-0" />;
       case "provider_outage":
-        return <ServerCrash className="w-4 h-4 text-sky-400 shrink-0" />;
+        return <ServerCrash className="w-4 h-4 text-accent-text shrink-0" />;
       case "network_timeout":
-        return <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />;
+        return <WifiOff className="w-4 h-4 text-status-warning shrink-0" />;
       case "unknown":
       default:
         return (
@@ -148,7 +148,9 @@ export function FallbackNoticeCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           {renderIcon()}
-          <span className="font-semibold text-zinc-100">{notice.title}</span>
+          <span className="font-semibold text-text-primary">
+            {notice.title}
+          </span>
         </div>
         <Badge
           variant={style.badgeVariant}
@@ -159,14 +161,14 @@ export function FallbackNoticeCard({
       </div>
 
       {/* Description message */}
-      <p className="text-[11px] leading-relaxed text-zinc-400">
+      <p className="text-[11px] leading-relaxed text-text-secondary">
         {notice.message}
       </p>
 
       {/* Rate limit countdown and auto retry checkbox */}
       {notice.code === "rate_limit" && (
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-1 border-t border-zinc-800/60 text-[11px]">
-          <div className="flex items-center gap-1.5 text-amber-300 font-medium">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-1 border-t border-border-subtle text-[11px]">
+          <div className="flex items-center gap-1.5 text-status-warning font-medium">
             <Clock className="w-3.5 h-3.5" />
             <span>
               {secondsRemaining > 0
@@ -175,12 +177,12 @@ export function FallbackNoticeCard({
             </span>
           </div>
 
-          <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-zinc-500 hover:text-zinc-300">
+          <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-text-muted hover:text-text-secondary">
             <input
               type="checkbox"
               checked={autoRetry}
               onChange={(e) => setAutoRetry(e.target.checked)}
-              className="rounded border-zinc-800 accent-blue-500 w-3.5 h-3.5"
+              className="rounded-sm border-border-default accent-accent-primary w-3.5 h-3.5"
             />
             <span>Auto retry when ready</span>
           </label>
@@ -188,7 +190,7 @@ export function FallbackNoticeCard({
       )}
 
       {/* Action triggers */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-800/60">
+      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border-subtle">
         {notice.code === "auth_error" && onOpenKeySettings && (
           <Button
             type="button"
@@ -210,7 +212,7 @@ export function FallbackNoticeCard({
             onClick={onSwitchToDemo}
             className="gap-1.5"
           >
-            <Sparkles className="w-3 h-3 text-zinc-400" />
+            <Sparkles className="w-3 h-3 text-text-secondary" />
             <span>Switch to Demo Mode</span>
           </Button>
         )}

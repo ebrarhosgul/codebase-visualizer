@@ -32,7 +32,28 @@ describe("Button Primitive", () => {
   it("applies danger variant classes", () => {
     render(<Button variant="danger">Delete</Button>);
     const button = screen.getByRole("button", { name: "Delete" });
-    expect(button.className).toContain("bg-[var(--status-error)]");
+    expect(button.className).toContain("bg-status-error-solid");
+  });
+
+  it("uses the pointer cursor across every variant and size", () => {
+    for (const variant of [
+      "primary",
+      "secondary",
+      "ghost",
+      "danger",
+    ] as const) {
+      for (const size of ["sm", "md", "lg"] as const) {
+        const { unmount } = render(
+          <Button variant={variant} size={size}>
+            {`${variant}-${size}`}
+          </Button>,
+        );
+        expect(
+          screen.getByRole("button", { name: `${variant}-${size}` }).className,
+        ).toContain("cursor-pointer");
+        unmount();
+      }
+    }
   });
 });
 
@@ -47,6 +68,13 @@ describe("IconButton Primitive", () => {
     expect(button).toBeInTheDocument();
     fireEvent.click(button);
     expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the pointer cursor", () => {
+    render(<IconButton icon={Play} label="Start simulation" />);
+    expect(
+      screen.getByRole("button", { name: "Start simulation" }).className,
+    ).toContain("cursor-pointer");
   });
 });
 

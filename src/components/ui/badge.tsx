@@ -26,17 +26,22 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 const VARIANT_CLASSES: Record<BadgeVariant, string> = {
-  default: "bg-zinc-800/40 text-zinc-400 border-zinc-700/50",
-  success: "bg-emerald-950/30 text-emerald-400 border-emerald-800/40",
-  warning: "bg-amber-950/30 text-amber-400 border-amber-800/40",
-  error: "bg-rose-950/30 text-rose-400 border-rose-800/40",
-  info: "bg-blue-950/30 text-blue-400 border-blue-800/40",
-  accent: "bg-zinc-800 text-zinc-200 border-zinc-700/70",
-  "syntax-ts": "bg-zinc-900/60 text-zinc-400 border-zinc-800/80 font-mono",
-  "syntax-js": "bg-zinc-900/60 text-zinc-400 border-zinc-800/80 font-mono",
-  "syntax-fn": "bg-zinc-900/60 text-zinc-300 border-zinc-800/80 font-mono",
-  "syntax-class": "bg-zinc-900/60 text-zinc-200 border-zinc-800/80 font-mono",
-  "syntax-type": "bg-zinc-900/60 text-zinc-400 border-zinc-800/80 font-mono",
+  default: "bg-surface-hover text-text-secondary border-border-default",
+  success: "bg-status-success/10 text-status-success border-status-success/30",
+  warning: "bg-status-warning/10 text-status-warning border-status-warning/30",
+  error: "bg-status-error/10 text-status-error border-status-error/30",
+  info: "bg-status-info/10 text-status-info border-status-info/30",
+  accent: "bg-accent-subtle text-accent-text border-accent-border",
+  "syntax-ts":
+    "bg-surface-canvas text-syntax-ts border-border-subtle font-mono",
+  "syntax-js":
+    "bg-surface-canvas text-syntax-js border-border-subtle font-mono",
+  "syntax-fn":
+    "bg-surface-canvas text-syntax-fn border-border-subtle font-mono",
+  "syntax-class":
+    "bg-surface-canvas text-syntax-class border-border-subtle font-mono",
+  "syntax-type":
+    "bg-surface-canvas text-syntax-type border-border-subtle font-mono",
 };
 
 /**
@@ -51,7 +56,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border font-medium leading-none select-none",
+        "inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded-sm border font-medium leading-none select-none",
         VARIANT_CLASSES[variant],
         className,
       )}

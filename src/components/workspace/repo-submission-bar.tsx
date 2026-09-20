@@ -190,10 +190,10 @@ export function RepoSubmissionBar({
       <div className="w-full flex items-center justify-between gap-3">
         {/* Logo and Brand */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="w-6 h-6 rounded bg-[#121417] border border-zinc-800/80 flex items-center justify-center">
-            <GitFork className="w-3.5 h-3.5 text-zinc-200" />
+          <div className="w-6 h-6 rounded-sm bg-surface-panel border border-border-default flex items-center justify-center">
+            <GitFork className="w-3.5 h-3.5 text-text-primary" />
           </div>
-          <span className="text-xs font-semibold tracking-tight text-zinc-100 hidden sm:inline">
+          <span className="text-xs font-semibold tracking-tight text-text-primary hidden sm:inline">
             Codebase Visualizer
           </span>
         </div>
@@ -234,8 +234,8 @@ export function RepoSubmissionBar({
             onClick={() => setIsTokenOpen(!isTokenOpen)}
             className={`h-8 px-2 text-xs flex items-center gap-1 ${
               hasGithubToken
-                ? "text-blue-400 font-medium hover:text-blue-300"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "text-accent-text font-medium hover:text-accent-text"
+                : "text-text-secondary hover:text-text-primary"
             }`}
             title="Configure GitHub Personal Access Token"
             aria-label="Configure GitHub Personal Access Token"
@@ -279,7 +279,7 @@ export function RepoSubmissionBar({
               variant="ghost"
               size="sm"
               onClick={handleForceRefresh}
-              className="h-8 px-2 text-xs flex items-center gap-1 text-zinc-400 hover:text-zinc-200 shrink-0"
+              className="h-8 px-2 text-xs flex items-center gap-1 text-text-secondary hover:text-text-primary shrink-0"
               title="Force re ingest repository (bypasses client cache)"
               aria-label="Force Re-ingest"
             >
@@ -294,14 +294,14 @@ export function RepoSubmissionBar({
               variant="ghost"
               size="sm"
               onClick={handleShare}
-              className="h-8 px-2.5 text-xs flex items-center gap-1 text-zinc-400 hover:text-zinc-200 shrink-0"
+              className="h-8 px-2.5 text-xs flex items-center gap-1 text-text-secondary hover:text-text-primary shrink-0"
               title="Copy deep link permalink for current repository and selection"
               aria-label="Share workspace link"
             >
               {copied ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400 text-xs">Copied!</span>
+                  <Check className="w-3.5 h-3.5 text-status-success" />
+                  <span className="text-status-success text-xs">Copied!</span>
                 </>
               ) : (
                 <>
@@ -317,12 +317,12 @@ export function RepoSubmissionBar({
       {/* Token configuration drawer / popup when opened */}
       {isTokenOpen && (
         <div
-          className="p-3 rounded-md bg-[#121417] border border-zinc-800/80 flex flex-col gap-2.5 text-xs animate-in fade-in-0"
+          className="p-3 rounded-md bg-surface-panel border border-border-default flex flex-col gap-2.5 text-xs animate-in fade-in-0"
           data-testid="github-token-drawer"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 font-medium text-zinc-100">
-              <Key className="w-3.5 h-3.5 text-zinc-400" />
+            <div className="flex items-center gap-1.5 font-medium text-text-primary">
+              <Key className="w-3.5 h-3.5 text-text-secondary" />
               <span>GitHub Personal Access Token</span>
             </div>
             {hasGithubToken && (
@@ -332,7 +332,7 @@ export function RepoSubmissionBar({
             )}
           </div>
 
-          <p className="text-[11px] text-zinc-400 leading-normal">
+          <p className="text-[11px] text-text-secondary leading-normal">
             Stored in an encrypted httpOnly cookie (`github_pat`). Increases
             your GitHub API rate limit from 60 to 5,000 requests per hour. Only
             public read permissions are needed.
@@ -373,7 +373,7 @@ export function RepoSubmissionBar({
                   variant="ghost"
                   size="sm"
                   onClick={handleClearToken}
-                  className="h-7 text-xs text-rose-400 hover:text-rose-300 shrink-0"
+                  className="h-7 text-xs text-status-error hover:text-status-error shrink-0"
                 >
                   Clear
                 </Button>
@@ -391,7 +391,7 @@ export function RepoSubmissionBar({
             </div>
 
             {tokenError && (
-              <p className="text-rose-400 text-[11px] flex items-center gap-1">
+              <p className="text-status-error text-[11px] flex items-center gap-1">
                 <AlertCircle className="w-3 h-3 shrink-0" />
                 <span>{tokenError}</span>
               </p>
@@ -403,31 +403,31 @@ export function RepoSubmissionBar({
       {/* Two Tier Streaming Progress Indicator (AC-4) */}
       {isIngesting && ingestionProgress && (
         <div
-          className="px-3 py-2 rounded-md bg-[#121417] border border-zinc-800/80 flex flex-col gap-1.5 text-xs"
+          className="px-3 py-2 rounded-md bg-surface-panel border border-border-default flex flex-col gap-1.5 text-xs"
           data-testid="ingestion-progress-bar"
         >
           {/* Tier 1: Phase and Bar */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 overflow-hidden">
-              <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin shrink-0" />
+              <Loader2 className="w-3.5 h-3.5 text-accent-text animate-spin shrink-0" />
               <Badge
                 variant="accent"
                 className="uppercase text-[10px] shrink-0 font-semibold"
               >
                 {ingestionPhase.replace(/_/g, " ")}
               </Badge>
-              <span className="text-[11px] text-zinc-200 truncate font-medium">
+              <span className="text-[11px] text-text-primary truncate font-medium">
                 {ingestionProgress.message}
               </span>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[10px] font-mono text-zinc-400">
+              <span className="text-[10px] font-mono text-text-secondary">
                 {Math.round(ingestionProgress.current)}%
               </span>
-              <div className="w-24 h-1.5 rounded-full bg-[#0B0C0E] border border-zinc-800/60 overflow-hidden">
+              <div className="w-24 h-1.5 rounded-full bg-surface-canvas border border-border-subtle overflow-hidden">
                 <div
-                  className="h-full bg-blue-500 transition-all duration-300"
+                  className="h-full bg-accent-primary-hover transition-all duration-300"
                   style={{
                     width: `${Math.min(100, Math.max(5, ingestionProgress.current))}%`,
                   }}
@@ -439,7 +439,7 @@ export function RepoSubmissionBar({
           {/* Tier 2: Detailed Item Counter / Current Module (AC-4) */}
           {ingestionProgress.detail && (
             <div
-              className="flex items-center justify-between text-[10px] text-zinc-400 font-mono pl-5 truncate"
+              className="flex items-center justify-between text-[10px] text-text-secondary font-mono pl-5 truncate"
               data-testid="ingestion-detail-counter"
             >
               <span className="truncate">
@@ -465,13 +465,13 @@ export function RepoSubmissionBar({
       {/* Offline Fallback Notice Banner (AC-8) */}
       {offlineFallback && (
         <div
-          className="px-3 py-1.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-center justify-between gap-2"
+          className="px-3 py-1.5 rounded-sm bg-status-warning/10 border border-status-warning/20 text-status-warning text-xs flex items-center justify-between gap-2"
           data-testid="offline-notice-banner"
         >
           <div className="flex items-center gap-2">
-            <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <WifiOff className="w-3.5 h-3.5 text-status-warning shrink-0" />
             <span className="font-medium">Offline Mode:</span>
-            <span className="text-[11px] text-amber-200/90">
+            <span className="text-[11px] text-status-warning/90">
               GitHub API unreachable. Displaying cached repository graph
               {offlineLastSynced
                 ? ` (last synced ${new Date(offlineLastSynced).toLocaleString()})`
@@ -488,22 +488,22 @@ export function RepoSubmissionBar({
       {/* Rate Limit and General Ingestion Error Banner (AC-6, AC-9) */}
       {ingestionPhase === "error" && ingestionError && (
         <div
-          className="p-3 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex flex-col gap-2"
+          className="p-3 rounded-md bg-status-error/10 border border-status-error/20 text-status-error text-xs flex flex-col gap-2"
           data-testid="ingestion-error-alert"
         >
           <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-status-error shrink-0 mt-0.5" />
             <div className="flex-1">
-              <div className="font-semibold text-rose-200">
+              <div className="font-semibold text-status-error">
                 {ingestionError.code === "RATE_LIMITED"
                   ? "GitHub API Rate Limit Reached"
                   : "Ingestion Failed"}
               </div>
-              <p className="text-[11px] text-rose-300/90 mt-0.5">
+              <p className="text-[11px] text-status-error/90 mt-0.5">
                 {ingestionError.message}
               </p>
               {ingestionError.rateLimitReset && (
-                <p className="text-[10px] text-rose-400 mt-1 font-mono">
+                <p className="text-[10px] text-status-error mt-1 font-mono">
                   Rate limit resets at:{" "}
                   {new Date(
                     ingestionError.rateLimitReset * 1000,
@@ -515,8 +515,8 @@ export function RepoSubmissionBar({
 
           {/* Quick trigger to open rate limit recovery modal */}
           {ingestionError.code === "RATE_LIMITED" && (
-            <div className="mt-1 pt-2 border-t border-rose-500/20 flex items-center justify-between gap-2">
-              <span className="text-[11px] text-rose-300/80">
+            <div className="mt-1 pt-2 border-t border-status-error/20 flex items-center justify-between gap-2">
+              <span className="text-[11px] text-status-error/80">
                 Supply a token or view reset countdown timer.
               </span>
               <Button
@@ -536,11 +536,11 @@ export function RepoSubmissionBar({
       {/* Completion Notification with Cache Hit Indicator (AC-1, AC-2) */}
       {showComplete && ingestionPhase === "complete" && (
         <div
-          className="px-3 py-1.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center justify-between"
+          className="px-3 py-1.5 rounded-sm bg-status-success/10 border border-status-success/20 text-status-success text-xs flex items-center justify-between"
           data-testid="ingestion-complete-banner"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-status-success shrink-0" />
             <span className="truncate">
               {isCacheHit
                 ? "Repository loaded from client cache in under 100ms."
@@ -549,7 +549,7 @@ export function RepoSubmissionBar({
             {isCacheHit && (
               <Badge
                 variant="accent"
-                className="text-[10px] bg-emerald-500/20 text-emerald-300 border-emerald-500/30 shrink-0 flex items-center gap-1"
+                className="text-[10px] bg-status-success/20 text-status-success border-status-success/30 shrink-0 flex items-center gap-1"
                 data-testid="cache-hit-badge"
               >
                 <Database className="w-2.5 h-2.5" />
@@ -560,7 +560,7 @@ export function RepoSubmissionBar({
           <button
             type="button"
             onClick={() => setShowComplete(false)}
-            className="ml-2 p-0.5 rounded hover:bg-emerald-500/20 text-emerald-300 shrink-0 transition-colors"
+            className="ml-2 p-0.5 rounded-sm hover:bg-status-success/20 text-status-success shrink-0 transition-colors"
             aria-label="Dismiss completion notification"
           >
             <XCircle className="w-3.5 h-3.5" />

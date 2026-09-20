@@ -29,7 +29,7 @@ export function DemoAnswerFooter({
   return (
     <div className="mt-3">
       {showHiddenNotice && (
-        <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] mb-2">
+        <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-sm bg-status-warning/10 border border-status-warning/20 text-status-warning text-[11px] mb-2">
           <span>
             {hiddenCount === 1
               ? "1 cited file is hidden by current filters"
@@ -38,21 +38,21 @@ export function DemoAnswerFooter({
           <button
             type="button"
             onClick={onShowAll}
-            className="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-medium text-[10.5px] transition-colors cursor-pointer shrink-0"
+            className="px-2 py-0.5 rounded-sm bg-status-warning/20 hover:bg-status-warning/30 text-status-warning font-medium text-[10.5px] transition-colors cursor-pointer shrink-0"
           >
             Show all
           </button>
         </div>
       )}
 
-      <div className="pt-2 border-t border-zinc-800/60 flex flex-wrap items-center justify-between gap-2 text-[10.5px] text-zinc-500">
+      <div className="pt-2 border-t border-border-subtle flex flex-wrap items-center justify-between gap-2 text-[10.5px] text-text-muted">
         <span>
           Computed from the loaded dependency graph, no AI model involved.
         </span>
         <button
           type="button"
           onClick={onAddKey}
-          className="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer"
+          className="text-accent-text hover:text-text-primary font-medium underline underline-offset-2 transition-colors cursor-pointer"
         >
           Add your own key
         </button>

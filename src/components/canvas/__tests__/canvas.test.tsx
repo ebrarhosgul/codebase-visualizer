@@ -142,8 +142,8 @@ describe("FileNodeCard", () => {
     const card = screen.getByRole("article", {
       name: "file node: index.ts",
     });
-    expect(card.className).toContain("border-zinc-700");
-    expect(card.className).toContain("bg-zinc-900/90");
+    expect(card.className).toContain("border-border-strong");
+    expect(card.className).toContain("bg-surface-card/90");
   });
 
   it("applies dimmed styling when node is dimmed and not hovered or selected", () => {
@@ -175,7 +175,7 @@ describe("FileNodeCard", () => {
     const card = screen.getByRole("article", {
       name: "file node: index.ts",
     });
-    expect(card.className).toContain("border-zinc-700");
+    expect(card.className).toContain("border-border-strong");
   });
 
   it("renders external package node with pkg badge", () => {
@@ -293,8 +293,8 @@ describe("SymbolNodeCard", () => {
     const card = screen.getByRole("article", {
       name: "Symbol node: buildGraph (function)",
     });
-    expect(card.className).toContain("border-zinc-700");
-    expect(card.className).toContain("bg-zinc-900/90");
+    expect(card.className).toContain("border-border-strong");
+    expect(card.className).toContain("bg-surface-card/90");
   });
 
   it("renders class and interface symbols with matching badge variants", () => {

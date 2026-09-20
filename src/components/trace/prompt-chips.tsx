@@ -22,7 +22,7 @@ export function PromptChips({
   if (variant === "empty") {
     return (
       <div className="pt-2 space-y-1.5 max-w-xs mx-auto text-left">
-        <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+        <div className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
           Suggested Prompts
         </div>
         <div className="flex flex-col gap-1.5">
@@ -44,18 +44,18 @@ export function PromptChips({
                 title={
                   disabled ? "Load a repository to ask questions" : undefined
                 }
-                className={`w-full text-left p-2 rounded-md transition-colors border text-xs cursor-pointer ${
+                className={`w-full text-left p-2 rounded-md transition-colors border text-xs ${
                   disabled
-                    ? "opacity-50 cursor-not-allowed bg-zinc-900/40 border-zinc-800/40 text-zinc-500"
-                    : "bg-zinc-900/80 border-zinc-800/80 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/70 hover:border-zinc-700"
+                    ? "opacity-50 cursor-not-allowed bg-surface-panel-secondary/40 border-border-subtle text-text-muted"
+                    : "cursor-pointer bg-surface-panel-secondary/80 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-active hover:border-border-strong"
                 }`}
               >
-                <div className="font-medium text-[11.5px] text-zinc-200">
+                <div className="font-medium text-[11.5px] text-text-primary">
                   {chip.label}
                 </div>
                 <div
                   id={descId}
-                  className="text-[10px] text-zinc-500 mt-0.5 leading-snug"
+                  className="text-[10px] text-text-muted mt-0.5 leading-snug"
                 >
                   {chip.description}
                 </div>
@@ -89,10 +89,10 @@ export function PromptChips({
           title={
             disabled ? "Load a repository to ask questions" : chip.description
           }
-          className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border cursor-pointer ${
+          className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border ${
             disabled
-              ? "opacity-50 cursor-not-allowed bg-zinc-900 border-zinc-800 text-zinc-500"
-              : "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 hover:border-zinc-700"
+              ? "opacity-50 cursor-not-allowed bg-surface-panel-secondary border-border-default text-text-muted"
+              : "cursor-pointer bg-surface-card/90 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-active hover:border-border-strong"
           }`}
         >
           {chip.label}
