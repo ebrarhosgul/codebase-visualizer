@@ -12,20 +12,71 @@ export type GitHubResult<T> =
 const USER_AGENT = "Codebase-Visualizer/0.1.0";
 
 /**
+ * Largest repository archive the server will download into memory.
+ */
+export const MAX_ARCHIVE_DOWNLOAD_BYTES = 100 * 1024 * 1024; // 100 MB
+
+/**
  * Builds standard GitHub API headers including optional authorization.
+ * Only a token supplied by the user is ever sent. The server never falls back
+ * to its own GitHub credential, so anonymous requests stay anonymous.
  */
 function buildHeaders(token?: string): HeadersInit {
-  const effectiveToken = token || process.env.GITHUB_TOKEN;
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
     "User-Agent": USER_AGENT,
   };
 
-  if (effectiveToken && effectiveToken.trim().length > 0) {
-    headers.Authorization = `Bearer ${effectiveToken.trim()}`;
+  if (token && token.trim().length > 0) {
+    headers.Authorization = `Bearer ${token.trim()}`;
   }
 
   return headers;
+}
+
+/**
+ * Reads a response body into memory, refusing to buffer more than maxBytes.
+ * Returns null when the limit is exceeded. The cap is enforced while streaming
+ * so a missing or dishonest Content-Length cannot bypass it.
+ */
+async function readBodyWithLimit(
+  response: Response,
+  maxBytes: number,
+): Promise<ArrayBuffer | null> {
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    await response.body?.cancel();
+    return null;
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const buffer = await response.arrayBuffer();
+    return buffer.byteLength > maxBytes ? null : buffer;
+  }
+
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    received += value.byteLength;
+    if (received > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const merged = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return merged.buffer;
 }
 
 /**
@@ -296,7 +347,20 @@ export async function fetchTarballArchive(
       };
     }
 
-    const buffer = await response.arrayBuffer();
+    const buffer = await readBodyWithLimit(
+      response,
+      MAX_ARCHIVE_DOWNLOAD_BYTES,
+    );
+    if (!buffer) {
+      return {
+        success: false,
+        error: {
+          code: "FILE_LIMIT_EXCEEDED",
+          message: `Repository archive is larger than the ${MAX_ARCHIVE_DOWNLOAD_BYTES / (1024 * 1024)} MB limit.`,
+        },
+      };
+    }
+
     return {
       success: true,
       data: buffer,

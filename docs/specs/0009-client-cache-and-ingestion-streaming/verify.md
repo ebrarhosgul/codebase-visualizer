@@ -13,6 +13,9 @@ _Steps derived from spec 0009 acceptance criteria and value sourcing guarantees.
 - [x] Ingest more than 10 repositories or fill 300 megabytes of cache → least recently used eviction automatically deletes the oldest accessed repository record from IndexedDB → AC-7
 - [x] Disconnect network or trigger offline mode → submitting a cached repository URL detects network failure and automatically falls back to IndexedDB record with offline notice banner → AC-8
 - [x] Manually modify cached record schemaVersion to 999 in developer tools → submitting repository silently purges the corrupted record and falls back to clean fresh ingestion without UI crashes → AC-9
+- [x] Save a token, ingest a repository, then remove the token → every IndexedDB record is deleted, including when the DELETE request throws a network error → AC-10
+- [x] Post a token with a foreign `Origin`, then with `Content-Type: text/plain` → both refused and no cookie is set → AC-5
+- [x] Feed the extractor an archive past each limit → retention caps, the capped flag, and the decompression abort are shown by `src/lib/parser/__tests__/tar-extractor.test.ts` → AC-11
 
 ## Value sourcing checks
 
@@ -40,3 +43,5 @@ _Steps derived from spec 0009 acceptance criteria and value sourcing guarantees.
 - AC-7 least recently used cache eviction covered by `src/lib/storage/indexed-db.ts`
 - AC-8 graceful offline fallback covered by `src/stores/graph-store.ts` and `src/components/workspace/repo-submission-bar.tsx`
 - AC-9 silent invalidation on schema corruption covered by `src/lib/storage/indexed-db.ts` and `src/entities/serialization.ts`
+- AC-10 token removal clears the IndexedDB cache covered by `src/stores/graph-store.ts` and `src/stores/__tests__/graph-store.test.ts`
+- AC-11 bounded archive extraction covered by `src/lib/parser/tar-extractor.ts`, `src/lib/github/client.ts`, and `src/lib/parser/__tests__/tar-extractor.test.ts`

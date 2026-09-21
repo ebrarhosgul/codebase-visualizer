@@ -239,8 +239,11 @@ Errors are categorized into explicit domain codes with user actions:
 
 The engine implements Bring-Your-Own-Key (BYOK). Keys are never committed to disk, persisted in database tables, or logged:
 
-- **Server Storage**: Keys are encrypted using AES-256-GCM (`src/lib/ai/crypto.ts`) with a 96-bit initialization vector (`iv`), 128-bit authentication tag (`authTag`), and SHA-256 derived keys from `AI_COOKIE_SECRET`. Encrypted strings are placed in `httpOnly`, `SameSite=Strict` cookies (`cv_ai_key`).
+- **Server Storage**: Keys are encrypted using AES-256-GCM (`src/lib/ai/crypto.ts`) with a 96-bit initialization vector (`iv`), 128-bit authentication tag (`authTag`), and SHA-256 derived keys from `AI_COOKIE_SECRET`. Each ciphertext carries a 30 day expiry and is bound to its purpose as additional authenticated data, so a key cookie cannot be replayed as a GitHub token cookie. Encrypted strings are placed in `httpOnly`, `SameSite=Lax` cookies (`cv_ai_key`), and `Secure` in production.
+- **Fail closed**: There is no fallback secret. If `AI_COOKIE_SECRET` is missing, saving a credential returns a 500 and no cookie is issued; reading a stored cookie throws.
+- **No server credentials**: The server never uses its own `GITHUB_TOKEN` or LLM API keys. Anonymous requests stay anonymous, and live AI queries only run with the caller's own key from their encrypted cookie, which is bound to the provider it was saved for.
 - **GitHub PAT**: Personal access tokens for GitHub are handled identically via `GITHUB_PAT_COOKIE_NAME` and encrypted via `encryptGithubToken` (`src/lib/github/crypto.ts`).
+- **Cross site protection**: `SameSite=Lax` does not stop another site from making the browser store a cookie, so the credential endpoints also reject requests whose `Origin` or `Sec-Fetch-Site` is not same origin, and require `Content-Type: application/json`.
 
 ---
 
@@ -378,21 +381,19 @@ npm install
 
 ### Environment Configuration
 
-Create a `.env.local` file in the project root to configure optional API keys:
+Create a `.env.local` file in the project root:
 
 ```bash
-# Optional: Server-side GitHub token for higher baseline API rate limits (60 -> 5,000 req/hr)
-GITHUB_TOKEN=your_github_personal_access_token
-
-# Optional: Server-side fallback LLM keys (Users can also provide keys via client-side BYOK)
-GEMINI_API_KEY=your_gemini_api_key
-OPENAI_API_KEY=your_openai_api_key
-ANTHROPIC_API_KEY=your_anthropic_api_key
-
-# Encryption secrets (Used to encrypt client session cookies for BYOK keys)
+# Required: encrypts the credential cookies that hold each user's own API keys
+# and GitHub token. The server refuses to store or read them without it.
+# Generate one with: openssl rand -base64 32
 AI_COOKIE_SECRET=at-least-32-characters-random-secret-key
+
+# Optional: separate secret for the GitHub token cookie (defaults to AI_COOKIE_SECRET)
 COOKIE_ENCRYPTION_KEY=at-least-32-characters-random-secret-key
 ```
+
+The server does not read `GITHUB_TOKEN`, `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY`. Every user supplies their own GitHub token and LLM key in the app, and they are stored only in their own encrypted cookies.
 
 ### Quality Verification Gates
 

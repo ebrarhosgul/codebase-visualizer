@@ -120,7 +120,11 @@ describe("/api/auth/github-token Route Handler", () => {
   });
 
   it("clears cookie on DELETE request (covers: AC-5)", async () => {
-    const res = await tokenDelete();
+    const res = await tokenDelete(
+      new NextRequest("http://localhost:3000/api/auth/github-token", {
+        method: "DELETE",
+      }),
+    );
     expect(res.status).toBe(200);
 
     const json = (await res.json()) as { success: boolean };

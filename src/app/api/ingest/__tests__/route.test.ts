@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { POST } from "../route";
 import * as github from "@/lib/github";
 import { encryptGithubToken } from "@/lib/github/crypto";
+import { resetRateLimits } from "@/lib/ai/rate-limiter";
 import * as parser from "@/lib/parser";
 
 vi.mock("@/lib/github", async () => {
@@ -27,6 +28,7 @@ vi.mock("@/lib/parser", async () => {
 describe("POST /api/ingest route handler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetRateLimits();
   });
 
   it("returns 400 when request body is invalid JSON", async () => {
@@ -313,5 +315,116 @@ describe("POST /api/ingest route handler", () => {
     expect(text).toContain('"phase":"error"');
     expect(text).toContain('"code":"PARSE_FAILED"');
     expect(text).toContain("No TypeScript or JavaScript source files found");
+  });
+  describe("request hardening", () => {
+    const ingestUrl = "http://localhost:3000/api/ingest";
+    const invalidUrlBody = JSON.stringify({ repositoryUrl: "invalid-url" });
+
+    it("refuses a cross site request", async () => {
+      const req = new NextRequest(ingestUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "https://evil.example",
+        },
+        body: invalidUrlBody,
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+    });
+
+    it("rejects an oversized request body with 413", async () => {
+      const req = new NextRequest(ingestUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repositoryUrl: "https://github.com/a/b",
+          githubToken: "t".repeat(32 * 1024),
+        }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(413);
+    });
+
+    it("rejects a body whose fields have the wrong types", async () => {
+      const req = new NextRequest(ingestUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repositoryUrl: 42 }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+    });
+
+    it("rate limits repeated ingestion from one client", async () => {
+      const makeReq = () =>
+        new NextRequest(ingestUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-forwarded-for": "203.0.113.50",
+          },
+          body: invalidUrlBody,
+        });
+
+      for (let i = 0; i < 10; i++) {
+        const res = await POST(makeReq());
+        expect(res.status).toBe(200);
+        await res.text();
+      }
+
+      const blocked = await POST(makeReq());
+      expect(blocked.status).toBe(429);
+      expect(blocked.headers.get("Retry-After")).toBeTruthy();
+      const json = (await blocked.json()) as { code: string };
+      expect(json.code).toBe("TOO_MANY_REQUESTS");
+    });
+
+    it("rejects a branch of '..' before any GitHub request is made", async () => {
+      const req = new NextRequest(ingestUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repositoryUrl: "https://github.com/owner/repo",
+          branch: "..",
+        }),
+      });
+
+      const res = await POST(req);
+      const text = await res.text();
+      expect(text).toContain('"code":"INVALID_URL"');
+      expect(github.fetchRepoMetadata).not.toHaveBeenCalled();
+      expect(github.fetchBranchCommitSha).not.toHaveBeenCalled();
+      expect(github.fetchTarballArchive).not.toHaveBeenCalled();
+    });
+
+    it("does not pass any server GITHUB_TOKEN to GitHub for anonymous requests", async () => {
+      vi.stubEnv("GITHUB_TOKEN", "ghp_operator_secret_must_not_leak_1234");
+      try {
+        vi.mocked(github.fetchRepoMetadata).mockResolvedValue({
+          success: false,
+          error: { code: "REPO_NOT_FOUND", message: "not found" },
+        });
+
+        const req = new NextRequest(ingestUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repositoryUrl: "https://github.com/o/r" }),
+        });
+        const res = await POST(req);
+        await res.text();
+
+        expect(github.fetchRepoMetadata).toHaveBeenCalledWith(
+          "o",
+          "r",
+          expect.objectContaining({ token: undefined }),
+        );
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
   });
 });

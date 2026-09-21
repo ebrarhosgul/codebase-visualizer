@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
   encryptApiKey,
   decryptApiKey,
   AI_KEY_COOKIE_NAME,
 } from "@/lib/ai/crypto";
+import { CREDENTIAL_COOKIE_TTL_SECONDS } from "@/lib/security/cookie-crypto";
+import { isSameOriginRequest, readJsonBody } from "@/lib/security/request";
 import type { AiProviderId } from "@/lib/ai/types";
 
 export const dynamic = "force-dynamic";
@@ -14,33 +17,54 @@ const ALLOWED_PROVIDERS: readonly AiProviderId[] = [
   "claude",
 ];
 
-interface SaveKeyRequest {
-  readonly provider: AiProviderId;
-  readonly apiKey: string;
-}
+const MAX_BODY_BYTES = 4 * 1024;
+
+const saveKeyRequestSchema = z.object({
+  provider: z.string().max(32),
+  apiKey: z.string().max(1024),
+});
 
 /**
  * Route handler for POST /api/ai/keys.
  * Encrypts user API key with AES-256-GCM and stores in secure HTTP-only cookie.
+ * Only same origin JSON requests are accepted so another site cannot plant a
+ * key in the visitor's browser.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let body: SaveKeyRequest;
-  try {
-    body = (await req.json()) as SaveKeyRequest;
-  } catch {
+  if (!isSameOriginRequest(req)) {
     return NextResponse.json(
-      { success: false, error: "Invalid JSON request body." },
+      { success: false, error: "Cross site requests are not allowed." },
+      { status: 403 },
+    );
+  }
+
+  const bodyResult = await readJsonBody(req, {
+    maxBytes: MAX_BODY_BYTES,
+    requireJsonContentType: true,
+  });
+  if (!bodyResult.ok) {
+    return NextResponse.json(
+      { success: false, error: bodyResult.message },
+      { status: bodyResult.status },
+    );
+  }
+
+  const parsed = saveKeyRequestSchema.safeParse(bodyResult.value);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: "Invalid request body." },
       { status: 400 },
     );
   }
 
-  const { provider, apiKey } = body;
+  const { apiKey } = parsed.data;
+  const provider = parsed.data.provider as AiProviderId;
 
   if (!ALLOWED_PROVIDERS.includes(provider)) {
     return NextResponse.json(
       {
         success: false,
-        error: `Unsupported provider "${provider}". Allowed: ${ALLOWED_PROVIDERS.join(
+        error: `Unsupported provider "${parsed.data.provider}". Allowed: ${ALLOWED_PROVIDERS.join(
           ", ",
         )}`,
       },
@@ -48,14 +72,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  if (!apiKey || typeof apiKey !== "string" || apiKey.trim().length === 0) {
+  if (apiKey.trim().length === 0) {
     return NextResponse.json(
       { success: false, error: "API key cannot be empty." },
       { status: 400 },
     );
   }
 
-  const encryptedValue = encryptApiKey(apiKey.trim(), provider);
+  let encryptedValue: string;
+  try {
+    encryptedValue = encryptApiKey(apiKey.trim(), provider);
+  } catch (err: unknown) {
+    console.error(
+      "Unable to encrypt API key cookie:",
+      err instanceof Error ? err.message : err,
+    );
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Secure credential storage is not configured on this server.",
+      },
+      { status: 500 },
+    );
+  }
 
   const response = NextResponse.json({
     success: true,
@@ -69,7 +108,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: CREDENTIAL_COOKIE_TTL_SECONDS,
   });
 
   return response;
@@ -79,7 +118,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
  * Route handler for DELETE /api/ai/keys.
  * Clears the stored BYOK encrypted cookie.
  */
-export async function DELETE(): Promise<NextResponse> {
+export async function DELETE(req: NextRequest): Promise<NextResponse> {
+  if (!isSameOriginRequest(req)) {
+    return NextResponse.json(
+      { success: false, error: "Cross site requests are not allowed." },
+      { status: 403 },
+    );
+  }
+
   const response = NextResponse.json({
     success: true,
     message: "Stored credentials cleared.",

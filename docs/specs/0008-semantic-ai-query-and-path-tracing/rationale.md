@@ -68,3 +68,17 @@ For active repository exploration, the encrypted HTTP only cookie model provides
 The provider agnostic interface directly satisfies the requirement for vendor flexibility. Defaulting to Gemini Flash provides high throughput, large context capacity for abstract syntax tree summaries, and cost effective execution, while the clean interface ensures OpenAI and Claude can be swapped in without touching canvas or editor components.
 
 Finally, enforcing deterministic breadth first graph validation (`findDependencyPath`) before rendering canvas highlights ensures that model hallucinations never manifest as false architectural dependencies. This guarantees that visual path highlights remain truthful to the codebase abstract syntax tree.
+
+## Amendment 2026-09-21: security hardening
+
+**Context.** A security review of the shipped code raised four leads and several hardening notes. Anonymous callers could spend an operator LLM key behind a limiter keyed on a client supplied header. The server GitHub token was used for anonymous ingests. Another site could plant a credential cookie with a cross site form post. Archive handling had no size bounds. The review also noted that the cookie secret fell back to a key that was public in the source.
+
+**Decisions.**
+- Server credentials. Keep an optional server key as a developer convenience, or remove it. Removed. Any server key is reachable by anonymous callers, and a server GitHub token can read whatever private repositories it is scoped to. Users bring their own keys, and demo mode covers keyless use. The cost is no keyless live mode, and all anonymous GitHub traffic shares one unauthenticated quota (see spec 0005).
+- Cookie secret. Keep a development fallback, or fail closed. Fail closed. A fallback that lives in public source protects nothing, and a silent fallback hides a misconfigured deployment.
+- Cross site cookie planting. Switching to `SameSite=Strict` was rejected because `SameSite` governs when a cookie is sent, not whether a cross site response may cause it to be stored. Checking `Origin` and `Sec-Fetch-Site` and requiring a JSON content type stops the attack directly. `Lax` stays.
+- Cookie contents. The provider was already inside the encrypted payload, so binding it further added nothing. A sealed expiry and a purpose label were added instead, which limit how long a copied value works and stop one cookie being replayed as another.
+- Client address. The leftmost `X-Forwarded-For` entry is client controlled and was rejected. The rightmost entry is appended by the nearest trusted proxy. With several proxy hops this shares one bucket, which fails safe.
+- Rate limit state. A shared store was deferred. Per process counts slow abuse but are not a global cap, recorded as a follow up.
+
+**Consequence for existing users.** The cookie format changed, so saved keys must be entered once more.

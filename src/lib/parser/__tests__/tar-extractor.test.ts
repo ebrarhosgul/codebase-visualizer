@@ -153,4 +153,83 @@ describe("tar-extractor", () => {
     expect(result.tsconfigContent).toBeDefined();
     expect(result.tsconfigContent).toContain('"root/*"');
   });
+  async function buildArchive(
+    entries: readonly { readonly name: string; readonly content: string }[],
+  ): Promise<ArrayBuffer> {
+    const pack = tar.pack();
+    for (const entry of entries) {
+      pack.entry({ name: `repo-abc/${entry.name}` }, entry.content);
+    }
+    pack.finalize();
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of pack) {
+      chunks.push(chunk as Buffer);
+    }
+    const gzipped = gzipSync(Buffer.concat(chunks));
+    return gzipped.buffer.slice(
+      gzipped.byteOffset,
+      gzipped.byteOffset + gzipped.byteLength,
+    ) as ArrayBuffer;
+  }
+
+  it("stops retaining files past the retention cap but still counts them", async () => {
+    const entries = Array.from({ length: 50 }, (_, i) => ({
+      name: `pad/file${i}.txt`,
+      content: "x",
+    }));
+    const archive = await buildArchive(entries);
+
+    const result = await unpackRepositoryTarball(archive, {
+      maxFiles: 200,
+      includeNonSourceFiles: true,
+      limits: { maxRetainedFiles: 10 },
+    });
+
+    expect(result.files.length).toBe(10);
+    expect(result.totalFilesFound).toBe(50);
+    expect(result.wasCapped).toBe(true);
+  });
+
+  it("stops retaining content once the retained byte budget is spent", async () => {
+    const entries = Array.from({ length: 20 }, (_, i) => ({
+      name: `pad/file${i}.txt`,
+      content: "y".repeat(1000),
+    }));
+    const archive = await buildArchive(entries);
+
+    const result = await unpackRepositoryTarball(archive, {
+      maxFiles: 200,
+      includeNonSourceFiles: true,
+      limits: { maxRetainedBytes: 5000 },
+    });
+
+    expect(result.files.length).toBe(5);
+    expect(result.totalFilesFound).toBe(20);
+  });
+
+  it("aborts an archive that expands past the decompression bound", async () => {
+    const archive = await buildArchive([
+      { name: "src/big.ts", content: "a".repeat(200_000) },
+    ]);
+
+    await expect(
+      unpackRepositoryTarball(archive, {
+        maxFiles: 10,
+        limits: { maxDecompressedBytes: 50_000 },
+      }),
+    ).rejects.toThrow(/expands beyond/);
+  });
+
+  it("reports the true eligible count when nothing is capped", async () => {
+    const archive = await buildArchive([
+      { name: "src/a.ts", content: "export const a = 1;" },
+      { name: "src/b.ts", content: "export const b = 2;" },
+    ]);
+
+    const result = await unpackRepositoryTarball(archive, 10);
+    expect(result.files.length).toBe(2);
+    expect(result.totalFilesFound).toBe(2);
+    expect(result.wasCapped).toBe(false);
+  });
 });

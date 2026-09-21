@@ -1,20 +1,19 @@
 import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-} from "node:crypto";
+  openCookiePayload,
+  requireCookieSecret,
+  sealCookiePayload,
+} from "@/lib/security/cookie-crypto";
 
 export const AI_KEY_COOKIE_NAME = "cv_ai_key";
 
+const COOKIE_PURPOSE = "ai-key";
+
 /**
- * Derives a deterministic 32-byte key from environment secret or fallback development key.
+ * Reads the cookie encryption secret from AI_COOKIE_SECRET.
+ * Throws when it is missing; there is no development fallback.
  */
-function getEncryptionKey(): Buffer {
-  const secret =
-    process.env.AI_COOKIE_SECRET ||
-    "codebase-visualizer-development-secret-key-32-bytes";
-  return createHash("sha256").update(secret).digest();
+function getCookieSecret(): string {
+  return requireCookieSecret(["AI_COOKIE_SECRET"]);
 }
 
 export interface EncryptedPayload {
@@ -23,55 +22,44 @@ export interface EncryptedPayload {
 }
 
 /**
- * Encrypts an API key and provider name into an AES-256-GCM encrypted string.
+ * Encrypts an API key and provider name into an AES-256-GCM encrypted string
+ * that expires after the credential cookie lifetime.
  * Format: iv:authTag:ciphertext (all in hex)
+ * Throws CookieSecretMissingError when AI_COOKIE_SECRET is not configured.
  */
 export function encryptApiKey(apiKey: string, provider: string): string {
-  const key = getEncryptionKey();
-  const iv = randomBytes(12); // 96-bit IV recommended for GCM
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-
-  const payload = JSON.stringify({ apiKey, provider });
-  let encrypted = cipher.update(payload, "utf8", "hex");
-  encrypted += cipher.final("hex");
-
-  const authTag = cipher.getAuthTag().toString("hex");
-  return `${iv.toString("hex")}:${authTag}:${encrypted}`;
+  return sealCookiePayload(
+    { apiKey, provider },
+    COOKIE_PURPOSE,
+    getCookieSecret(),
+  );
 }
 
 /**
  * Decrypts an AES-256-GCM encrypted string back to API key and provider.
- * Returns null if decryption fails or authentication tag is invalid.
+ * Returns null if decryption fails, the authentication tag is invalid, or the
+ * value has expired.
+ * Throws CookieSecretMissingError when AI_COOKIE_SECRET is not configured.
  */
 export function decryptApiKey(encryptedValue: string): EncryptedPayload | null {
-  try {
-    const parts = encryptedValue.split(":");
-    if (parts.length !== 3) {
-      return null;
-    }
-
-    const [ivHex, authTagHex, cipherHex] = parts;
-    if (!ivHex || !authTagHex || !cipherHex) {
-      return null;
-    }
-
-    const key = getEncryptionKey();
-    const iv = Buffer.from(ivHex, "hex");
-    const authTag = Buffer.from(authTagHex, "hex");
-
-    const decipher = createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAuthTag(authTag);
-
-    let decrypted = decipher.update(cipherHex, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-
-    const parsed = JSON.parse(decrypted) as EncryptedPayload;
-    if (!parsed.apiKey || !parsed.provider) {
-      return null;
-    }
-
-    return parsed;
-  } catch {
+  const payload = openCookiePayload(
+    encryptedValue,
+    COOKIE_PURPOSE,
+    getCookieSecret(),
+  );
+  if (!payload) {
     return null;
   }
+
+  const { apiKey, provider } = payload;
+  if (
+    typeof apiKey !== "string" ||
+    typeof provider !== "string" ||
+    !apiKey ||
+    !provider
+  ) {
+    return null;
+  }
+
+  return { apiKey, provider };
 }

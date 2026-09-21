@@ -83,7 +83,11 @@ describe("AI API Routes", () => {
     });
 
     it("clears stored credentials on DELETE (covers: AC-3)", async () => {
-      const res = await keysDelete();
+      const res = await keysDelete(
+        new NextRequest("http://localhost:3000/api/ai/keys", {
+          method: "DELETE",
+        }),
+      );
       expect(res.status).toBe(200);
       const cookie = res.cookies.get(AI_KEY_COOKIE_NAME);
       expect(cookie?.value).toBe("");

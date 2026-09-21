@@ -232,10 +232,10 @@ Repository graph processing is managed in the client Zustand store with an `Abor
 **Security model**:
 - All operations analyze public code client side or within serverless execution handlers.
 - No repository source code or tokens are stored on external application servers.
-- When an optional GitHub personal access token is provided for higher API rate limits, it resides purely in client memory and is never logged or persisted.
+- A GitHub personal access token comes only from the user. It is kept in an encrypted httpOnly cookie (spec 0009) and is never logged. The server holds no GitHub token of its own, so anonymous requests reach GitHub anonymously.
 
 **Configuration required**:
-- None. Optional `GITHUB_TOKEN` environment variable on the server side for higher baseline rate limits when accessing the GitHub REST API.
+- None for the data model. The server reads no GitHub credential from its environment. Cookie encryption uses `AI_COOKIE_SECRET`, or `COOKIE_ENCRYPTION_KEY` for the GitHub token cookie when that is set (specs 0008 and 0009).
 
 **Critical test scenarios**:
 - Happy path: Parsing a TypeScript repository generates validated `CodebaseGraph` entities with correct directory, file, symbol, external module, and edge records, verifies **AC-1**, **AC-2**, **AC-3**, **AC-4**, **AC-5**.

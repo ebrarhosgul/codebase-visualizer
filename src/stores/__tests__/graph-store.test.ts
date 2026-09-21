@@ -9,6 +9,7 @@ vi.mock("@/lib/storage", async () => {
     ...actual,
     getCachedRepository: vi.fn().mockResolvedValue(null),
     saveCachedRepository: vi.fn().mockResolvedValue(null),
+    clearAllCachedRepositories: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -1051,6 +1052,28 @@ describe("useGraphStore", () => {
       expect.objectContaining({ method: "DELETE" }),
     );
     expect(useGraphStore.getState().hasGithubToken).toBe(false);
+  });
+
+  it("wipes the local repository cache when the GitHub token is cleared", async () => {
+    vi.mocked(storage.clearAllCachedRepositories).mockClear();
+    useGraphStore.setState({ hasGithubToken: true });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    } as unknown as Response);
+
+    await useGraphStore.getState().clearGithubToken();
+
+    expect(storage.clearAllCachedRepositories).toHaveBeenCalledTimes(1);
+  });
+
+  it("still wipes the cache when the token DELETE request fails", async () => {
+    vi.mocked(storage.clearAllCachedRepositories).mockClear();
+    global.fetch = vi.fn().mockRejectedValue(new Error("offline"));
+
+    await useGraphStore.getState().clearGithubToken();
+
+    expect(storage.clearAllCachedRepositories).toHaveBeenCalledTimes(1);
   });
 
   it("retryAfterRateLimit closes modal and restarts pending request (covers: AC-6)", async () => {

@@ -22,7 +22,8 @@ export class OpenAIProvider implements AIProvider {
     apiKey?: string,
     signal?: AbortSignal,
   ): AsyncGenerator<AIStreamEvent, void, unknown> {
-    const activeKey = apiKey || process.env.OPENAI_API_KEY;
+    // Only the caller supplied key is used; there is no server side fallback.
+    const activeKey = apiKey;
     if (!activeKey) {
       yield {
         type: "error",

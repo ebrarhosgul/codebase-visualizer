@@ -22,7 +22,8 @@ export class GeminiAIProvider implements AIProvider {
     apiKey?: string,
     signal?: AbortSignal,
   ): AsyncGenerator<AIStreamEvent, void, unknown> {
-    const activeKey = apiKey || process.env.GEMINI_API_KEY;
+    // Only the caller supplied key is used; there is no server side fallback.
+    const activeKey = apiKey;
     if (!activeKey) {
       yield {
         type: "error",
@@ -84,13 +85,17 @@ ${context.contextSummary}`;
       ? configuredModel.slice("models/".length)
       : configuredModel;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${activeKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
 
     let response: Response;
     try {
       response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          // Header, not query string, so the key stays out of proxy and access logs
+          "x-goog-api-key": activeKey,
+        },
         body: JSON.stringify({
           system_instruction: {
             parts: [{ text: systemInstruction }],

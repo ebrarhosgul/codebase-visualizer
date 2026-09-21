@@ -19,6 +19,7 @@ import {
 } from "@/graph/layers";
 import { parseGithubUrl } from "@/lib/github";
 import {
+  clearAllCachedRepositories,
   getCachedRepository,
   saveCachedRepository,
   type CachedRepositoryRecord,
@@ -587,6 +588,14 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       set({ hasGithubToken: false });
     } catch {
       // Keep current status
+    }
+
+    // Cached graphs and file sources may include private repositories that were
+    // fetched with this token, so they must not outlive it on a shared machine.
+    try {
+      await clearAllCachedRepositories();
+    } catch {
+      // Cache clearing is best effort
     }
   },
 

@@ -206,6 +206,72 @@ describe("AI Providers and Registry", () => {
     });
   });
 
+  describe("server side API keys are never used", () => {
+    const ctx = () => ({
+      repository: mockRepo,
+      graph: mockGraph,
+      contextSummary: "Summary",
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it.each([
+      ["gemini", "GEMINI_API_KEY", () => new GeminiAIProvider()],
+      ["openai", "OPENAI_API_KEY", () => new OpenAIProvider()],
+      ["claude", "ANTHROPIC_API_KEY", () => new ClaudeProvider()],
+    ] as const)(
+      "%s provider ignores %s and errors without a caller key",
+      async (_name, envName, makeProvider) => {
+        vi.stubEnv(envName, "server-operator-key-must-not-be-used");
+        global.fetch = vi.fn();
+
+        const events = [];
+        for await (const event of makeProvider().streamQuery(
+          [{ role: "user", content: "Hello" }],
+          ctx(),
+        )) {
+          events.push(event);
+        }
+
+        expect(events).toHaveLength(1);
+        expect(events[0].type).toBe("error");
+        expect(global.fetch).not.toHaveBeenCalled();
+      },
+    );
+
+    it("sends the Gemini key in a header instead of the URL", async () => {
+      global.fetch = vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            'data: {"candidates":[{"content":{"parts":[{"text":"hi"}]}}]}\n\n',
+            { status: 200 },
+          ),
+        );
+
+      const events = [];
+      for await (const event of new GeminiAIProvider().streamQuery(
+        [{ role: "user", content: "Hello" }],
+        ctx(),
+        "caller-gemini-key",
+      )) {
+        events.push(event);
+      }
+
+      const [url, init] = vi.mocked(global.fetch).mock.calls[0] as [
+        string,
+        RequestInit,
+      ];
+      expect(url).not.toContain("caller-gemini-key");
+      expect(url).not.toContain("key=");
+      expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe(
+        "caller-gemini-key",
+      );
+    });
+  });
+
   describe("GeminiAIProvider", () => {
     it("yields error event when API key is missing (covers: AC-3)", async () => {
       const originalKey = process.env.GEMINI_API_KEY;
