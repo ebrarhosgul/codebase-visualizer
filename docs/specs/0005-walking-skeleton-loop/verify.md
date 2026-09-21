@@ -12,6 +12,9 @@ _Steps derived from spec 0005 acceptance criteria. `/check verify` runs these; `
 - [x] Pan, zoom, and toggle minimap on canvas → graph controls respond smoothly and update viewport → AC-6
 - [x] Trigger cancellation while repository ingestion is streaming → AbortController terminates pending requests and returns UI to idle state → AC-2
 - [ ] Ingest repository containing TypeScript syntax errors → graph completes successfully with error flag visible on problematic file node → AC-4
+- [x] Run a production server with a bogus `GITHUB_TOKEN` and ingest a public repository anonymously → ingestion completes, so GitHub never received the server token → AC-10
+- [x] Send `POST /api/ingest` with a foreign `Origin`, then eleven requests inside a minute → 403 for the foreign origin and 429 `TOO_MANY_REQUESTS` on the eleventh → AC-10
+- [x] Load a production build, ingest a repository, and open a file in the editor → no console policy errors and Monaco renders; an injected inline script without the nonce is blocked → AC-11
 
 ## Commands
 
@@ -31,3 +34,5 @@ _Steps derived from spec 0005 acceptance criteria. `/check verify` runs these; `
 - AC-7 side by side Monaco Editor code inspection covered by `src/components/editor/` and dynamic editor mounting
 - AC-8 dedicated graph client state store covered by `src/stores/graph-store.ts` and Zustand store unit tests
 - AC-9 graceful error and rate limit recovery covered by error notification components and error simulation tests
+- AC-10 anonymous and bounded ingestion covered by `src/app/api/ingest/route.ts`, `src/lib/github/client.ts`, and `src/app/api/ingest/__tests__/route.test.ts`
+- AC-11 hardened page responses covered by `src/middleware.ts`, `src/lib/security/csp.ts`, and `src/lib/security/__tests__/csp.test.ts`

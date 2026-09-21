@@ -18,6 +18,12 @@ _Steps derived from spec 0008 acceptance criteria and value sourcing guarantees.
 - [x] Verify path trace edge identifiers against canvas elements → verifies all edge IDs in `activeTrace.stepEdgeIds` exist in `CodebaseGraph.edges`
 - [x] Verify citation coordinates → confirms line numbers and file paths accurately resolve to loaded file nodes and symbol ranges
 - [x] Test encrypted cookie lifecycle → confirms `/api/ai/keys` sets HTTP only cookie with AES 256 GCM encryption and `/api/ai/keys` DELETE removes it
+- [x] Send `POST /api/ai/keys` with a foreign `Origin`, then with `Content-Type: text/plain` → both refused and neither sets a cookie → AC-9
+- [x] Start the server without `AI_COOKIE_SECRET` and save a key → 500 with a generic message, no cookie, and the cause appears in the server log only → AC-9
+- [x] Set `GEMINI_API_KEY` on the server and send a live query with no cookie → 401 `auth_error` and no upstream call → AC-8
+- [x] Send a live Gemini query with a cookie saved for OpenAI → 401 and no upstream call → AC-8
+- [x] Send ten demo queries with a rotating leftmost `X-Forwarded-For` and one fixed last entry, then an eleventh → 429 → AC-10
+- [x] Render assistant text containing a `javascript:` link → it appears as plain text with no anchor element → AC-1
 
 ## Commands
 
@@ -35,3 +41,6 @@ _Steps derived from spec 0008 acceptance criteria and value sourcing guarantees.
 - AC-5 visual canvas path highlight covered by `src/components/canvas/architecture-canvas.tsx` and `src/stores/graph-store.ts`
 - AC-6 interactive citation deep linking covered by `src/components/trace/trace-panel.tsx` and `src/stores/graph-store.ts`
 - AC-7 graceful disconnection explanation covered by `src/graph/path-validation.ts`
+- AC-8 no server side credentials covered by `src/app/api/ai/query/route.ts`, `src/lib/ai/*-provider.ts`, and `src/app/api/__tests__/route-hardening.test.ts`
+- AC-9 same origin credential endpoints and fail closed secret covered by `src/lib/security/`, `src/app/api/ai/keys/route.ts`, and `src/lib/security/__tests__/`
+- AC-10 bounded and attributable requests covered by `src/lib/security/request.ts`, `src/lib/ai/rate-limiter.ts`, and `src/lib/security/__tests__/request.test.ts`

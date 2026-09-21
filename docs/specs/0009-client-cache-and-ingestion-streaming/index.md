@@ -28,6 +28,8 @@ Reasoning and options: see [rationale.md](rationale.md).
 - **AC-7**: The IndexedDB repository store enforces a maximum of 10 cached repositories or 300 megabytes of total stored data, automatically pruning the least recently accessed entries (`lastAccessedAt` index) within an atomic readwrite transaction before storing newly completed graphs.
 - **AC-8**: If network connectivity is lost or GitHub API is unreachable during the freshness check, the client automatically falls back to the locally cached graph record in IndexedDB, displaying an offline notice banner with the last synced timestamp.
 - **AC-9**: If a cached record fails canonical schema validation (`CURRENT_SCHEMA_VERSION = 1`) or contains corrupted JSON data upon retrieval, the client silently evicts the invalid record and proceeds with full pipeline ingestion without disrupting the user interface.
+- **AC-10**: Removing the GitHub token also clears every IndexedDB repository record, so cached graphs and sources from private repositories do not outlive the token.
+- **AC-11**: Untrusted archives are bounded during download and extraction. Size caps apply before content is retained, files past the retention cap are counted but not kept, and the result reports that it was capped.
 
 ## Decision
 
@@ -140,10 +142,10 @@ Rate Limit Recovery State Machine:
 
 | Endpoint | Method | Key inputs | Key outputs | Auth | Key errors |
 |---|---|---|---|---|---|
-| `/api/ingest` | POST | `repositoryUrl`: string (req)<br>`branch`: string (opt)<br>`cachedCommitSha`: string (opt)<br>`forceFresh`: boolean (opt) | SSE event stream (`text/event-stream`) | None or encrypted cookie | 400 invalid URL<br>403/429 rate limit<br>404 repo missing<br>500 internal error |
-| `/api/auth/github-token` | POST | `token`: string (req) | `{ success: true, maskedToken: string }` | None | 400 invalid format (must match `ghp_` or `github_pat_`) |
-| `/api/auth/github-token` | GET | None | `{ hasToken: boolean, maskedToken: string \| null }` | Cookie | None |
-| `/api/auth/github-token` | DELETE | None | `{ success: true }` | Cookie | None |
+| `/api/ingest` | POST | `repositoryUrl`: string (req)<br>`branch`: string (opt)<br>`cachedCommitSha`: string (opt)<br>`forceFresh`: boolean (opt) | SSE event stream (`text/event-stream`) | None or encrypted cookie. Same origin only | 400 invalid URL or body<br>403 cross site request<br>413 body over 16 KB<br>429 `TOO_MANY_REQUESTS` (server limit, 10 per minute per client)<br>404 repo missing<br>500 internal error or cookie secret not configured (only when a token cookie is sent)<br>GitHub 403/429 rate limits arrive as an SSE `RATE_LIMITED` event |
+| `/api/auth/github-token` | POST | `token`: string (req) | `{ success: true, maskedToken: string }` | None. Same origin JSON only | 400 invalid format (must match `ghp_` or `github_pat_`) or non JSON content type<br>403 cross site request<br>413 body over 4 KB<br>500 cookie secret not configured (no cookie issued) |
+| `/api/auth/github-token` | GET | None | `{ hasToken: boolean, maskedToken: string \| null }` with `Cache-Control: no-store` | Cookie | 500 cookie secret not configured (only when a cookie is sent) |
+| `/api/auth/github-token` | DELETE | None | `{ success: true }` | Cookie. Same origin only | 403 cross site request |
 
 Client `fetch` invocations calling `/api/ingest` include `credentials: 'include'` to supply the encrypted `github_pat` cookie automatically.
 
@@ -179,17 +181,20 @@ Server Sent Events protocol payloads on `/api/ingest`:
 - The total number of cached repositories in IndexedDB must never exceed 10 records.
 - Total stored cache volume must not exceed 300 megabytes; records exceeding quota are pruned by least recently used access order inside an atomic transaction.
 - GitHub personal access tokens must never be written to browser localStorage, sessionStorage, or unmasked client state.
+- Removing the token clears the whole IndexedDB cache, because cached graphs and file sources may include private repositories fetched with that token and must not outlive it on a shared machine. Only explicit removal clears it: cookie expiry, replacing a token, an IndexedDB failure (clearing is best effort), and the graph already held in memory leave cached data until the next eviction or reload.
 - Server sent event progress updates must never exceed 10 events per second (minimum 100 millisecond interval between detailed progress events).
 - If upstream commit SHA matches client `cachedCommitSha` and `forceFresh` is false, zero archive bytes may be downloaded from GitHub.
 
 **Security model**:
-- GitHub Personal Access Tokens are stored strictly in an encrypted httpOnly cookie (`github_pat`) encrypted with AES 256 GCM using the existing encryption utility.
+- GitHub Personal Access Tokens are stored strictly in an encrypted httpOnly cookie (`github_pat`), `Secure` in production and `SameSite=Lax`, using the shared AES 256 GCM helper from spec 0008. The 30 day expiry is sealed inside the ciphertext and the purpose is bound as additional authenticated data, so a key cookie cannot be replayed as a token cookie.
+- The token endpoints accept only same origin requests, and saving requires `Content-Type: application/json`, so another site cannot plant a token (rules in spec 0008). Status responses are `no-store`.
 - Token format is validated on the server before cookie creation, requiring either the classic `ghp_` prefix or fine grained `github_pat_` prefix.
 - All GitHub requests use read only endpoints; no repository write or administrative privileges are requested or used.
-- Ingestion pipeline limits are enforced on untrusted archives: maximum 200 source files, maximum 2 megabytes per individual file, and 50 megabytes maximum uncompressed total.
+- Ingestion pipeline limits are enforced on untrusted archives: the download is read into memory with a 100 megabyte cap checked as it streams, and extraction then enforces decompressed size at most 512 megabytes, individual files at most 1 megabyte, and at most 200 files kept for parsing. Content retention also stops at 5,000 files or 64 megabytes; files past that are counted but not kept, and the result is marked capped (**AC-11**).
 
 **Configuration required**:
-- `COOKIE_ENCRYPTION_KEY`: 32 byte secret used for AES 256 GCM cookie encryption (reuses existing application secret from spec 0008).
+- `AI_COOKIE_SECRET` (spec 0008) encrypts the token cookie. `COOKIE_ENCRYPTION_KEY` is an optional separate secret for this cookie and falls back to `AI_COOKIE_SECRET` when unset. If neither is set, saving a token returns 500 and no cookie is issued.
+- The server reads no `GITHUB_TOKEN`; only the user's own token is ever sent to GitHub.
 
 **Critical test scenarios**:
 - Happy path: Submitting a cached repository URL verifies matching commit SHA, receives `cache_hit` event, and hydrates canvas in under 100 milliseconds without network archive download, verifies **AC-1**, **AC-2**.
@@ -197,6 +202,9 @@ Server Sent Events protocol payloads on `/api/ingest`:
 - Force re ingest: Clicking Force Re ingest sends `forceFresh: true`, re downloads archive, re parses AST, and updates IndexedDB record, verifies **AC-3**.
 - Encrypted cookie token: Submitting a personal access token via `/api/auth/github-token` stores encrypted httpOnly cookie and enables higher rate limit quota, verifies **AC-5**.
 - Legacy token migration: Storing a token in `sessionStorage` under `github_pat` on app mount migrates it to `/api/auth/github-token` and purges `sessionStorage`, verifies **AC-5**.
+- Token removal wipes the cache: Clearing the token deletes every IndexedDB repository record, even if the DELETE request throws a network error, verifies **AC-10**.
+- Token planting: A `POST /api/auth/github-token` with a foreign `Origin` or a `text/plain` body sets no cookie, verifies **AC-5**.
+- Archive bounds: An archive past the retention cap keeps only the cap and reports it was capped, and one that expands past the decompression bound is aborted, verifies **AC-11**.
 - Rate limit modal and auto retry: Simulated 403 response triggers modal countdown, entering valid `ghp_` token sets cookie and automatically resumes ingestion, verifies **AC-5**, **AC-6**.
 - Least recently used eviction: Adding an 11th repository record or exceeding 300 megabytes evicts the oldest accessed entry from IndexedDB, verifies **AC-7**.
 - Offline fallback: Disconnecting network during submission opens existing cached graph with an offline badge, verifies **AC-8**.
@@ -210,6 +218,7 @@ Server Sent Events protocol payloads on `/api/ingest`:
 4. [x] Update `useGraphStore` with cache hydration, legacy token migration, `cache_hit` handling, granular progress metrics, and force fresh re ingestion action, satisfies **AC-1**, **AC-2**, **AC-3**, **AC-4**, **AC-5**, **AC-8**
 5. [x] Build accessible Rate Limit Recovery Dialog (`src/components/workspace/rate-limit-dialog.tsx`) with live countdown timer, permission explanation, token entry, and automatic retry triggering, satisfies **AC-6**
 6. [x] Update `RepoSubmissionBar` with two tier progress rendering, cache hit badge, force refresh trigger, and token management status, satisfies **AC-3**, **AC-4**, **AC-6**, **AC-8**
+7. [x] Harden token handling: shared cookie helper with expiry and purpose binding, same origin and JSON guard on the token route, archive size bounds in the extractor, and clearing IndexedDB when the token is removed (`src/lib/security/`, `src/lib/parser/tar-extractor.ts`, `src/stores/graph-store.ts`), satisfies **AC-5**, **AC-10**, **AC-11**
 
 ## Consequences
 
@@ -231,5 +240,7 @@ Server Sent Events protocol payloads on `/api/ingest`:
 
 ## Follow-up
 
+- [ ] Show the server's own message for ingest 403, 413, and 429 `TOO_MANY_REQUESTS`, with a `Retry-After` countdown. Today the store treats any non OK ingest response as GitHub being unreachable and may show the offline cache notice.
+- [ ] Make `clearGithubToken` check the DELETE response. It currently reports the token as removed even when the server answers with a non 2xx status.
 - [ ] Add canvas export capability (SVG, PNG, JSON) to allow offline sharing without requiring IndexedDB storage.
 - [ ] Explore Web Worker parsing for client side AST extraction on user uploaded local zip files.

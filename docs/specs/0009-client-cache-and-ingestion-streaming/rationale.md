@@ -70,3 +70,11 @@ Checking the upstream commit hash in `/api/ingest` via the lightweight commits e
 Migrating GitHub personal access tokens from sessionStorage to an encrypted httpOnly cookie (`github_pat`) eliminates architectural drift. Spec 0008 established AES 256 GCM encrypted cookies for BYOK credentials. Applying this exact standard to GitHub tokens keeps credentials out of reach of malicious browser extensions and cross site scripting vectors.
 
 Finally, capping granular progress emissions to at most one update every 100 milliseconds prevents event stream congestion and unnecessary React re rendering loops, ensuring smooth visual progress during extraction.
+
+## Amendment 2026-09-21: security hardening
+
+The token cookie now uses the shared cookie helper from spec 0008, so it carries a sealed expiry and a purpose binding, and its endpoints accept only same origin requests. The configuration line that treated `COOKIE_ENCRYPTION_KEY` as a standalone secret was corrected: it is optional, falls back to `AI_COOKIE_SECRET`, and there is no built in default.
+
+The ingestion limits listed in the security model earlier described an intent that the code did not enforce, since the archive was fully buffered and expanded first. They now match the code: the download cap is checked as the archive streams into memory, and the decompression and retention caps are applied during extraction.
+
+Removing the token now clears the whole IndexedDB cache. Records do not track whether a repository was private, so clearing everything was chosen over guessing. The tradeoff is that cached public repositories need a fresh ingest after the token is removed.

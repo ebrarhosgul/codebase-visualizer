@@ -52,9 +52,9 @@ We introduce an isomorphic pure function module (`src/lib/ai/error-classifier.ts
 **API surface**:
 | Endpoint | Method | Key inputs | Key outputs | Auth | Key errors |
 |---|---|---|---|---|---|
-| `/api/ai/query` | POST | `repository`, `messages`, `contextSummary`, `graph`, `provider` (or legacy `isDemo`) | SSE stream (`text`, `trace`, `citations`, `warning`, `error`, `done`) or JSON on pre stream error | Optional encrypted cookie for BYOK | 400 validation error, 401 auth failure with notice JSON, 429 rate limit with notice JSON and Retry-After, 502 provider outage |
-| `/api/ai/keys` | POST | `provider`, `apiKey` | `{ success: true, provider }` with encrypted cookie | Public | 400 unsupported provider or empty key |
-| `/api/ai/keys` | DELETE | None | `{ success: true }` clearing cookie | Public | 200 ok |
+| `/api/ai/query` | POST | `repository`, `messages`, `contextSummary`, `graph`, `provider` (or legacy `isDemo`) | SSE stream (`text`, `trace`, `citations`, `warning`, `error`, `done`) or JSON on pre stream error | Encrypted `cv_ai_key` cookie for the requested provider in non demo mode. Same origin only | 400 validation error, 401 auth failure with notice JSON (no key, or key saved for another provider), 403 cross site request, 413 body over 10 MB, 429 rate limit with notice JSON and Retry-After, 500 cookie secret not configured (only when a cookie is sent), 502 provider outage |
+| `/api/ai/keys` | POST | `provider`, `apiKey` | `{ success: true, provider }` with encrypted cookie | Public. Same origin JSON only | 400 unsupported provider, empty key, or non JSON content type, 403 cross site request, 413 body over 4 KB, 500 cookie secret not configured |
+| `/api/ai/keys` | DELETE | None | `{ success: true }` clearing cookie | Public. Same origin only | 200 ok, 403 cross site request |
 
 **Value sourcing**:
 | Action | Value produced / displayed | Source |
@@ -75,16 +75,17 @@ We introduce an isomorphic pure function module (`src/lib/ai/error-classifier.ts
 
 **Security model**:
 - Credential protection: All provider error messages pass through `sanitizeErrorMessage` which strips patterns matching `AIza[0-9A-Za-z-_]{35}`, `sk-[0-9A-Za-z]{20,}`, `Bearer [^ ]+`, and query parameters.
-- Rate limiting: Maintained at 30 requests per minute for BYOK and 10 requests per minute for Demo mode per client IP address, returning standardized `Retry-After` HTTP headers.
-- Cookie confidentiality: BYOK API keys remain encrypted with AES-256-GCM in HTTP only cookies, never exposed to client JavaScript.
+- Rate limiting: Maintained at 30 requests per minute for BYOK and 10 requests per minute for Demo mode per client, returning standardized `Retry-After` HTTP headers. The client address is the rightmost `X-Forwarded-For` entry, since leftmost entries are client controlled (spec 0008).
+- No server credentials: live queries never fall back to a server key. A missing key, or a key saved for a different provider, returns 401 `auth_error` with the open keys action.
+- Cookie confidentiality: BYOK API keys remain encrypted with AES-256-GCM in HTTP only cookies, never exposed to client JavaScript. Expiry, purpose binding, fail closed secret handling, and cross site rules are defined in spec 0008.
 
 **Configuration required**:
-- No new environment variables required. Existing `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `AI_COOKIE_SECRET` continue to operate.
+- No new environment variables. `AI_COOKIE_SECRET` is required (spec 0008). The server ignores `GEMINI_API_KEY`, `OPENAI_API_KEY`, and `ANTHROPIC_API_KEY`, so live mode always needs the user's own key.
 
 **Critical test scenarios**:
 - Rate limit handling: User sends queries exceeding rate limit; server returns 429 with `Retry-After`; UI renders `FallbackNoticeCard` with active countdown and Switch to Demo button, verifying **AC-1**, **AC-2**, **AC-3**.
 - Auto retry execution: Countdown timer reaches zero with auto retry checked; `useAiQueryStream` uses cached `lastQueryOptionsRef` to automatically re submit without user input, verifying **AC-3**.
-- Missing or invalid key recovery: User submits BYOK query with invalid key; server returns 401 with `auth_error` code; UI renders fallback card with Open Key Settings button, verifying **AC-1**, **AC-2**, **AC-3**.
+- Missing or invalid key recovery: User submits BYOK query with no key, an invalid key, or a key saved for a different provider; server returns 401 with `auth_error` code and never uses a server key; UI renders fallback card with Open Key Settings button, verifying **AC-1**, **AC-2**, **AC-3**.
 - Provider outage and mid stream failure: Provider throws 503 after emitting text; stream emits structured `error` event; UI preserves partial text and offers Switch to Demo button, verifying **AC-1**, **AC-2**, **AC-4**.
 - Credential redaction: Upstream error containing mock API key is intercepted; sanitizer redacts key before client delivery, verifying **AC-4**.
 - Offline demo operation: Browser offline (`navigator.onLine = false`); query in Demo mode executes entirely on client via `DemoAIProvider` without making fetch calls, generating answer and BFS path trace successfully, verifying **AC-5**.

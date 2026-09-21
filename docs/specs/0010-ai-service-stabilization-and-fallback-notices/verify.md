@@ -13,6 +13,7 @@ _Steps derived from spec 0010 acceptance criteria and value sourcing guarantees.
 - [ ] Trigger an error containing a mock raw API key in upstream response → verify error notice displays sanitized message with key completely redacted → AC-4
 - [ ] Toggle browser offline status via DevTools network tab → submit query in Demo mode → answers and visual BFS dependency path traces generate successfully with zero network errors → AC-5
 - [ ] Toggle browser offline status during an active BYOK query → network failure triggers immediate fallback card with single click Switch to Demo Mode recovery → AC-1, AC-2, AC-5
+- [x] With a server `GEMINI_API_KEY` set and no cookie, submit a live query → 401 `auth_error` fallback card with the Open Key Settings action and no upstream call → AC-1, AC-2, AC-3
 
 ## Value sourcing checks
 
