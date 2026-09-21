@@ -39,6 +39,7 @@ export type IngestErrorCode =
   | "INVALID_URL"
   | "REPO_NOT_FOUND"
   | "RATE_LIMITED"
+  | "TOO_MANY_REQUESTS"
   | "FILE_LIMIT_EXCEEDED"
   | "PARSE_FAILED"
   | "TIMEOUT"

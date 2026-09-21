@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import {
   parseGithubUrl,
   fetchRepoMetadata,
@@ -8,10 +9,50 @@ import {
 } from "@/lib/github";
 import { decryptGithubToken } from "@/lib/github/crypto";
 import { unpackRepositoryTarball, parseRepositoryAst } from "@/lib/parser";
-import type { IngestRequest, IngestStreamEvent } from "@/types/ingestion";
+import { checkIngestRateLimit } from "@/lib/ai/rate-limiter";
+import {
+  getClientIp,
+  isSameOriginRequest,
+  jsonResponse,
+  readJsonBody,
+} from "@/lib/security/request";
+import type { IngestStreamEvent } from "@/types/ingestion";
 
 const INGESTION_TIMEOUT_MS = 30000; // 30 second defensive timeout
 const PROGRESS_THROTTLE_MS = 100; // Minimum 100ms interval between granular progress events (AC-4)
+const MAX_BODY_BYTES = 16 * 1024;
+
+// Clients may send null or omit optional fields; both mean "not provided".
+const optionalString = (maxLength: number) =>
+  z
+    .string()
+    .max(maxLength)
+    .nullish()
+    .transform((value) => value ?? undefined);
+
+const ingestRequestSchema = z.object({
+  repositoryUrl: z.string().max(2048).default(""),
+  branch: optionalString(255),
+  githubToken: optionalString(512),
+  cachedCommitSha: optionalString(64),
+  forceFresh: z
+    .boolean()
+    .nullish()
+    .transform((value) => value ?? undefined),
+});
+
+/**
+ * Rejects branch names that could reshape the GitHub API path: control
+ * characters, backslashes, and "." or ".." segments.
+ */
+function isSafeBranchName(branch: string): boolean {
+  if (/[\u0000-\u001f\u007f\\]/.test(branch)) {
+    return false;
+  }
+  return !branch
+    .split("/")
+    .some((segment) => segment === "." || segment === "..");
+}
 
 /**
  * Encodes an IngestStreamEvent into a Server Sent Event data chunk.
@@ -27,17 +68,39 @@ function formatSseChunk(event: IngestStreamEvent): Uint8Array {
  * and yields final parsed CodebaseGraph using Server Sent Events.
  */
 export async function POST(req: NextRequest): Promise<Response> {
-  let body: IngestRequest;
-  try {
-    body = (await req.json()) as IngestRequest;
-  } catch {
-    return new Response(
-      JSON.stringify({
-        code: "INVALID_URL",
-        message: "Invalid request body. Expected JSON with repositoryUrl.",
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
+  if (!isSameOriginRequest(req)) {
+    return jsonResponse(403, {
+      code: "INVALID_URL",
+      message: "Cross site requests are not allowed.",
+    });
+  }
+
+  const clientIp = getClientIp(req);
+  const rateLimit = checkIngestRateLimit(clientIp);
+  if (!rateLimit.isAllowed) {
+    const retrySeconds = rateLimit.retryAfterSeconds ?? 30;
+    return jsonResponse(
+      429,
+      {
+        code: "TOO_MANY_REQUESTS",
+        message: `Too many ingestion requests. Please wait ${retrySeconds} seconds and try again.`,
+      },
+      { "Retry-After": String(retrySeconds) },
     );
+  }
+
+  const bodyResult = await readJsonBody(req, { maxBytes: MAX_BODY_BYTES });
+  const parsedBody = bodyResult.ok
+    ? ingestRequestSchema.safeParse(bodyResult.value)
+    : null;
+  if (!bodyResult.ok || !parsedBody?.success) {
+    return jsonResponse(bodyResult.ok ? 400 : bodyResult.status, {
+      code: "INVALID_URL",
+      message:
+        !bodyResult.ok && bodyResult.status === 413
+          ? bodyResult.message
+          : "Invalid request body. Expected JSON with repositoryUrl.",
+    });
   }
 
   const {
@@ -46,7 +109,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     githubToken,
     cachedCommitSha,
     forceFresh,
-  } = body;
+  } = parsedBody.data;
 
   // Resolve token from encrypted httpOnly cookie first, then fallback to request body (AC-5)
   const cookieValue = req.cookies.get(GITHUB_PAT_COOKIE_NAME)?.value;
@@ -123,6 +186,17 @@ export async function POST(req: NextRequest): Promise<Response> {
 
         const { owner, repo, branch: urlBranch } = parseResult.data;
         const requestedBranch = explicitBranch || urlBranch;
+        if (requestedBranch && !isSafeBranchName(requestedBranch)) {
+          safeEnqueue({
+            phase: "error",
+            error: {
+              code: "INVALID_URL",
+              message: "Branch name contains unsupported characters.",
+            },
+          });
+          safeClose();
+          return;
+        }
 
         const metaResult = await fetchRepoMetadata(owner, repo, {
           token: effectiveToken,

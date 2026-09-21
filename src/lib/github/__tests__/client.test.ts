@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchRepoMetadata, fetchTarballArchive } from "../client";
+import {
+  MAX_ARCHIVE_DOWNLOAD_BYTES,
+  fetchRepoMetadata,
+  fetchTarballArchive,
+} from "../client";
 
 describe("github client", () => {
   const originalFetch = global.fetch;
@@ -187,5 +191,83 @@ describe("github client", () => {
         }),
       }),
     );
+  });
+  it("never sends a server GITHUB_TOKEN on anonymous requests", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "ghp_operator_secret_must_not_leak_1234");
+    try {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({ default_branch: "main" }),
+      } as unknown as Response);
+
+      await fetchRepoMetadata("owner", "repo");
+
+      const init = vi.mocked(global.fetch).mock.calls[0]?.[1] as RequestInit;
+      const headers = init.headers as Record<string, string>;
+      expect(headers.Authorization).toBeUndefined();
+      expect(JSON.stringify(headers)).not.toContain("operator_secret");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("rejects an archive whose Content-Length exceeds the download cap", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({
+        "content-length": String(MAX_ARCHIVE_DOWNLOAD_BYTES + 1),
+      }),
+      arrayBuffer: async () => new ArrayBuffer(3),
+    } as unknown as Response);
+
+    const result = await fetchTarballArchive("owner", "repo", "main");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe("FILE_LIMIT_EXCEEDED");
+    }
+  });
+
+  it("stops reading a streamed archive that outgrows the cap despite no Content-Length", async () => {
+    const oversizedChunk = new Uint8Array(MAX_ARCHIVE_DOWNLOAD_BYTES / 2 + 1);
+    let pulled = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        if (pulled > 10) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(oversizedChunk);
+      },
+    });
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(body, { status: 200 }));
+
+    const result = await fetchTarballArchive("owner", "repo", "main");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe("FILE_LIMIT_EXCEEDED");
+    }
+    // Aborted after two chunks rather than draining the whole stream
+    expect(pulled).toBeLessThan(10);
+  });
+
+  it("downloads a streamed archive within the cap", async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(new Uint8Array([1, 2, 3, 4]), { status: 200 }),
+      );
+
+    const result = await fetchTarballArchive("owner", "repo", "main");
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(Array.from(new Uint8Array(result.data))).toEqual([1, 2, 3, 4]);
+    }
   });
 });

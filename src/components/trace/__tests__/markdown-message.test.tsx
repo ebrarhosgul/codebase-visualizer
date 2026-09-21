@@ -197,6 +197,38 @@ describe("MarkdownMessage", () => {
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
+  it.each([
+    ["javascript:alert(1)"],
+    ["JaVaScRiPt:alert(1)"],
+    ["java\tscript:alert(1)"],
+    ["data:text/html,<script>alert(1)</script>"],
+    ["vbscript:msgbox(1)"],
+    ["/relative/path"],
+    ["not a url"],
+  ])("does not render %s as a clickable link", (href) => {
+    const { container } = render(
+      <MarkdownMessage content={`Click [here](${href}) now.`} />,
+    );
+
+    expect(container.querySelector("a")).toBeNull();
+    expect(container.textContent).toContain("here");
+  });
+
+  it("allows mailto and http links", () => {
+    render(
+      <MarkdownMessage content="[mail](mailto:dev@example.com) and [plain](http://example.com/x)" />,
+    );
+
+    expect(screen.getByRole("link", { name: "mail" })).toHaveAttribute(
+      "href",
+      "mailto:dev@example.com",
+    );
+    expect(screen.getByRole("link", { name: "plain" })).toHaveAttribute(
+      "href",
+      "http://example.com/x",
+    );
+  });
+
   it("renders horizontal line dividers", () => {
     const markdown = "Top section\n\n---\n\nBottom section";
     const { container } = render(<MarkdownMessage content={markdown} />);

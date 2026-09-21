@@ -1,4 +1,4 @@
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
 import { createGunzip } from "node:zlib";
 import tar from "tar-stream";
 import type { ArchiveExtractionResult, ExtractedFile } from "@/types/ingestion";
@@ -24,6 +24,15 @@ const IGNORED_DIRECTORY_PREFIXES = [
 ];
 
 const MAX_INDIVIDUAL_FILE_BYTES = 1024 * 1024; // 1 MB limit per file
+
+/**
+ * Resource bounds applied while the archive streams, before content is kept in
+ * memory. Highly compressible archives (many paths carrying the same large
+ * file) can otherwise expand far beyond what was downloaded.
+ */
+export const MAX_DECOMPRESSED_BYTES = 512 * 1024 * 1024; // 512 MB of tar data
+export const MAX_RETAINED_FILES = 5000;
+export const MAX_RETAINED_BYTES = 64 * 1024 * 1024; // 64 MB of file content
 
 /**
  * Computes a priority score based on directory depth.
@@ -56,9 +65,23 @@ export function stripTarballRootFolder(rawPath: string): string {
   return rawPath.slice(slashIndex + 1);
 }
 
+export interface TarExtractorLimits {
+  readonly maxDecompressedBytes: number;
+  readonly maxRetainedFiles: number;
+  readonly maxRetainedBytes: number;
+}
+
+const DEFAULT_LIMITS: TarExtractorLimits = {
+  maxDecompressedBytes: MAX_DECOMPRESSED_BYTES,
+  maxRetainedFiles: MAX_RETAINED_FILES,
+  maxRetainedBytes: MAX_RETAINED_BYTES,
+};
+
 export interface TarExtractorOptions {
   readonly maxFiles?: number;
   readonly includeNonSourceFiles?: boolean;
+  /** Overrides the default resource bounds; intended for tests. */
+  readonly limits?: Partial<TarExtractorLimits>;
   readonly onProgress?: (
     processedCount: number,
     currentFilePath: string,
@@ -85,6 +108,10 @@ export async function unpackRepositoryTarball(
     typeof maxFilesOrOptions === "object"
       ? maxFilesOrOptions.onProgress
       : undefined;
+  const limits: TarExtractorLimits = {
+    ...DEFAULT_LIMITS,
+    ...(typeof maxFilesOrOptions === "object" ? maxFilesOrOptions.limits : {}),
+  };
 
   return new Promise<ArchiveExtractionResult>((resolve, reject) => {
     const extract = tar.extract();
@@ -97,6 +124,25 @@ export async function unpackRepositoryTarball(
 
     const discoveredFiles: ExtractedFile[] = [];
     let tsconfigContent: string | undefined;
+    let eligibleFileCount = 0;
+    let retainedBytes = 0;
+    let decompressedBytes = 0;
+
+    // Aborts extraction once the expanded archive passes the size bound.
+    const decompressionGuard = new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        decompressedBytes += chunk.length;
+        if (decompressedBytes > limits.maxDecompressedBytes) {
+          callback(
+            new Error(
+              `Repository archive expands beyond ${Math.round(limits.maxDecompressedBytes / (1024 * 1024))} MB.`,
+            ),
+          );
+          return;
+        }
+        callback(null, chunk);
+      },
+    });
 
     extract.on("entry", (header, stream, next) => {
       const strippedPath = stripTarballRootFolder(header.name);
@@ -139,6 +185,24 @@ export async function unpackRepositoryTarball(
         stream.resume();
         next();
         return;
+      }
+
+      const countsTowardResult = isSource || (includeNonSource && !isTsConfig);
+
+      // Count every eligible file so totalFilesFound stays accurate, but stop
+      // keeping content once the retention budget is spent.
+      if (countsTowardResult) {
+        eligibleFileCount += 1;
+        const headerSize = header.size ?? 0;
+        if (
+          discoveredFiles.length >= limits.maxRetainedFiles ||
+          retainedBytes + headerSize > limits.maxRetainedBytes
+        ) {
+          stream.resume();
+          next();
+          return;
+        }
+        retainedBytes += headerSize;
       }
 
       const chunks: Buffer[] = [];
@@ -197,9 +261,10 @@ export async function unpackRepositoryTarball(
         return a.path.localeCompare(b.path);
       });
 
-      const totalFilesFound = discoveredFiles.length;
-      const wasCapped = totalFilesFound > maxFiles;
+      const totalFilesFound = eligibleFileCount;
       const files = discoveredFiles.slice(0, maxFiles);
+      // Capped by maxFiles or by the retention bounds: some eligible files were dropped
+      const wasCapped = totalFilesFound > files.length;
 
       resolve({
         files: Object.freeze(files),
@@ -215,10 +280,17 @@ export async function unpackRepositoryTarball(
       );
     });
 
+    decompressionGuard.on("error", (err) => {
+      readable.destroy();
+      gunzip.destroy();
+      extract.destroy();
+      reject(err);
+    });
+
     extract.on("error", (err) => {
       reject(new Error(`Failed to extract repository archive: ${err.message}`));
     });
 
-    readable.pipe(gunzip).pipe(extract);
+    readable.pipe(gunzip).pipe(decompressionGuard).pipe(extract);
   });
 }

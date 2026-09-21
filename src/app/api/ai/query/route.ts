@@ -1,26 +1,49 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { decryptApiKey, AI_KEY_COOKIE_NAME } from "@/lib/ai/crypto";
 import { getAIProvider } from "@/lib/ai/provider-registry";
 import { checkRateLimit } from "@/lib/ai/rate-limiter";
 import { classifyError, sanitizeErrorMessage } from "@/lib/ai/error-classifier";
-import type {
-  AIRequestContext,
-  AIStreamEvent,
-  AiProviderId,
-} from "@/lib/ai/types";
-import type { CodebaseGraph, Repository } from "@/entities";
+import {
+  getClientIp,
+  isSameOriginRequest,
+  jsonResponse,
+  readJsonBody,
+} from "@/lib/security/request";
+import type { AIRequestContext, AIStreamEvent } from "@/lib/ai/types";
+import { repositorySchema, type CodebaseGraph } from "@/entities";
 
-interface AIQueryRequestBody {
-  readonly repository: Repository;
-  readonly messages: readonly {
-    readonly role: "user" | "assistant" | "system";
-    readonly content: string;
-  }[];
-  readonly contextSummary?: string;
-  readonly graph?: CodebaseGraph;
-  readonly isDemo?: boolean;
-  readonly provider?: AiProviderId;
-}
+const MAX_BODY_BYTES = 10 * 1024 * 1024; // The graph payload dominates the size
+const MAX_MESSAGES = 100;
+const MAX_MESSAGE_CHARS = 100_000;
+const MAX_CONTEXT_SUMMARY_CHARS = 200_000;
+
+const aiQueryRequestSchema = z.object({
+  repository: repositorySchema,
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant", "system"]),
+        content: z.string().max(MAX_MESSAGE_CHARS),
+      }),
+    )
+    .max(MAX_MESSAGES),
+  contextSummary: z.string().max(MAX_CONTEXT_SUMMARY_CHARS).optional(),
+  // Top level shape only: the body size cap bounds the node payloads.
+  graph: z
+    .object({
+      schemaVersion: z.number(),
+      repository: repositorySchema,
+      directories: z.record(z.string(), z.unknown()),
+      files: z.record(z.string(), z.unknown()),
+      symbols: z.record(z.string(), z.unknown()),
+      externalModules: z.record(z.string(), z.unknown()),
+      edges: z.record(z.string(), z.unknown()),
+    })
+    .optional(),
+  isDemo: z.boolean().optional(),
+  provider: z.enum(["gemini", "openai", "claude"]).optional(),
+});
 
 /**
  * Encodes an AIStreamEvent into a Server Sent Event data chunk.
@@ -33,42 +56,42 @@ function formatSseChunk(event: AIStreamEvent): Uint8Array {
 /**
  * Route handler for POST /api/ai/query.
  * Streams real time AI responses, validated path traces, and code citations using Server Sent Events.
+ * Live queries only ever use the caller's own key from their encrypted cookie;
+ * the server never substitutes a key of its own.
  */
 export async function POST(req: NextRequest): Promise<Response> {
-  let body: AIQueryRequestBody;
-  try {
-    body = (await req.json()) as AIQueryRequestBody;
-  } catch {
-    return new Response(
-      JSON.stringify({
-        error:
-          "Invalid request body. Expected JSON with repository and messages.",
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
-    );
+  if (!isSameOriginRequest(req)) {
+    return jsonResponse(403, { error: "Cross site requests are not allowed." });
+  }
+
+  const bodyResult = await readJsonBody(req, { maxBytes: MAX_BODY_BYTES });
+  if (!bodyResult.ok) {
+    return jsonResponse(bodyResult.status, {
+      error:
+        bodyResult.status === 413
+          ? bodyResult.message
+          : "Invalid request body. Expected JSON with repository and messages.",
+    });
+  }
+
+  const parsedBody = aiQueryRequestSchema.safeParse(bodyResult.value);
+  if (!parsedBody.success) {
+    return jsonResponse(400, {
+      error: "Missing or invalid fields: repository and messages array.",
+    });
   }
 
   const {
-    repository,
     messages,
     contextSummary = "",
-    graph,
     isDemo = false,
     provider = "gemini",
-  } = body;
-
-  if (!repository || !messages || !Array.isArray(messages)) {
-    return new Response(
-      JSON.stringify({
-        error: "Missing required fields: repository and messages array.",
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  } = parsedBody.data;
+  const repository = parsedBody.data.repository;
+  const graph = parsedBody.data.graph as CodebaseGraph | undefined;
 
   // Enforce IP based rate limiting
-  const forwarded = req.headers.get("x-forwarded-for");
-  const clientIp = forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1";
+  const clientIp = getClientIp(req);
   const rateLimitResult = checkRateLimit(clientIp, isDemo);
 
   if (!rateLimitResult.isAllowed) {
@@ -96,29 +119,21 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
   }
 
-  // Retrieve decrypted BYOK API key if available
+  // Live mode requires the caller's own key, stored in their encrypted cookie
+  // and bound to the provider it was saved for. There is no server side key.
   let apiKey: string | undefined;
-  const cookieValue = req.cookies.get(AI_KEY_COOKIE_NAME)?.value;
-  if (cookieValue) {
-    const decrypted = decryptApiKey(cookieValue);
-    if (decrypted) {
-      apiKey = decrypted.apiKey;
-    }
-  }
+  if (!isDemo) {
+    const cookieValue = req.cookies.get(AI_KEY_COOKIE_NAME)?.value;
+    const decrypted = cookieValue ? decryptApiKey(cookieValue) : null;
 
-  // In non-demo mode, if no user key is provided in cookie, check server fallback
-  if (!isDemo && !apiKey) {
-    if (provider === "gemini") {
-      apiKey = process.env.GEMINI_API_KEY;
-    } else if (provider === "openai") {
-      apiKey = process.env.OPENAI_API_KEY;
-    } else if (provider === "claude") {
-      apiKey = process.env.ANTHROPIC_API_KEY;
+    if (decrypted && decrypted.provider === provider) {
+      apiKey = decrypted.apiKey;
     }
 
     if (!apiKey) {
       const notice = classifyError({
         status: 401,
+        // Also reached when a saved key belongs to a different provider.
         message:
           "No API key provided for selected provider. Please enter your API key in Key Settings or switch to Demo Mode.",
         provider,

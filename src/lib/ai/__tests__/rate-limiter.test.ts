@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { checkRateLimit, resetRateLimits } from "../rate-limiter";
+import {
+  checkIngestRateLimit,
+  checkRateLimit,
+  resetRateLimits,
+} from "../rate-limiter";
 
 // covers: AC-1, AC-3
 describe("checkRateLimit", () => {
@@ -86,5 +90,30 @@ describe("checkRateLimit", () => {
 
     resetRateLimits();
     expect(checkRateLimit(ip, true).isAllowed).toBe(true);
+  });
+});
+
+describe("checkIngestRateLimit", () => {
+  beforeEach(() => {
+    resetRateLimits();
+  });
+
+  it("blocks the eleventh ingest request from one client within a minute", () => {
+    const ip = "203.0.113.20";
+    for (let i = 0; i < 10; i++) {
+      expect(checkIngestRateLimit(ip).isAllowed).toBe(true);
+    }
+    const blocked = checkIngestRateLimit(ip);
+    expect(blocked.isAllowed).toBe(false);
+    expect(blocked.retryAfterSeconds).toBeGreaterThan(0);
+  });
+
+  it("tracks ingest and AI query budgets separately", () => {
+    const ip = "203.0.113.21";
+    for (let i = 0; i < 10; i++) {
+      checkIngestRateLimit(ip);
+    }
+    expect(checkIngestRateLimit(ip).isAllowed).toBe(false);
+    expect(checkRateLimit(ip, false).isAllowed).toBe(true);
   });
 });

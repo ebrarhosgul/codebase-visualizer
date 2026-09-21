@@ -257,6 +257,23 @@ export function parseInlineTokens(rawText: string): readonly InlineToken[] {
   return Object.freeze(result);
 }
 
+const SAFE_LINK_PROTOCOLS: readonly string[] = ["http:", "https:", "mailto:"];
+
+/**
+ * Returns a normalized href only for http, https, and mailto links.
+ * Model output is untrusted, so any other scheme (javascript:, data:,
+ * vbscript:, or a relative path) is refused instead of relying on the
+ * framework to neutralize it.
+ */
+export function getSafeLinkHref(href: string): string | null {
+  try {
+    const url = new URL(href.trim());
+    return SAFE_LINK_PROTOCOLS.includes(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Checks if a line resembles a table boundary row.
  */
@@ -680,11 +697,15 @@ function InlineContent({
               </del>
             );
 
-          case "link":
+          case "link": {
+            const safeHref = getSafeLinkHref(token.href);
+            if (!safeHref) {
+              return <span key={index}>{token.label}</span>;
+            }
             return (
               <a
                 key={index}
-                href={token.href}
+                href={safeHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[var(--accent-primary)] hover:underline inline-flex items-center gap-0.5"
@@ -692,6 +713,7 @@ function InlineContent({
                 {token.label}
               </a>
             );
+          }
 
           default:
             return null;

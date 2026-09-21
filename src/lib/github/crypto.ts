@@ -1,9 +1,8 @@
 import {
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  randomBytes,
-} from "node:crypto";
+  openCookiePayload,
+  requireCookieSecret,
+  sealCookiePayload,
+} from "@/lib/security/cookie-crypto";
 
 export {
   GITHUB_PAT_COOKIE_NAME,
@@ -11,65 +10,46 @@ export {
   maskGithubToken,
 } from "./token-validation";
 
+const COOKIE_PURPOSE = "github-pat";
+
 /**
- * Derives a deterministic 32-byte key from environment secret or fallback development key.
+ * Reads the cookie encryption secret from COOKIE_ENCRYPTION_KEY, or
+ * AI_COOKIE_SECRET when that is not set. Throws when neither is configured;
+ * there is no development fallback.
  */
-function getEncryptionKey(): Buffer {
-  const secret =
-    process.env.COOKIE_ENCRYPTION_KEY ||
-    process.env.AI_COOKIE_SECRET ||
-    "codebase-visualizer-development-secret-key-32-bytes";
-  return createHash("sha256").update(secret).digest();
+function getCookieSecret(): string {
+  return requireCookieSecret(["COOKIE_ENCRYPTION_KEY", "AI_COOKIE_SECRET"]);
 }
 
 /**
  * Encrypts a GitHub personal access token using AES-256-GCM.
+ * The sealed value expires after the credential cookie lifetime.
  * Output format: iv:authTag:ciphertext (all in hex).
+ * Throws CookieSecretMissingError when no cookie secret is configured.
  */
 export function encryptGithubToken(token: string): string {
-  const key = getEncryptionKey();
-  const iv = randomBytes(12); // 96-bit IV recommended for GCM
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-
-  let encrypted = cipher.update(token.trim(), "utf8", "hex");
-  encrypted += cipher.final("hex");
-
-  const authTag = cipher.getAuthTag().toString("hex");
-  return `${iv.toString("hex")}:${authTag}:${encrypted}`;
+  return sealCookiePayload(
+    { token: token.trim() },
+    COOKIE_PURPOSE,
+    getCookieSecret(),
+  );
 }
 
 /**
  * Decrypts an AES-256-GCM encrypted GitHub token.
- * Returns null if decryption fails or format is invalid.
+ * Returns null if decryption fails, the format is invalid, or the value has expired.
+ * Throws CookieSecretMissingError when no cookie secret is configured.
  */
 export function decryptGithubToken(encryptedValue: string): string | null {
-  try {
-    const parts = encryptedValue.split(":");
-    if (parts.length !== 3) {
-      return null;
-    }
-
-    const [ivHex, authTagHex, cipherHex] = parts;
-    if (!ivHex || !authTagHex || !cipherHex) {
-      return null;
-    }
-
-    const key = getEncryptionKey();
-    const iv = Buffer.from(ivHex, "hex");
-    const authTag = Buffer.from(authTagHex, "hex");
-
-    const decipher = createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAuthTag(authTag);
-
-    let decrypted = decipher.update(cipherHex, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-
-    if (!decrypted || decrypted.trim().length === 0) {
-      return null;
-    }
-
-    return decrypted.trim();
-  } catch {
+  const payload = openCookiePayload(
+    encryptedValue,
+    COOKIE_PURPOSE,
+    getCookieSecret(),
+  );
+  if (!payload || typeof payload.token !== "string") {
     return null;
   }
+
+  const token = payload.token.trim();
+  return token.length > 0 ? token : null;
 }
