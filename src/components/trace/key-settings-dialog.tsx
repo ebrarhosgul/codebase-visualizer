@@ -120,6 +120,7 @@ export function KeySettingsDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
+      data-testid="key-settings-dialog"
       title="Bring Your Own Key (BYOK)"
       description="Store API keys securely in an AES-256-GCM encrypted browser cookie. Keys are never logged or persisted on our servers."
     >
@@ -136,6 +137,8 @@ export function KeySettingsDialog({
                 <button
                   type="button"
                   key={p.id}
+                  data-testid={`provider-radio-${p.id}`}
+                  data-selected={isSelected}
                   onClick={() => {
                     setSelectedProvider(p.id);
                     setStatusMessage(null);
@@ -169,6 +172,7 @@ export function KeySettingsDialog({
             onChange={(e) => setApiKey(e.target.value)}
             className="w-full text-xs"
             autoComplete="off"
+            data-testid="api-key-input"
           />
         </div>
 
@@ -195,6 +199,7 @@ export function KeySettingsDialog({
             size="sm"
             onClick={handleClearKey}
             loading={isSubmitting}
+            data-testid="clear-key-btn"
             className="text-red-400 hover:bg-red-500/10 hover:text-red-300 gap-1.5"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -207,6 +212,7 @@ export function KeySettingsDialog({
               variant="secondary"
               size="sm"
               onClick={() => onOpenChange(false)}
+              data-testid="close-key-dialog-btn"
             >
               Close
             </Button>
@@ -215,6 +221,7 @@ export function KeySettingsDialog({
               variant="primary"
               size="sm"
               loading={isSubmitting}
+              data-testid="save-key-btn"
               className="gap-1.5"
             >
               <Shield className="w-3.5 h-3.5" />

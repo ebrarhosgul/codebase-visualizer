@@ -106,6 +106,7 @@ export default function Home(): React.JSX.Element {
           placeholder="Filter files..."
           aria-label="Filter repository files"
           className="h-7 text-xs bg-[#0b0c0e] border-zinc-800/80 text-zinc-200 placeholder:text-zinc-500"
+          data-testid="file-search-input"
         />
       </div>
 

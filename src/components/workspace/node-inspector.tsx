@@ -170,7 +170,10 @@ export function NodeInspector({
       )}
 
       {/* Header section */}
-      <div className="border-b border-zinc-800/60 pb-3">
+      <div
+        className="border-b border-zinc-800/60 pb-3"
+        data-testid="node-inspector-header"
+      >
         <div className="flex items-center justify-between gap-2">
           <Badge
             variant="default"
@@ -209,12 +212,14 @@ export function NodeInspector({
             <h3
               className="text-sm font-semibold font-mono text-zinc-100 truncate"
               title={detail.displayName}
+              data-testid="node-inspector-title"
             >
               {detail.displayName}
             </h3>
             <p
               className="text-[10px] font-mono text-zinc-500 truncate"
               title={detail.filePath}
+              data-testid="node-inspector-filepath"
             >
               {detail.filePath}
             </p>
@@ -223,12 +228,18 @@ export function NodeInspector({
       </div>
 
       {/* Connectivity & Volume Metrics (AC-7) */}
-      <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-[#0B0C0E] border border-zinc-800/60 font-mono text-[11px]">
+      <div
+        className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-[#0B0C0E] border border-zinc-800/60 font-mono text-[11px]"
+        data-testid="node-inspector-metrics"
+      >
         <div className="space-y-0.5">
           <span className="text-zinc-500 text-[10px]">
             Incoming Callers (Fan In)
           </span>
-          <p className="text-sm font-semibold text-blue-400">
+          <p
+            className="text-sm font-semibold text-blue-400"
+            data-testid="metric-fan-in"
+          >
             {detail.metrics.fanIn}
           </p>
         </div>
@@ -236,19 +247,28 @@ export function NodeInspector({
           <span className="text-zinc-500 text-[10px]">
             Outgoing Dependencies (Fan Out)
           </span>
-          <p className="text-sm font-semibold text-zinc-300">
+          <p
+            className="text-sm font-semibold text-zinc-300"
+            data-testid="metric-fan-out"
+          >
             {detail.metrics.fanOut}
           </p>
         </div>
         <div className="space-y-0.5 pt-1 border-t border-zinc-800/60">
           <span className="text-zinc-500 text-[10px]">Lines</span>
-          <p className="text-xs font-semibold text-zinc-200">
+          <p
+            className="text-xs font-semibold text-zinc-200"
+            data-testid="metric-line-count"
+          >
             {detail.metrics.lineCount}
           </p>
         </div>
         <div className="space-y-0.5 pt-1 border-t border-zinc-800/60">
           <span className="text-zinc-500 text-[10px]">Symbols</span>
-          <p className="text-xs font-semibold text-zinc-200">
+          <p
+            className="text-xs font-semibold text-zinc-200"
+            data-testid="metric-symbol-count"
+          >
             {detail.metrics.symbolCount}
           </p>
         </div>
@@ -264,7 +284,10 @@ export function NodeInspector({
             </span>
           </div>
 
-          <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+          <div
+            className="space-y-1 max-h-48 overflow-y-auto pr-1"
+            data-testid="constituent-files-list"
+          >
             {detail.directoryDetails.fileList.map((f) => (
               <button
                 key={f.id}
@@ -296,7 +319,10 @@ export function NodeInspector({
         </div>
 
         {detail.incomingDependencies.length > 0 ? (
-          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+          <div
+            className="space-y-1.5 max-h-48 overflow-y-auto pr-1"
+            data-testid="incoming-dependencies-list"
+          >
             {detail.incomingDependencies.map((dep, idx) => (
               <button
                 key={`${dep.edgeId}-${idx}`}
@@ -350,7 +376,10 @@ export function NodeInspector({
         </div>
 
         {detail.outgoingDependencies.length > 0 ? (
-          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+          <div
+            className="space-y-1.5 max-h-48 overflow-y-auto pr-1"
+            data-testid="outgoing-dependencies-list"
+          >
             {detail.outgoingDependencies.map((dep, idx) => (
               <button
                 key={`${dep.edgeId}-${idx}`}
@@ -402,7 +431,10 @@ export function NodeInspector({
             <span>Exported Symbols ({detail.exportedSymbols.length})</span>
           </div>
 
-          <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+          <div
+            className="space-y-1 max-h-40 overflow-y-auto pr-1"
+            data-testid="exported-symbols-list"
+          >
             {detail.exportedSymbols.map((sym) => (
               <button
                 key={sym.id}
@@ -436,7 +468,10 @@ export function NodeInspector({
             <span>Internal Declarations ({detail.internalSymbols.length})</span>
           </div>
 
-          <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+          <div
+            className="space-y-1 max-h-40 overflow-y-auto pr-1"
+            data-testid="internal-symbols-list"
+          >
             {detail.internalSymbols.map((sym) => (
               <button
                 key={sym.id}

@@ -22,6 +22,7 @@ export interface FolderGroupNodeData {
  * Offers interactive collapse button and double-click trigger to collapse folder.
  */
 export const FolderGroupNode = React.memo(function FolderGroupNode({
+  id,
   data,
 }: NodeProps): React.JSX.Element {
   const folderData = data as unknown as FolderGroupNodeData;
@@ -48,6 +49,8 @@ export const FolderGroupNode = React.memo(function FolderGroupNode({
           : "border border-zinc-800/60 bg-zinc-950/30",
       )}
       data-testid={`folder-group-${label}`}
+      data-node-id={id}
+      data-active={isActive}
     >
       <div
         className={cn(

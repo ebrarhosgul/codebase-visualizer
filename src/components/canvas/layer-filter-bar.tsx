@@ -201,6 +201,7 @@ export function LayerFilterBar({
             onClick={handleClearSearch}
             className="absolute right-2 p-0.5 rounded text-zinc-500 hover:text-zinc-300 transition-colors"
             aria-label="Clear search"
+            data-testid="clear-search-btn"
           >
             <X className="w-3 h-3" />
           </button>
@@ -226,6 +227,7 @@ export function LayerFilterBar({
               type="button"
               onClick={() => toggleLayerFilter(layer.id)}
               aria-pressed={isSelected}
+              data-layer-active={isSelected}
               className={cn(
                 "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-mono font-medium transition-all shrink-0 cursor-pointer border",
                 isSelected
@@ -247,6 +249,8 @@ export function LayerFilterBar({
               aria-label={`Filter by ${layer.label} layer (${count} files)`}
             >
               <span
+                data-testid={`layer-chip-${layer.id}`}
+                data-layer-active={isSelected}
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: layer.color }}
               />
@@ -332,7 +336,9 @@ export function LayerFilterBar({
             data-testid="reset-all-filters"
           >
             <RotateCcw className="w-3 h-3" />
-            <span className="hidden sm:inline">Reset</span>
+            <span data-testid="reset-filters-btn" className="hidden sm:inline">
+              Reset
+            </span>
           </button>
         )}
       </div>

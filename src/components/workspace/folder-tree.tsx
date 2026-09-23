@@ -338,6 +338,8 @@ export const FolderTree = React.memo(function FolderTree({
             style={{ paddingLeft: `${indentPx}px` }}
             aria-expanded={isExpanded}
             aria-label={`Folder ${node.name}`}
+            data-testid={`tree-dir-${node.id}`}
+            data-expanded={isExpanded}
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-zinc-500 group-hover:text-zinc-300 shrink-0">
@@ -391,6 +393,9 @@ export const FolderTree = React.memo(function FolderTree({
               role="button"
               aria-disabled={true}
               aria-label={`${node.name} (Not allowed yet)`}
+              data-testid={`tree-file-${node.id}`}
+              data-active={isSelected}
+              data-is-code="false"
             >
               <div className="flex items-center gap-1.5 min-w-0">
                 <IconComponent
@@ -442,6 +447,9 @@ export const FolderTree = React.memo(function FolderTree({
               : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50",
           )}
           aria-label={`File ${node.path}`}
+          data-testid={`tree-file-${node.id}`}
+          data-active={isSelected}
+          data-is-code="true"
         >
           <div className="flex items-center gap-1.5 min-w-0">
             <IconComponent
@@ -476,7 +484,10 @@ export const FolderTree = React.memo(function FolderTree({
   };
 
   return (
-    <div className={cn("flex flex-col h-full min-h-0", className)}>
+    <div
+      className={cn("flex flex-col h-full min-h-0", className)}
+      data-testid="folder-tree-container"
+    >
       {/* Folder Tree Action Toolbar */}
       <div className="flex items-center justify-between px-1 py-1 mb-1 border-b border-zinc-800/60 text-[11px] text-zinc-500">
         <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">
@@ -503,6 +514,7 @@ export const FolderTree = React.memo(function FolderTree({
                 )}
                 aria-pressed={showAllFiles}
                 aria-label="Toggle all files display"
+                data-testid="tree-toggle-all-files"
               >
                 <Filter className="w-2.5 h-2.5" />
                 <span>{showAllFiles ? "All" : "Code"}</span>
@@ -516,6 +528,7 @@ export const FolderTree = React.memo(function FolderTree({
             label="Expand all folders"
             onClick={expandAll}
             className="w-5 h-5 p-0.5 text-zinc-500 hover:text-zinc-200"
+            data-testid="tree-expand-all"
           />
           <IconButton
             icon={ChevronsUp}
@@ -524,6 +537,7 @@ export const FolderTree = React.memo(function FolderTree({
             label="Collapse all folders"
             onClick={collapseAll}
             className="w-5 h-5 p-0.5 text-zinc-500 hover:text-zinc-200"
+            data-testid="tree-collapse-all"
           />
         </div>
       </div>

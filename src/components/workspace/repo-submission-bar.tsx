@@ -32,6 +32,11 @@ export interface RepoSubmissionBarProps {
  * manage personal access tokens in encrypted cookies, observe two tier streaming progress,
  * and force fresh re ingestion.
  */
+export const DEMO_REPOS = [
+  { name: "react", repo: "facebook/react" },
+  { name: "nextjs", repo: "vercel/next.js" },
+] as const;
+
 export function RepoSubmissionBar({
   className,
   onIngestionComplete,
@@ -188,7 +193,7 @@ export function RepoSubmissionBar({
       data-testid="repo-submission-bar"
     >
       <div className="w-full flex items-center justify-between gap-3">
-        {/* Logo and Brand */}
+        {/* Logo, Brand and Demo Repo Shortcut Pills */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-6 h-6 rounded bg-[#121417] border border-zinc-800/80 flex items-center justify-center">
             <GitFork className="w-3.5 h-3.5 text-zinc-200" />
@@ -196,6 +201,30 @@ export function RepoSubmissionBar({
           <span className="text-xs font-semibold tracking-tight text-zinc-100 hidden sm:inline">
             Codebase Visualizer
           </span>
+          <div className="hidden lg:flex items-center gap-1 ml-1">
+            {DEMO_REPOS.map((demo) => (
+              <button
+                key={demo.name}
+                type="button"
+                onClick={() => {
+                  setUrl(demo.repo);
+                  startIngestion({ repositoryUrl: demo.repo }).then(() => {
+                    if (
+                      useGraphStore.getState().ingestionPhase === "complete"
+                    ) {
+                      onIngestionComplete?.();
+                    }
+                  });
+                }}
+                disabled={isIngesting}
+                data-testid={`demo-repo-btn-${demo.name}`}
+                className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 transition-colors disabled:opacity-50 cursor-pointer"
+                title={`Load ${demo.repo} demo`}
+              >
+                {demo.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Input Controls Form */}
@@ -212,6 +241,7 @@ export function RepoSubmissionBar({
               disabled={isIngesting}
               aria-label="Public GitHub Repository URL"
               className="h-8 text-xs font-mono"
+              data-testid="repo-url-input"
             />
           </div>
 
@@ -224,6 +254,7 @@ export function RepoSubmissionBar({
               disabled={isIngesting}
               aria-label="Target Repository Branch"
               className="h-8 text-xs font-mono"
+              data-testid="repo-branch-input"
             />
           </div>
 
@@ -240,6 +271,7 @@ export function RepoSubmissionBar({
             title="Configure GitHub Personal Access Token"
             aria-label="Configure GitHub Personal Access Token"
             aria-expanded={isTokenOpen}
+            data-testid="github-token-btn"
           >
             <Key className="w-3.5 h-3.5" />
             <span className="hidden lg:inline">
@@ -255,6 +287,7 @@ export function RepoSubmissionBar({
               onClick={cancelIngestion}
               className="h-8 px-3 text-xs flex items-center gap-1.5 shrink-0"
               aria-label="Cancel Ingestion"
+              data-testid="cancel-analyze-btn"
             >
               <XCircle className="w-3.5 h-3.5" />
               <span>Cancel</span>
@@ -267,6 +300,7 @@ export function RepoSubmissionBar({
               disabled={!url.trim()}
               className="h-8 px-3 text-xs flex items-center gap-1.5 shrink-0"
               aria-label="Analyze Repository"
+              data-testid="submit-analyze-btn"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Analyze</span>
@@ -282,6 +316,7 @@ export function RepoSubmissionBar({
               className="h-8 px-2 text-xs flex items-center gap-1 text-zinc-400 hover:text-zinc-200 shrink-0"
               title="Force re ingest repository (bypasses client cache)"
               aria-label="Force Re-ingest"
+              data-testid="force-refresh-btn"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span className="hidden xl:inline">Refresh</span>
@@ -297,6 +332,7 @@ export function RepoSubmissionBar({
               className="h-8 px-2.5 text-xs flex items-center gap-1 text-zinc-400 hover:text-zinc-200 shrink-0"
               title="Copy deep link permalink for current repository and selection"
               aria-label="Share workspace link"
+              data-testid="share-workspace-btn"
             >
               {copied ? (
                 <>
@@ -354,6 +390,7 @@ export function RepoSubmissionBar({
                   placeholder="ghp_... or github_pat_..."
                   className="h-7 text-xs font-mono"
                   disabled={isSavingToken}
+                  data-testid="github-token-input"
                 />
               </div>
 
@@ -363,6 +400,7 @@ export function RepoSubmissionBar({
                 size="sm"
                 disabled={isSavingToken || !tokenInput.trim()}
                 className="h-7 text-xs shrink-0"
+                data-testid="save-token-btn"
               >
                 {isSavingToken ? "Saving..." : "Save Token"}
               </Button>
@@ -374,6 +412,7 @@ export function RepoSubmissionBar({
                   size="sm"
                   onClick={handleClearToken}
                   className="h-7 text-xs text-rose-400 hover:text-rose-300 shrink-0"
+                  data-testid="clear-token-btn"
                 >
                   Clear
                 </Button>
@@ -385,13 +424,17 @@ export function RepoSubmissionBar({
                 size="sm"
                 onClick={() => setIsTokenOpen(false)}
                 className="h-7 text-xs shrink-0"
+                data-testid="close-token-drawer-btn"
               >
                 Done
               </Button>
             </div>
 
             {tokenError && (
-              <p className="text-rose-400 text-[11px] flex items-center gap-1">
+              <p
+                className="text-rose-400 text-[11px] flex items-center gap-1"
+                data-testid="token-error-message"
+              >
                 <AlertCircle className="w-3 h-3 shrink-0" />
                 <span>{tokenError}</span>
               </p>
@@ -404,7 +447,9 @@ export function RepoSubmissionBar({
       {isIngesting && ingestionProgress && (
         <div
           className="px-3 py-2 rounded-md bg-[#121417] border border-zinc-800/80 flex flex-col gap-1.5 text-xs"
-          data-testid="ingestion-progress-bar"
+          data-testid="ingestion-progress-indicator"
+          data-phase={ingestionPhase}
+          data-progress={Math.round(ingestionProgress.current)}
         >
           {/* Tier 1: Phase and Bar */}
           <div className="flex items-center justify-between gap-2">
@@ -413,19 +458,29 @@ export function RepoSubmissionBar({
               <Badge
                 variant="accent"
                 className="uppercase text-[10px] shrink-0 font-semibold"
+                data-testid="ingestion-phase-badge"
               >
                 {ingestionPhase.replace(/_/g, " ")}
               </Badge>
-              <span className="text-[11px] text-zinc-200 truncate font-medium">
+              <span
+                className="text-[11px] text-zinc-200 truncate font-medium"
+                data-testid="ingestion-status-text"
+              >
                 {ingestionProgress.message}
               </span>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[10px] font-mono text-zinc-400">
+              <span
+                className="text-[10px] font-mono text-zinc-400"
+                data-testid="ingestion-progress-percentage"
+              >
                 {Math.round(ingestionProgress.current)}%
               </span>
-              <div className="w-24 h-1.5 rounded-full bg-[#0B0C0E] border border-zinc-800/60 overflow-hidden">
+              <div
+                className="w-24 h-1.5 rounded-full bg-[#0B0C0E] border border-zinc-800/60 overflow-hidden"
+                data-testid="ingestion-progress-bar"
+              >
                 <div
                   className="h-full bg-blue-500 transition-all duration-300"
                   style={{

@@ -18,6 +18,7 @@ export interface ToastProps {
   readonly durationMs?: number;
   readonly onClose: () => void;
   readonly className?: string;
+  readonly "data-testid"?: string;
 }
 
 const variantStyles: Record<
@@ -55,6 +56,7 @@ export function Toast({
   durationMs = 4000,
   onClose,
   className,
+  "data-testid": dataTestId,
 }: ToastProps): React.JSX.Element {
   const { container, icon: Icon } = variantStyles[variant];
 
@@ -77,15 +79,19 @@ export function Toast({
       role="status"
       aria-live="polite"
       className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border shadow-xl text-xs backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-2 ${container} ${className ?? ""}`}
-      data-testid="toast-notification"
+      data-testid={dataTestId ?? "toast-notification"}
+      data-variant={variant}
     >
       <Icon className="w-4 h-4 shrink-0 text-[var(--accent-primary)]" />
-      <span className="leading-snug max-w-sm">{message}</span>
+      <span className="leading-snug max-w-sm" data-testid="toast-message">
+        {message}
+      </span>
       <button
         type="button"
         onClick={onClose}
         className="ml-2 p-1 rounded hover:bg-[var(--surface-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
         aria-label="Dismiss notification"
+        data-testid="toast-dismiss-btn"
       >
         <X className="w-3.5 h-3.5" />
       </button>

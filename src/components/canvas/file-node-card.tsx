@@ -73,6 +73,9 @@ export const FileNodeCard = React.memo(function FileNodeCard({
     <div
       role="article"
       aria-label={`${entityType} node: ${label}`}
+      data-testid={`canvas-node-file-${id}`}
+      data-node-id={id}
+      data-selected={Boolean(selected)}
       className={cn(
         "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-colors duration-150 shadow-xs",
         "bg-[#15171b] border",

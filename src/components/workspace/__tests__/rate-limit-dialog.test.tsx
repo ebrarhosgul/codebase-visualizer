@@ -44,7 +44,7 @@ describe("RateLimitDialog", () => {
       target: { value: "invalid_prefix_token_123456" },
     });
 
-    const submitBtn = screen.getByTestId("rate-limit-submit-button");
+    const submitBtn = screen.getByTestId("rate-limit-confirm-btn");
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -81,7 +81,7 @@ describe("RateLimitDialog", () => {
     const input = screen.getByTestId("rate-limit-token-input");
     fireEvent.change(input, { target: { value: validToken } });
 
-    const submitBtn = screen.getByTestId("rate-limit-submit-button");
+    const submitBtn = screen.getByTestId("rate-limit-confirm-btn");
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -170,7 +170,7 @@ describe("RateLimitDialog", () => {
       target: { value: "ghp_12345678901234567890abcdef" },
     });
 
-    const submitBtn = screen.getByTestId("rate-limit-submit-button");
+    const submitBtn = screen.getByTestId("rate-limit-confirm-btn");
     fireEvent.click(submitBtn);
 
     await waitFor(() => {

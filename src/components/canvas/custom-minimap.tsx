@@ -43,6 +43,7 @@ export function CustomMiniMap({
 }: CustomMiniMapProps): React.JSX.Element {
   return (
     <MiniMap
+      data-testid="canvas-minimap"
       nodeColor={getMinimapNodeColor}
       maskColor="rgba(11, 12, 14, 0.85)"
       zoomable={zoomable}

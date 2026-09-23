@@ -15,6 +15,7 @@ export interface DropdownMenuItemConfig {
   readonly disabled?: boolean;
   readonly danger?: boolean;
   readonly onSelect?: () => void;
+  readonly "data-testid"?: string;
 }
 
 /**
@@ -33,6 +34,7 @@ export interface DropdownMenuProps {
   readonly side?: "top" | "right" | "bottom" | "left";
   readonly sideOffset?: number;
   readonly className?: string;
+  readonly "data-testid"?: string;
 }
 
 /**
@@ -45,12 +47,14 @@ export function DropdownMenu({
   side = "bottom",
   sideOffset = 4,
   className,
+  "data-testid": dataTestId,
 }: DropdownMenuProps): React.JSX.Element {
   return (
     <DropdownPrimitive.Root>
       <DropdownPrimitive.Trigger asChild>{trigger}</DropdownPrimitive.Trigger>
       <DropdownPrimitive.Portal>
         <DropdownPrimitive.Content
+          data-testid={dataTestId}
           align={align}
           side={side}
           sideOffset={sideOffset}
@@ -79,6 +83,7 @@ export function DropdownMenu({
                 key={item.id}
                 disabled={item.disabled}
                 onSelect={item.onSelect}
+                data-testid={item["data-testid"] ?? `dropdown-item-${item.id}`}
                 className={cn(
                   "flex items-center gap-2 px-2 py-1.5 text-xs rounded font-medium cursor-pointer transition-colors outline-none",
                   "text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus:bg-[var(--surface-hover)]",

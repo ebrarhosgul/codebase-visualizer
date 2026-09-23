@@ -599,6 +599,8 @@ function InlineContent({
                 <button
                   type="button"
                   key={index}
+                  data-testid="ai-citation-link"
+                  data-citation-path={matchedFile}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -608,7 +610,9 @@ function InlineContent({
                   title={`Open ${matchedFile} in code viewer`}
                 >
                   <FileCode className="w-2.5 h-2.5 text-[var(--accent-primary)] shrink-0" />
-                  <span>{token.content}</span>
+                  <span data-testid={`citation-${matchedFile}`}>
+                    {token.content}
+                  </span>
                 </button>
               );
             }

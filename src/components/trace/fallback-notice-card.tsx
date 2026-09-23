@@ -195,6 +195,7 @@ export function FallbackNoticeCard({
             variant="primary"
             size="sm"
             onClick={onOpenKeySettings}
+            data-testid="fallback-key-settings-btn"
             className="gap-1.5"
           >
             <Key className="w-3 h-3" />
@@ -208,6 +209,7 @@ export function FallbackNoticeCard({
             variant="secondary"
             size="sm"
             onClick={onSwitchToDemo}
+            data-testid="fallback-switch-demo-btn"
             className="gap-1.5"
           >
             <Sparkles className="w-3 h-3 text-zinc-400" />
@@ -222,6 +224,7 @@ export function FallbackNoticeCard({
             size="sm"
             onClick={onRetry}
             disabled={isRetrying}
+            data-testid="fallback-retry-btn"
             className="gap-1.5"
           >
             <RotateCw className={cn("w-3 h-3", isRetrying && "animate-spin")} />

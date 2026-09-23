@@ -124,6 +124,7 @@ export function WorkspaceLayout({
           "relative w-screen h-screen overflow-hidden flex flex-col bg-[var(--surface-canvas)]",
           className,
         )}
+        data-testid="workspace-root"
       >
         {/* Mobile quick action bar */}
         <header className="h-11 px-3 border-b border-[var(--border-subtle)] bg-[var(--surface-panel)] flex items-center justify-between shrink-0 z-20">
@@ -133,6 +134,7 @@ export function WorkspaceLayout({
             className="flex items-center gap-1.5 px-2 py-1 text-xs rounded font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
             aria-label="Open repository tree drawer"
             aria-expanded={isLeftDrawerOpen}
+            data-testid="mobile-files-drawer-btn"
           >
             <FolderTree className="w-4 h-4 text-[var(--accent-primary)]" />
             <span>Files</span>
@@ -148,6 +150,7 @@ export function WorkspaceLayout({
             className="flex items-center gap-1.5 px-2 py-1 text-xs rounded font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
             aria-label="Open inspector and code drawer"
             aria-expanded={isRightDrawerOpen}
+            data-testid="mobile-inspector-drawer-btn"
           >
             <Code2 className="w-4 h-4 text-[var(--accent-primary)]" />
             <span>Inspector</span>
@@ -176,6 +179,7 @@ export function WorkspaceLayout({
             role="dialog"
             aria-modal="true"
             aria-label="Repository navigation"
+            data-testid="mobile-left-drawer"
           >
             <div
               className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
@@ -192,6 +196,7 @@ export function WorkspaceLayout({
                   onClick={() => setLeftDrawerOpen(false)}
                   className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
                   aria-label="Close navigation drawer"
+                  data-testid="close-left-drawer-btn"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -208,6 +213,7 @@ export function WorkspaceLayout({
             role="dialog"
             aria-modal="true"
             aria-label="Inspector and code pane"
+            data-testid="mobile-right-drawer"
           >
             <div
               className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
@@ -224,6 +230,7 @@ export function WorkspaceLayout({
                   onClick={() => setRightDrawerOpen(false)}
                   className="p-1 rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--border-focus)]"
                   aria-label="Close inspector drawer"
+                  data-testid="close-right-drawer-btn"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -249,7 +256,10 @@ export function WorkspaceLayout({
       maxSize: 35,
       ariaLabel: "Repository file navigation",
       content: (
-        <aside className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-r border-[var(--border-subtle)]">
+        <aside
+          className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-r border-[var(--border-subtle)]"
+          data-testid="explorer-sidebar"
+        >
           <div className="h-9 px-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
             <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
               Explorer
@@ -259,6 +269,7 @@ export function WorkspaceLayout({
               onClick={toggleLeftSidebar}
               className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
               aria-label="Collapse explorer panel"
+              data-testid="collapse-left-sidebar-btn"
             >
               <PanelLeftClose className="w-3.5 h-3.5" />
             </button>
@@ -292,6 +303,7 @@ export function WorkspaceLayout({
             onClick={toggleLeftSidebar}
             className="absolute top-3 left-3 z-30 p-1.5 rounded-md bg-[#121417] border border-zinc-800 shadow-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
             aria-label="Expand explorer panel"
+            data-testid="expand-left-sidebar-btn"
           >
             <PanelLeftOpen className="w-4 h-4" />
           </button>
@@ -304,6 +316,7 @@ export function WorkspaceLayout({
             onClick={toggleRightPanel}
             className="absolute top-3 right-3 z-30 p-1.5 rounded-md bg-[#121417] border border-zinc-800 shadow-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
             aria-label="Expand inspector panel"
+            data-testid="expand-right-panel-btn"
           >
             <PanelRightOpen className="w-4 h-4" />
           </button>
@@ -322,7 +335,10 @@ export function WorkspaceLayout({
       maxSize: 50,
       ariaLabel: "Code and symbol inspector",
       content: (
-        <aside className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-l border-[var(--border-subtle)]">
+        <aside
+          className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-l border-[var(--border-subtle)]"
+          data-testid="inspector-sidebar"
+        >
           <div className="h-9 px-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
             <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
               Inspector
@@ -332,6 +348,7 @@ export function WorkspaceLayout({
               onClick={toggleRightPanel}
               className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
               aria-label="Collapse inspector panel"
+              data-testid="collapse-right-panel-btn"
             >
               <PanelRightClose className="w-3.5 h-3.5" />
             </button>
@@ -350,6 +367,7 @@ export function WorkspaceLayout({
         "w-screen h-screen overflow-hidden flex flex-col bg-[var(--surface-canvas)]",
         className,
       )}
+      data-testid="workspace-root"
     >
       {headerContent && (
         <header className="min-h-12 h-auto border-b border-[var(--border-subtle)] bg-[var(--surface-panel)] flex flex-col justify-center px-4 py-1.5 shrink-0 z-20">

@@ -23,6 +23,7 @@ export interface TabsProps {
   readonly items: readonly TabItem[];
   readonly className?: string;
   readonly listClassName?: string;
+  readonly "data-testid"?: string;
 }
 
 /**
@@ -34,11 +35,13 @@ export function Tabs({
   items,
   className,
   listClassName,
+  "data-testid": dataTestId,
 }: TabsProps): React.JSX.Element {
   return (
     <TabsPrimitive.Root
       value={value}
       onValueChange={onValueChange}
+      data-testid={dataTestId}
       className={cn("w-full h-full flex-1 min-h-0 flex flex-col", className)}
     >
       <TabsPrimitive.List
@@ -52,6 +55,7 @@ export function Tabs({
             key={tab.value}
             value={tab.value}
             disabled={tab.disabled}
+            data-testid={`tab-trigger-${tab.value}`}
             className={cn(
               "px-2.5 py-1 text-xs font-medium rounded-md transition-colors select-none cursor-pointer",
               "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40",
@@ -69,6 +73,7 @@ export function Tabs({
           <TabsPrimitive.Content
             key={tab.value}
             value={tab.value}
+            data-testid={`tab-content-${tab.value}`}
             className="w-full flex-1 min-h-0 h-full flex flex-col overflow-hidden focus-visible:outline-none data-[state=inactive]:hidden"
           >
             {tab.content}
