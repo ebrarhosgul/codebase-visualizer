@@ -71,6 +71,8 @@ export interface ActiveTraceState {
   readonly activeStepIndex: number | null;
   readonly highlightedNodeIds: readonly string[];
   readonly highlightedEdgeIds: readonly string[];
+  readonly highlightSource: "trace" | "answer" | null;
+  readonly visibleFileIds: readonly string[];
 }
 
 export interface GraphStoreState
@@ -134,6 +136,8 @@ export interface GraphStoreActions {
   readonly setActiveTrace: (trace: PathTrace | null) => void;
   readonly focusTraceStep: (stepIndex: number | null) => void;
   readonly clearTrace: () => void;
+  readonly setAnswerHighlight: (nodeIds: readonly string[]) => void;
+  readonly setVisibleFileIds: (ids: readonly string[]) => void;
   readonly setLayoutCalculationState: (
     isCalculating: boolean,
     durationMs?: number | null,
@@ -167,6 +171,8 @@ const initialState: GraphStoreState = {
   activeStepIndex: null,
   highlightedNodeIds: Object.freeze([]),
   highlightedEdgeIds: Object.freeze([]),
+  highlightSource: null,
+  visibleFileIds: Object.freeze([]),
   isCacheHit: false,
   offlineFallback: false,
   offlineLastSynced: null,
@@ -597,6 +603,13 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     nodeId: string | null,
     source: NavigationSource = "canvas",
   ): void => {
+    if (get().highlightSource === "answer") {
+      set({
+        highlightedNodeIds: Object.freeze([]),
+        highlightSource: null,
+      });
+    }
+
     if (!nodeId) {
       set({ selectedNodeId: null, selectedFileId: null, activeTarget: null });
       return;
@@ -668,11 +681,20 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       activeStepIndex: null,
       highlightedNodeIds: Object.freeze([]),
       highlightedEdgeIds: Object.freeze([]),
+      highlightSource: null,
+      visibleFileIds: Object.freeze([]),
     });
     get().flushPendingDeepLink();
   },
 
   navigateToTarget: (target: NavigationTarget): void => {
+    if (get().highlightSource === "answer") {
+      set({
+        highlightedNodeIds: Object.freeze([]),
+        highlightSource: null,
+      });
+    }
+
     const now = Date.now();
     const state = get();
 
@@ -1032,6 +1054,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
         activeStepIndex: null,
         highlightedNodeIds: Object.freeze([]),
         highlightedEdgeIds: Object.freeze([]),
+        highlightSource: null,
       });
       return;
     }
@@ -1040,6 +1063,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       activeStepIndex: null,
       highlightedNodeIds: trace.stepNodeIds,
       highlightedEdgeIds: trace.stepEdgeIds,
+      highlightSource: "trace",
     });
   },
 
@@ -1067,7 +1091,22 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       activeStepIndex: null,
       highlightedNodeIds: Object.freeze([]),
       highlightedEdgeIds: Object.freeze([]),
+      highlightSource: null,
     });
+  },
+
+  setAnswerHighlight: (nodeIds: readonly string[]): void => {
+    set({
+      highlightedNodeIds: Object.freeze([...nodeIds]),
+      highlightSource: "answer",
+      activeTrace: null,
+      activeStepIndex: null,
+      highlightedEdgeIds: Object.freeze([]),
+    });
+  },
+
+  setVisibleFileIds: (ids: readonly string[]): void => {
+    set({ visibleFileIds: Object.freeze([...ids]) });
   },
 
   setLayoutCalculationState: (

@@ -23,6 +23,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 10 | AI service stabilization and fallback notices | Slice 6 | in-progress |
 | 11 | Canvas performance optimization | Slice 7 | done |
 | 12 | Web Worker isolation for layout and parsing computations | Slice 8 | done |
+| 13 | Zero friction demo mode with graph heuristics | Slice 9 | done |
 
 ## Foundations
 
@@ -188,6 +189,23 @@ spec [0012](../specs/0012-web-worker-isolation/index.md) · code in `src/graph/l
 - [x] Test it: `/test web worker isolation for layout and parsing computations`
 - [x] Review it: `/check review web worker isolation for layout and parsing computations`
 
+## Slice 9: Zero friction demo mode with graph heuristics
+
+### 13. Zero friction demo mode with graph heuristics · done
+Let a visitor or reviewer explore the AI query panel with no API key: answers come from the client side AST and dependency graph already in memory (nodes, edges, layers, in and out degree) instead of canned text, stream token by token without dropping canvas frames, and start from clickable prompt chips that also highlight the relevant nodes on the canvas. A clear notice says the demo runs on local graph heuristics and invites power users to add their own key for full semantic reasoning. Builds on the demo provider from feature 8 and the offline demo runtime from feature 10; BYOK settings and the provider registry keep working unchanged.
+**Done when:** with no key set, clicking a chip such as "Architecture & layer breakdown", "Core bottleneck / central files", or "State management flow" streams a repository specific answer derived from the loaded graph, highlights the cited nodes on the canvas, keeps the canvas at 60 FPS while streaming, costs nothing server side, and the panel states plainly that the answer is a local heuristic with a one click path to BYOK.
+spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/ai/demo/`, `src/graph/heuristic-index.ts`, `src/hooks/use-ai-query-stream.ts`, `src/components/trace/`, `src/stores/graph-store.ts`
+- [x] Design it (spec): `/architect zero friction demo mode with graph heuristics`
+- [x] Build it: `/develop zero friction demo mode with graph heuristics`
+  - [x] Thin thread: one chip end to end through every layer, memoized heuristic index, streaming cadence and render cost (AC-1, AC-3, AC-5, AC-6, AC-8, AC-13)
+  - [x] Thicken the answers: layer breakdown, state flow, overview, and the intent router (AC-2, AC-4, AC-9, AC-10)
+  - [x] Chip surface: catalog, empty and compact variants, BYOK behavior, badge tooltip (AC-1, AC-8, AC-10, AC-11)
+  - [x] Hidden node awareness: visible file tracking and the "Show all" footer action (AC-7)
+  - [x] Lifecycle, interrupts, and verification: clear controls, repository change abort, headed frame trace (AC-12, locks AC-5 and AC-13)
+- [x] Verify it: `/check verify zero friction demo mode with graph heuristics`
+- [x] Test it: `/test zero friction demo mode with graph heuristics`
+- [x] Review it: `/check review zero friction demo mode with graph heuristics`
+
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
 - User accounts and authentication: sign in, personal repository dashboard, and cloud sync · needs a decision
@@ -201,6 +219,8 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - WebGL or Canvas 2D rendering engine: rewrite React Flow DOM rendering to WebGL or Canvas 2D · needs a decision
 - Server side layout computation: remote server layout calculation or persistent remote caching beyond IndexedDB · needs a decision
 - Tree sitter or native WebAssembly parser: replace Babel with Tree sitter or WASM parsers · needs a decision
+- Remove the server side demo AI branch and its rate limit tier once the zero friction demo UI has shipped and no client depends on it · from spec 0013
+- A fourth demo chip, "Entry points & dead ends", if the zero friction demo proves popular · from spec 0013
 
 ## Legend
 

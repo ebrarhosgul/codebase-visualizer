@@ -22,17 +22,18 @@ export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--accent-primary)] text-[var(--accent-primary-foreground)] hover:bg-[var(--accent-primary-hover)]",
+    "bg-accent-primary text-accent-primary-foreground border border-accent-primary hover:bg-accent-primary-hover hover:border-accent-primary-hover",
   secondary:
-    "bg-[var(--surface-panel-secondary)] text-[var(--text-primary)] border border-[var(--border-default)] hover:bg-[var(--surface-hover)]",
+    "bg-surface-panel-secondary text-text-primary border border-border-default hover:bg-surface-active hover:border-border-strong",
   ghost:
-    "bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]",
-  danger: "bg-[var(--status-error)] text-white hover:opacity-90",
+    "bg-transparent text-text-secondary border border-transparent hover:text-text-primary hover:bg-surface-hover",
+  danger:
+    "bg-status-error-solid text-white border border-status-error-solid hover:brightness-110",
 };
 
 const SIZE_CLASSES: Record<IconButtonSize, { button: string; icon: string }> = {
-  sm: { button: "h-7 w-7 rounded-md", icon: "w-3.5 h-3.5" },
-  md: { button: "h-8 w-8 rounded-md", icon: "w-4 h-4" },
+  sm: { button: "h-6 w-6 rounded-md", icon: "w-3.5 h-3.5" },
+  md: { button: "h-7 w-7 rounded-md", icon: "w-4 h-4" },
 };
 
 /**
@@ -59,7 +60,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         title={label}
         disabled={disabled}
         className={cn(
-          "inline-flex items-center justify-center transition-colors select-none",
+          "inline-flex items-center justify-center transition-colors select-none cursor-pointer",
           "focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] focus-visible:outline-offset-1",
           "disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed",
           VARIANT_CLASSES[variant],

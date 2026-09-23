@@ -78,38 +78,38 @@ export const FileNodeCard = React.memo(function FileNodeCard({
       data-selected={Boolean(selected)}
       className={cn(
         "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-colors duration-150 shadow-xs",
-        "bg-[#15171b] border",
+        "bg-surface-card border",
         selected
           ? "border-[var(--accent-primary)] ring-2 ring-[var(--accent-primary)]/40 z-20"
           : isHovered
-            ? "border-zinc-700 bg-zinc-900/90 z-10"
+            ? "border-border-strong bg-surface-card/90 z-10"
             : isConnected
-              ? "border-zinc-700 shadow-xs"
-              : "border-zinc-800/80 hover:border-zinc-700",
+              ? "border-border-strong shadow-xs"
+              : "border-border-default hover:border-border-strong",
         isDimmed && !selected && !isHovered && !isConnected && "opacity-25",
       )}
     >
       <Handle
         type="target"
         position={Position.Left}
-        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -left-[4px]"
+        className="w-2 h-2 !bg-text-secondary border border-surface-card rounded-full -left-[4px]"
       />
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="p-1.5 rounded-md bg-zinc-900 border border-zinc-800 shrink-0 text-zinc-400">
+          <div className="p-1.5 rounded-md bg-surface-panel-secondary border border-border-default shrink-0 text-text-secondary">
             <Icon className="w-3.5 h-3.5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
             <h4
-              className="text-xs font-medium text-zinc-100 truncate"
+              className="text-xs font-medium text-text-primary truncate"
               title={label}
             >
               {label}
             </h4>
             {subtitle && (
               <p
-                className="text-[10px] text-zinc-500 truncate font-mono"
+                className="text-[10px] text-text-muted truncate font-mono"
                 title={subtitle}
               >
                 {subtitle}
@@ -126,14 +126,14 @@ export const FileNodeCard = React.memo(function FileNodeCard({
       </div>
 
       {entityType === "file" && (
-        <div className="mt-2 pt-2 border-t border-zinc-800/80">
+        <div className="mt-2 pt-2 border-t border-border-default">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] rounded cursor-pointer"
+            className="flex items-center gap-1 text-[11px] text-text-secondary hover:text-text-primary focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] rounded-sm cursor-pointer"
             aria-expanded={isExpanded}
           >
             {isExpanded ? (
@@ -145,16 +145,16 @@ export const FileNodeCard = React.memo(function FileNodeCard({
           </button>
 
           {isExpanded && (
-            <div className="mt-2 text-[10px] text-zinc-400 space-y-1 font-mono">
+            <div className="mt-2 text-[10px] text-text-secondary space-y-1 font-mono">
               <div className="flex justify-between">
                 <span>Symbols:</span>
-                <span className="text-zinc-200 font-medium">
+                <span className="text-text-primary font-medium">
                   {data.entity.symbolIds ? data.entity.symbolIds.length : 0}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Imports:</span>
-                <span className="text-zinc-200 font-medium">
+                <span className="text-text-primary font-medium">
                   {data.entity.importIds ? data.entity.importIds.length : 0}
                 </span>
               </div>
@@ -166,7 +166,7 @@ export const FileNodeCard = React.memo(function FileNodeCard({
       <Handle
         type="source"
         position={Position.Right}
-        className="w-2 h-2 !bg-zinc-400 border border-[#15171b] rounded-full -right-[4px]"
+        className="w-2 h-2 !bg-text-secondary border border-surface-card rounded-full -right-[4px]"
       />
     </div>
   );

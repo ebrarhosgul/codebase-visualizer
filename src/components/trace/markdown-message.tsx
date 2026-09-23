@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Check, Copy, FileCode, Terminal } from "lucide-react";
 
 /**
@@ -606,7 +606,7 @@ function InlineContent({
                     e.stopPropagation();
                     onFileClick(matchedFile);
                   }}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--accent-primary)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer align-baseline"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] font-mono bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--accent-primary)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer align-baseline"
                   title={`Open ${matchedFile} in code viewer`}
                 >
                   <FileCode className="w-2.5 h-2.5 text-[var(--accent-primary)] shrink-0" />
@@ -619,7 +619,7 @@ function InlineContent({
             return (
               <code
                 key={index}
-                className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--accent-primary)] align-baseline"
+                className="px-1.5 py-0.5 rounded-sm text-[11px] font-mono bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--accent-primary)] align-baseline"
               >
                 {token.content}
               </code>
@@ -631,7 +631,7 @@ function InlineContent({
               return (
                 <span
                   key={index}
-                  className="block my-2 px-3 py-1.5 rounded bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-[11.5px] text-[var(--accent-primary)] text-center tracking-wide overflow-x-auto select-all"
+                  className="block my-2 px-3 py-1.5 rounded-sm bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-[11.5px] text-[var(--accent-primary)] text-center tracking-wide overflow-x-auto select-all"
                 >
                   {token.content}
                 </span>
@@ -640,7 +640,7 @@ function InlineContent({
             return (
               <span
                 key={index}
-                className="inline-block px-1.5 py-0.5 mx-0.5 rounded bg-[var(--surface-panel-secondary)] font-mono text-[11px] text-[var(--accent-primary)] align-baseline"
+                className="inline-block px-1.5 py-0.5 mx-0.5 rounded-sm bg-[var(--surface-panel-secondary)] font-mono text-[11px] text-[var(--accent-primary)] align-baseline"
               >
                 {token.content}
               </span>
@@ -759,7 +759,7 @@ function CodeBlock({
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
           title="Copy code snippet"
           aria-label={copied ? "Code copied" : "Copy code"}
         >
@@ -786,14 +786,14 @@ function CodeBlock({
 /**
  * Renders structured markdown content for AI responses with code highlighting and navigation.
  */
-export function MarkdownMessage({
+function MarkdownMessageComponent({
   content,
   isStreaming = false,
   onFileClick,
   knownFilePaths,
   className = "",
 }: MarkdownMessageProps): React.JSX.Element {
-  const blocks = parseMarkdown(content);
+  const blocks = useMemo(() => parseMarkdown(content), [content]);
 
   if (!content.trim() && isStreaming) {
     return (
@@ -883,7 +883,7 @@ export function MarkdownMessage({
             return (
               <div
                 key={index}
-                className="my-2 px-3 py-2 rounded bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-xs text-[var(--accent-primary)] text-center tracking-wide overflow-x-auto select-all"
+                className="my-2 px-3 py-2 rounded-sm bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-xs text-[var(--accent-primary)] text-center tracking-wide overflow-x-auto select-all"
               >
                 {block.expression}
               </div>
@@ -1001,7 +1001,7 @@ export function MarkdownMessage({
             return (
               <div
                 key={index}
-                className="overflow-x-auto my-2 rounded border border-[var(--border-subtle)] bg-[var(--surface-panel)]"
+                className="overflow-x-auto my-2 rounded-sm border border-[var(--border-subtle)] bg-[var(--surface-panel)]"
               >
                 <table className="w-full text-left border-collapse text-[11px]">
                   <thead>
@@ -1058,3 +1058,6 @@ export function MarkdownMessage({
     </div>
   );
 }
+
+export const MarkdownMessage = React.memo(MarkdownMessageComponent);
+MarkdownMessage.displayName = "MarkdownMessage";

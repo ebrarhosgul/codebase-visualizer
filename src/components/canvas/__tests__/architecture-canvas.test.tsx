@@ -1003,6 +1003,182 @@ describe("ArchitectureCanvas", () => {
     expectPaintLevelAlphaOnly(traceEdges);
   });
 
+  describe("answer highlight (0013 zero friction demo mode)", () => {
+    const answerGraph = {
+      schemaVersion: 1,
+      repository: {
+        id: "repo:org/app",
+        owner: "org",
+        name: "app",
+        fullName: "org/app",
+        defaultBranch: "main",
+        commitSha: "sha1",
+        analyzedAt: new Date().toISOString(),
+        totalFiles: 3,
+        totalSymbols: 0,
+        languages: { typescript: 3 },
+        schemaVersion: 1,
+      },
+      directories: {
+        "dir:src": {
+          id: "dir:src",
+          path: "src",
+          name: "src",
+          parentDirId: null,
+          childDirIds: [],
+          childFileIds: ["file:src/a.ts", "file:src/b.ts", "file:src/c.ts"],
+        },
+      },
+      files: Object.fromEntries(
+        ["a", "b", "c"].map((n) => [
+          `file:src/${n}.ts`,
+          {
+            id: `file:src/${n}.ts`,
+            path: `src/${n}.ts`,
+            name: `${n}.ts`,
+            extension: ".ts",
+            language: "typescript",
+            sizeBytes: 100,
+            lineCount: 10,
+            directoryId: "dir:src",
+            symbolIds: [],
+            importIds: [],
+            exportIds: [],
+          },
+        ]),
+      ),
+      symbols: {},
+      externalModules: {},
+      edges: {
+        "edge:a-b": {
+          id: "edge:a-b",
+          sourceId: "file:src/a.ts",
+          targetId: "file:src/b.ts",
+          kind: "file_import",
+          weight: 1,
+          isExternal: false,
+        },
+      },
+    } as unknown as CodebaseGraph;
+
+    const renderedNode = (id: string) =>
+      (capturedReactFlowProps?.nodes ?? []).find((n) => n.id === id);
+
+    it("keeps cited file nodes undimmed and dims every other file node (covers: AC-6)", () => {
+      useGraphStore.getState().setGraph(answerGraph);
+      render(<ArchitectureCanvas />);
+
+      act(() => {
+        useGraphStore.getState().setAnswerHighlight(["file:src/a.ts"]);
+      });
+
+      expect(renderedNode("file:src/a.ts")?.data?.isDimmed).toBe(false);
+      expect(renderedNode("file:src/a.ts")?.data?.isConnected).toBe(true);
+      expect(renderedNode("file:src/b.ts")?.data?.isDimmed).toBe(true);
+      expect(renderedNode("file:src/c.ts")?.data?.isDimmed).toBe(true);
+    });
+
+    it("leaves edge styling untouched by an answer highlight (covers: AC-6)", () => {
+      useGraphStore.getState().setGraph(answerGraph);
+      render(<ArchitectureCanvas />);
+      const snapshot = () =>
+        JSON.stringify(
+          ((capturedReactFlowProps?.edges ?? []) as Edge[]).map((e) => ({
+            id: e.id,
+            animated: Boolean(e.animated),
+            style: e.style,
+            markerEnd: e.markerEnd,
+            data: e.data,
+          })),
+        );
+      const before = snapshot();
+
+      act(() => {
+        useGraphStore.getState().setAnswerHighlight(["file:src/a.ts"]);
+      });
+
+      expect(snapshot()).toBe(before);
+    });
+
+    it("restores undimmed nodes once the answer highlight is cleared (covers: AC-6)", () => {
+      useGraphStore.getState().setGraph(answerGraph);
+      render(<ArchitectureCanvas />);
+      act(() => {
+        useGraphStore.getState().setAnswerHighlight(["file:src/a.ts"]);
+      });
+      expect(renderedNode("file:src/c.ts")?.data?.isDimmed).toBe(true);
+
+      act(() => {
+        useGraphStore.getState().clearTrace();
+      });
+
+      expect(renderedNode("file:src/c.ts")?.data?.isDimmed).toBe(false);
+    });
+
+    it("clears the dimming when a node is selected on the canvas (covers: AC-6)", () => {
+      useGraphStore.getState().setGraph(answerGraph);
+      render(<ArchitectureCanvas />);
+      act(() => {
+        useGraphStore.getState().setAnswerHighlight(["file:src/a.ts"]);
+      });
+
+      act(() => {
+        useGraphStore.getState().selectNode("file:src/c.ts");
+      });
+
+      expect(useGraphStore.getState().highlightSource).toBeNull();
+      expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
+      expect(renderedNode("file:src/c.ts")?.data?.isDimmed).toBe(false);
+    });
+
+    it("lights up the folder group that contains a cited file (covers: AC-6)", () => {
+      useGraphStore.getState().setGraph(answerGraph);
+      render(<ArchitectureCanvas />);
+      const folder = (capturedReactFlowProps?.nodes ?? []).find(
+        (n) => n.type === "folderGroup",
+      );
+      expect(folder).toBeDefined();
+
+      act(() => {
+        useGraphStore.getState().setAnswerHighlight(["file:src/a.ts"]);
+      });
+
+      const lit = (capturedReactFlowProps?.nodes ?? []).find(
+        (n) => n.id === folder?.id,
+      );
+      expect(lit?.data?.hasActiveChild).toBe(true);
+      expect(lit?.data?.isHighlighted).toBe(true);
+    });
+
+    it("publishes only file node ids as visible file ids (covers: AC-7)", () => {
+      useGraphStore.getState().setGraph(answerGraph);
+      render(<ArchitectureCanvas />);
+
+      const visible = useGraphStore.getState().visibleFileIds;
+
+      expect([...visible].sort()).toEqual([
+        "file:src/a.ts",
+        "file:src/b.ts",
+        "file:src/c.ts",
+      ]);
+      expect(visible).not.toContain("dir:src");
+    });
+
+    it("drops filtered out files from the published visible file ids (covers: AC-7)", () => {
+      useGraphStore.getState().setGraph(answerGraph);
+      render(<ArchitectureCanvas />);
+      expect(useGraphStore.getState().visibleFileIds.length).toBe(3);
+
+      act(() => {
+        useGraphStore.getState().setSearchQuery("a.ts");
+      });
+
+      const visible = useGraphStore.getState().visibleFileIds;
+      expect(visible).toContain("file:src/a.ts");
+      expect(visible).not.toContain("file:src/c.ts");
+    });
+  });
+
   it("renders internal local import edges between TSX files and highlights connected nodes", () => {
     const mockGraph = {
       schemaVersion: 1,

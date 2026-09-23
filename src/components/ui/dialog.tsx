@@ -38,24 +38,24 @@ export function Dialog({
         <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger>
       )}
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs animate-in fade-in-0" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70 animate-in fade-in-0" />
         <DialogPrimitive.Content
           data-testid={dataTestId}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-            "w-full max-w-lg p-5 rounded-xl shadow-2xl",
-            "bg-[#121417] border border-zinc-800",
+            "w-full max-w-lg p-4 rounded-xl shadow-2xl",
+            "bg-surface-panel border border-border-default",
             "animate-in fade-in-0 zoom-in-95",
             className,
           )}
         >
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80">
+          <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
             <div>
-              <DialogPrimitive.Title className="text-sm font-semibold text-zinc-100">
+              <DialogPrimitive.Title className="text-sm font-semibold text-text-primary">
                 {title}
               </DialogPrimitive.Title>
               {description && (
-                <DialogPrimitive.Description className="text-xs text-zinc-400 mt-0.5 leading-normal">
+                <DialogPrimitive.Description className="text-xs text-text-secondary mt-0.5 leading-normal">
                   {description}
                 </DialogPrimitive.Description>
               )}
@@ -63,7 +63,7 @@ export function Dialog({
             <DialogPrimitive.Close asChild>
               <button
                 type="button"
-                className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
+                className="p-1 rounded-sm text-text-secondary hover:text-text-primary hover:bg-surface-active focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] transition-colors cursor-pointer"
                 aria-label="Close dialog"
               >
                 <X className="w-4 h-4" />

@@ -69,12 +69,14 @@ function ArchitectureCanvasInner({
     activeStepIndex,
     highlightedNodeIds,
     highlightedEdgeIds,
+    highlightSource,
   } = useGraphStore(
     useShallow((state) => ({
       activeTrace: state.activeTrace,
       activeStepIndex: state.activeStepIndex,
       highlightedNodeIds: state.highlightedNodeIds,
       highlightedEdgeIds: state.highlightedEdgeIds,
+      highlightSource: state.highlightSource,
     })),
   );
 
@@ -128,6 +130,16 @@ function ArchitectureCanvasInner({
   const lastCenteredTargetKeyRef = React.useRef<string | null>(null);
   const nodesRef = React.useRef(nodes);
   nodesRef.current = nodes;
+
+  // Publish visible file IDs from laid-out nodes when layout completes (AC-7)
+  useEffect(() => {
+    if (!isCalculatingLayout) {
+      const fileIds = layoutNodes
+        .filter((n) => n.type === "file")
+        .map((n) => n.id);
+      useGraphStore.getState().setVisibleFileIds(fileIds);
+    }
+  }, [layoutNodes, isCalculatingLayout]);
 
   // Active target for dependency highlighting (selection takes visual priority, falling back to activeTarget)
   const rawHighlightId =
@@ -344,6 +356,7 @@ function ArchitectureCanvasInner({
   useEffect(() => {
     const isHighlightActive = Boolean(highlightNodeId);
     const isTraceActive = Boolean(activeTrace);
+    const isAnswerHighlight = highlightSource === "answer";
     const traceNodeSet = new Set(highlightedNodeIds);
     const activeStepNodeId =
       activeTrace && activeStepIndex !== null && activeStepIndex >= 0
@@ -359,7 +372,7 @@ function ArchitectureCanvasInner({
           const childIds = entity?.childFileIds ?? [];
           const hasActiveChild = childIds.some(
             (id) =>
-              (isTraceActive && traceNodeSet.has(id)) ||
+              ((isTraceActive || isAnswerHighlight) && traceNodeSet.has(id)) ||
               id === highlightNodeId ||
               id === selectedNodeId ||
               id === activeTarget?.fileId ||
@@ -382,13 +395,13 @@ function ArchitectureCanvasInner({
           };
         }
 
-        if (isTraceActive) {
-          const isTraceNode = traceNodeSet.has(n.id);
-          const isStepFocused = activeStepNodeId === n.id;
+        if (isTraceActive || isAnswerHighlight) {
+          const isKeyNode = traceNodeSet.has(n.id);
+          const isStepFocused = isTraceActive && activeStepNodeId === n.id;
           const isSelected = n.id === selectedNodeId || isStepFocused;
           const isHovered = isStepFocused;
-          const isConnected = isTraceNode;
-          const isDimmed = !isTraceNode;
+          const isConnected = isKeyNode;
+          const isDimmed = !isKeyNode;
 
           if (
             n.selected === isSelected &&
@@ -452,6 +465,7 @@ function ArchitectureCanvasInner({
     activeTrace,
     activeStepIndex,
     highlightedNodeIds,
+    highlightSource,
     setNodes,
   ]);
 
@@ -880,7 +894,7 @@ function ArchitectureCanvasInner({
 
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
           <div className="max-w-md space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-[var(--surface-panel-secondary)] border border-[var(--border-default)] flex items-center justify-center mx-auto text-amber-400 shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-[var(--surface-panel-secondary)] border border-[var(--border-default)] flex items-center justify-center mx-auto text-status-warning shadow-sm">
               <FilterX className="w-6 h-6" />
             </div>
 
@@ -960,9 +974,9 @@ function ArchitectureCanvasInner({
         <div
           role="alert"
           data-testid="canvas-layout-error"
-          className="absolute top-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 text-xs text-amber-300 bg-amber-950/90 border border-amber-800/80 rounded-lg shadow-lg pointer-events-auto select-none"
+          className="absolute top-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 text-xs text-status-warning bg-surface-panel border border-status-warning/40 rounded-lg shadow-lg pointer-events-auto select-none"
         >
-          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <AlertTriangle className="w-4 h-4 text-status-warning shrink-0" />
           <span>
             Background layout calculation failed ({layoutError.message}).
             Showing previous layout.

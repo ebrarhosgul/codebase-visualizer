@@ -54,9 +54,9 @@ export default function Home(): React.JSX.Element {
       {/* Active Repository Metadata Bar */}
       <div className="flex items-center justify-between px-1 pt-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <GitBranch className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+          <GitBranch className="w-3.5 h-3.5 text-text-secondary shrink-0" />
           <span
-            className="text-xs font-semibold text-zinc-100 truncate"
+            className="text-xs font-semibold text-text-primary truncate"
             title={repository?.fullName ?? "No repository loaded"}
           >
             {repository ? repository.fullName : "No repository"}
@@ -65,7 +65,7 @@ export default function Home(): React.JSX.Element {
         {repository ? (
           <Badge
             variant="default"
-            className="shrink-0 font-mono text-[10px] text-zinc-400 border-zinc-800 bg-zinc-900/60"
+            className="shrink-0 font-mono text-[10px] text-text-secondary border-border-default bg-surface-panel-secondary/60"
           >
             {repository.defaultBranch}
           </Badge>
@@ -83,14 +83,14 @@ export default function Home(): React.JSX.Element {
             <Badge
               key={lang}
               variant="default"
-              className="text-[9px] font-mono text-zinc-400 border-zinc-800/80 bg-zinc-900/40"
+              className="text-[9px] font-mono text-text-secondary border-border-default bg-surface-panel-secondary/40"
             >
               {lang}: {count}
             </Badge>
           ))}
           <Badge
             variant="default"
-            className="text-[9px] font-mono text-zinc-400 border-zinc-800/80 bg-zinc-900/40"
+            className="text-[9px] font-mono text-text-secondary border-border-default bg-surface-panel-secondary/40"
           >
             {repository.totalFiles} files
           </Badge>
@@ -105,7 +105,7 @@ export default function Home(): React.JSX.Element {
           onChange={(e) => setFileFilter(e.target.value)}
           placeholder="Filter files..."
           aria-label="Filter repository files"
-          className="h-7 text-xs bg-[#0b0c0e] border-zinc-800/80 text-zinc-200 placeholder:text-zinc-500"
+          className="h-7 text-xs bg-surface-canvas border-border-default text-text-primary placeholder:text-text-muted"
           data-testid="file-search-input"
         />
       </div>

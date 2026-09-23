@@ -5,6 +5,7 @@ import type {
   AiProviderId,
   CitationRef,
 } from "@/lib/ai/types";
+import type { DemoIntent } from "@/lib/ai/demo/intents";
 import type { CodebaseGraph, PathTrace, Repository } from "@/entities";
 import { classifyError } from "@/lib/ai/error-classifier";
 import { DemoAIProvider } from "@/lib/ai/demo-provider";
@@ -19,9 +20,11 @@ export interface StreamQueryOptions {
   }[];
   readonly isDemo?: boolean;
   readonly provider?: AiProviderId;
+  readonly demoIntent?: DemoIntent;
   readonly onTextChunk?: (chunk: string) => void;
   readonly onTrace?: (trace: PathTrace) => void;
   readonly onCitations?: (citations: readonly CitationRef[]) => void;
+  readonly onHighlight?: (nodeIds: readonly string[]) => void;
   readonly onWarning?: (warning: string) => void;
   readonly onError?: (error: string) => void;
   readonly onErrorNotice?: (notice: AiFallbackNotice) => void;
@@ -66,16 +69,12 @@ export function useAiQueryStream(): UseAiQueryStreamReturn {
       abortControllerRef.current = controller;
       setIsStreaming(true);
 
-      const isBrowserOffline =
-        typeof navigator !== "undefined" &&
-        typeof navigator.onLine === "boolean" &&
-        !navigator.onLine;
-
       const isDemoMode =
         options.isDemo || options.provider === ("demo" as AiProviderId);
 
-      // Offline demo execution: zero network calls when browser is offline
-      if (isDemoMode && isBrowserOffline) {
+      // Offline / zero-friction demo execution: zero network calls in demo mode
+      if (isDemoMode) {
+        let hasCompleted = false;
         try {
           const demoProvider = new DemoAIProvider();
           const generator = demoProvider.streamQuery(
@@ -87,6 +86,7 @@ export function useAiQueryStream(): UseAiQueryStreamReturn {
             },
             undefined,
             controller.signal,
+            options.demoIntent ? { intent: options.demoIntent } : undefined,
           );
 
           for await (const event of generator) {
@@ -101,6 +101,9 @@ export function useAiQueryStream(): UseAiQueryStreamReturn {
               case "citations":
                 options.onCitations?.(event.citations);
                 break;
+              case "highlight":
+                options.onHighlight?.(event.nodeIds);
+                break;
               case "warning":
                 options.onWarning?.(event.message);
                 break;
@@ -114,7 +117,10 @@ export function useAiQueryStream(): UseAiQueryStreamReturn {
                 break;
               }
               case "done":
-                options.onComplete?.();
+                if (!hasCompleted) {
+                  hasCompleted = true;
+                  options.onComplete?.();
+                }
                 break;
             }
           }
@@ -133,7 +139,10 @@ export function useAiQueryStream(): UseAiQueryStreamReturn {
             abortControllerRef.current = null;
           }
           setIsStreaming(false);
-          options.onComplete?.();
+          if (!hasCompleted && !controller.signal.aborted) {
+            hasCompleted = true;
+            options.onComplete?.();
+          }
         }
         return;
       }
@@ -241,6 +250,9 @@ export function useAiQueryStream(): UseAiQueryStreamReturn {
                     break;
                   case "citations":
                     options.onCitations?.(event.citations);
+                    break;
+                  case "highlight":
+                    options.onHighlight?.(event.nodeIds);
                     break;
                   case "warning":
                     options.onWarning?.(event.message);
