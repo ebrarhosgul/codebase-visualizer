@@ -26,12 +26,14 @@ export function PromptChips({
           Suggested Prompts
         </div>
         <div className="flex flex-col gap-1.5">
-          {chips.map((chip) => {
+          {chips.map((chip, index) => {
             const descId = `chip-desc-${chip.id}`;
             return (
               <button
                 type="button"
                 key={chip.id}
+                data-testid={`prompt-chip-${index}`}
+                data-chip-id={chip.id}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -74,10 +76,12 @@ export function PromptChips({
       aria-label="Suggested prompts"
       className="flex items-center gap-1.5 overflow-x-auto py-1 px-3 no-scrollbar shrink-0"
     >
-      {chips.map((chip) => (
+      {chips.map((chip, index) => (
         <button
           type="button"
           key={chip.id}
+          data-testid={`prompt-chip-compact-${index}`}
+          data-chip-id={chip.id}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();

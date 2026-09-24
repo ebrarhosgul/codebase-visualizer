@@ -26,3 +26,47 @@ if (typeof globalThis.ResizeObserver === "undefined") {
   }
   globalThis.ResizeObserver = MockResizeObserver;
 }
+
+// Polyfill localStorage for Node 22 jsdom tests where globalThis.localStorage lacks setItem
+const createStorageMock = () => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string): string | null => store[key] ?? null,
+    setItem: (key: string, value: string): void => {
+      store[key] = String(value);
+    },
+    removeItem: (key: string): void => {
+      delete store[key];
+    },
+    clear: (): void => {
+      store = {};
+    },
+    key: (index: number): string | null => Object.keys(store)[index] ?? null,
+    get length(): number {
+      return Object.keys(store).length;
+    },
+  };
+};
+
+const mockLocalStorage = createStorageMock();
+try {
+  Object.defineProperty(globalThis, "localStorage", {
+    value: mockLocalStorage,
+    writable: true,
+    configurable: true,
+  });
+} catch {
+  // Ignore if property definition fails
+}
+
+if (typeof window !== "undefined") {
+  try {
+    Object.defineProperty(window, "localStorage", {
+      value: mockLocalStorage,
+      writable: true,
+      configurable: true,
+    });
+  } catch {
+    // Ignore if property definition fails
+  }
+}

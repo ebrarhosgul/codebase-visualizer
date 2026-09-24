@@ -52,6 +52,7 @@ export function GraphControlsToolbar({
   return (
     <div
       role="toolbar"
+      data-testid="graph-controls-toolbar"
       aria-label="Canvas zoom and view controls"
       className={cn(
         "flex items-center gap-1 p-1 rounded-lg select-none shadow-sm transition-all",
@@ -76,6 +77,7 @@ export function GraphControlsToolbar({
         size="sm"
         variant="ghost"
         onClick={onZoomIn}
+        data-testid="zoom-in-btn"
       />
 
       <IconButton
@@ -84,6 +86,7 @@ export function GraphControlsToolbar({
         size="sm"
         variant="ghost"
         onClick={onZoomOut}
+        data-testid="zoom-out-btn"
       />
 
       {formattedZoom && (
@@ -104,6 +107,7 @@ export function GraphControlsToolbar({
         size="sm"
         variant="ghost"
         onClick={onFitView}
+        data-testid="fit-view-btn"
       />
 
       {onResetView && (
@@ -113,6 +117,7 @@ export function GraphControlsToolbar({
           size="sm"
           variant="ghost"
           onClick={onResetView}
+          data-testid="reset-view-btn"
         />
       )}
 
@@ -127,6 +132,7 @@ export function GraphControlsToolbar({
           size="sm"
           variant={isFollowCursorActive ? "secondary" : "ghost"}
           onClick={onToggleFollowCursor}
+          data-testid="toggle-follow-cursor-btn"
           className={
             isFollowCursorActive
               ? "text-accent-text border-accent-border bg-accent-subtle"
@@ -141,6 +147,7 @@ export function GraphControlsToolbar({
         size="sm"
         variant={isMinimapVisible ? "secondary" : "ghost"}
         onClick={onToggleMinimap}
+        data-testid="toggle-minimap-btn"
         className={
           isMinimapVisible
             ? "text-accent-text border-accent-border bg-accent-subtle"

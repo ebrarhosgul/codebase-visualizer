@@ -638,7 +638,10 @@ export function TracePanel(): React.JSX.Element {
       )}
 
       {/* Message history container */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
+      <div
+        className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4"
+        data-testid="chat-messages-container"
+      >
         {messages.length === 0 ? (
           <div className="py-6 text-center space-y-3">
             <div className="w-10 h-10 mx-auto rounded-full bg-surface-panel-secondary border border-border-default flex items-center justify-center text-text-secondary">
@@ -681,6 +684,12 @@ export function TracePanel(): React.JSX.Element {
                     ? "bg-surface-active text-text-primary border border-border-strong rounded-br-none"
                     : "bg-surface-card border border-border-default text-text-primary rounded-bl-none shadow-xs"
                 }`}
+                data-testid={
+                  msg.role === "user"
+                    ? "chat-message-user"
+                    : "chat-message-assistant"
+                }
+                data-status={msg.status}
               >
                 {/* Message body */}
                 {msg.role === "user" ? (
@@ -698,6 +707,7 @@ export function TracePanel(): React.JSX.Element {
                         <button
                           type="button"
                           onClick={() => handleCopyMessage(msg.content, msg.id)}
+                          data-testid="copy-response-btn"
                           className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] text-text-secondary hover:text-text-primary hover:bg-surface-active transition-colors cursor-pointer"
                           title="Copy response"
                           aria-label={
@@ -729,6 +739,16 @@ export function TracePanel(): React.JSX.Element {
                       knownFilePaths={knownFilePaths}
                       onFileClick={handleDirectFileNavigation}
                     />
+
+                    {isDemoMode && (
+                      <div
+                        data-testid="demo-answer-footer"
+                        className="mt-2 pt-1.5 border-t border-zinc-800/40 text-[10px] text-zinc-500 font-mono"
+                      >
+                        Generated in offline demo mode using topological
+                        heuristics.
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -783,6 +803,7 @@ export function TracePanel(): React.JSX.Element {
                           <React.Fragment key={nodeId}>
                             <button
                               type="button"
+                              data-testid={`path-trace-step-${idx}`}
                               onClick={() => {
                                 if (activeTrace?.id !== msg.pathTrace?.id) {
                                   setActiveTrace(msg.pathTrace!);
@@ -811,6 +832,7 @@ export function TracePanel(): React.JSX.Element {
                         variant="ghost"
                         size="sm"
                         onClick={() => setActiveTrace(msg.pathTrace!)}
+                        data-testid="highlight-trace-btn"
                         className="h-5 px-2 text-[10px] text-text-secondary hover:text-text-primary hover:bg-surface-active"
                       >
                         Highlight On Canvas
@@ -821,25 +843,33 @@ export function TracePanel(): React.JSX.Element {
 
                 {/* Citations section (AC-6) */}
                 {msg.citations && msg.citations.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-border-subtle space-y-1.5">
+                  <div
+                    className="mt-3 pt-2 border-t border-border-subtle space-y-1.5"
+                    data-testid="ai-citations-list"
+                  >
                     <div className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                       Code Citations
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {msg.citations.map((cite) => (
-                        <button
-                          key={cite.id}
-                          onClick={() => handleCitationClick(cite)}
-                          className="flex items-center gap-1 px-2 py-1 rounded-sm bg-surface-canvas border border-border-default text-[11px] text-text-secondary hover:text-text-primary hover:border-border-strong hover:bg-surface-hover transition-colors"
-                          title={`Click to view ${cite.label} at line ${cite.line || 1}`}
-                        >
-                          <FileCode className="w-3 h-3 text-text-secondary" />
-                          <span>
-                            {cite.label}
-                            {cite.line ? `:${cite.line}` : ""}
-                          </span>
-                        </button>
-                      ))}
+                      {msg.citations.map((cite) => {
+                        const citeKey =
+                          graph?.files[cite.fileId]?.path || cite.label;
+                        return (
+                          <button
+                            key={cite.id}
+                            data-testid={`citation-${citeKey}`}
+                            onClick={() => handleCitationClick(cite)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-sm bg-surface-canvas border border-border-default text-[11px] text-text-secondary hover:text-text-primary hover:border-border-strong hover:bg-surface-hover transition-colors"
+                            title={`Click to view ${cite.label} at line ${cite.line || 1}`}
+                          >
+                            <FileCode className="w-3 h-3 text-text-secondary" />
+                            <span>
+                              {cite.label}
+                              {cite.line ? `:${cite.line}` : ""}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -877,6 +907,14 @@ export function TracePanel(): React.JSX.Element {
 
       {/* Query input footer */}
       <div className="p-3 border-t border-border-subtle bg-surface-panel">
+        {isDemoMode && (
+          <div
+            data-testid="demo-answer-footer"
+            className="text-[10px] text-text-muted text-center pb-2 font-mono"
+          >
+            Zero cost offline demo mode active
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -901,6 +939,7 @@ export function TracePanel(): React.JSX.Element {
             disabled={!graph || isStreaming}
             rows={2}
             className="flex-1 p-2 rounded-md bg-surface-canvas border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-hidden focus:border-accent-primary focus:ring-1 focus:ring-border-focus/30 resize-none disabled:opacity-50 transition-all"
+            data-testid="trace-chat-input"
           />
 
           {isStreaming ? (
@@ -909,6 +948,7 @@ export function TracePanel(): React.JSX.Element {
               variant="danger"
               size="sm"
               onClick={handleStopQuery}
+              data-testid="trace-stop-btn"
               className="h-14 px-3 shrink-0 gap-1"
               title="Stop response"
             >
@@ -921,6 +961,7 @@ export function TracePanel(): React.JSX.Element {
               variant="primary"
               size="sm"
               disabled={!graph || !prompt.trim()}
+              data-testid="trace-submit-btn"
               className="h-14 px-3 shrink-0 gap-1"
               title="Send query (Enter)"
             >

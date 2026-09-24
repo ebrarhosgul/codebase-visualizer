@@ -48,6 +48,7 @@ export function ResizableSplitPane({
       id={groupId}
       orientation={direction}
       className={cn("w-full h-full flex overflow-hidden", className)}
+      data-testid="resizable-split-pane"
       onLayoutChanged={(layout) => {
         if (onResize) {
           const sizes = panels.map((p) => layout[p.id] ?? p.defaultSize);
@@ -71,6 +72,7 @@ export function ResizableSplitPane({
               collapsible={panel.collapsible}
               className="relative overflow-hidden h-full flex flex-col"
               aria-label={panel.ariaLabel}
+              data-testid={`split-pane-panel-${panel.id}`}
             >
               {panel.content}
             </Panel>
@@ -78,6 +80,8 @@ export function ResizableSplitPane({
               <Separator
                 id={`separator-${panel.id}`}
                 aria-label={`Resize between panel ${index + 1} and panel ${index + 2}`}
+                data-testid={`split-pane-resizer-${panel.id}`}
+                data-resizer-id={panel.id}
                 className={cn(
                   "relative flex items-center justify-center transition-colors select-none z-10",
                   direction === "horizontal"

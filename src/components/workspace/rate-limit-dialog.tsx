@@ -128,10 +128,11 @@ export function RateLimitDialog({
       title="GitHub Rate Limit Exceeded"
       description="GitHub public API request quota has been temporarily reached."
       className={className}
+      data-testid="rate-limit-dialog"
     >
       <div
         className="flex flex-col gap-4 text-xs"
-        data-testid="rate-limit-dialog"
+        data-testid="rate-limit-dialog-content"
       >
         {/* Countdown display banner */}
         <div className="p-3 rounded-md bg-status-warning/10 border border-status-warning/30 text-status-warning flex items-center justify-between gap-3">
@@ -202,6 +203,7 @@ export function RateLimitDialog({
               size="sm"
               disabled={secondsRemaining > 0}
               onClick={handleWaitRetry}
+              data-testid="rate-limit-retry-btn"
               title={
                 secondsRemaining > 0
                   ? "Wait for reset timer to expire before retrying"
@@ -217,6 +219,7 @@ export function RateLimitDialog({
                 variant="ghost"
                 size="sm"
                 onClick={() => setOpen(false)}
+                data-testid="rate-limit-cancel-btn"
               >
                 Cancel
               </Button>
@@ -225,7 +228,7 @@ export function RateLimitDialog({
                 variant="primary"
                 size="sm"
                 disabled={isSubmitting || !token.trim()}
-                data-testid="rate-limit-submit-button"
+                data-testid="rate-limit-confirm-btn"
                 className="flex items-center gap-1.5"
               >
                 {isSubmitting ? (

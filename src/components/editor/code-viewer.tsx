@@ -284,16 +284,18 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
         className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-text-muted bg-surface-panel select-none"
         data-testid="code-viewer-empty"
       >
-        <div className="w-10 h-10 rounded-lg bg-surface-canvas border border-border-default flex items-center justify-center mb-3 text-text-secondary">
-          <Code2 className="w-5 h-5" />
+        <div data-testid="code-viewer-container" className="contents">
+          <div className="w-10 h-10 rounded-lg bg-surface-canvas border border-border-default flex items-center justify-center mb-3 text-text-secondary">
+            <Code2 className="w-5 h-5" />
+          </div>
+          <div className="text-xs font-semibold text-text-primary mb-1">
+            No File Selected
+          </div>
+          <p className="text-[11px] max-w-xs text-text-secondary leading-relaxed">
+            Click any file node on the architecture map canvas to inspect its
+            source code side by side.
+          </p>
         </div>
-        <div className="text-xs font-semibold text-text-primary mb-1">
-          No File Selected
-        </div>
-        <p className="text-[11px] max-w-xs text-text-secondary leading-relaxed">
-          Click any file node on the architecture map canvas to inspect its
-          source code side by side.
-        </p>
       </div>
     );
   }
@@ -305,88 +307,109 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
       className={`w-full h-full flex flex-col bg-surface-panel ${className ?? ""}`}
       data-testid="code-viewer"
     >
-      {/* File Header Bar */}
-      <div className="px-3 py-2 border-b border-border-subtle bg-surface-panel flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 overflow-hidden min-w-0">
-          <FileCode className="w-3.5 h-3.5 text-text-secondary shrink-0" />
-          <span
-            className="text-xs font-mono font-medium text-text-primary truncate"
-            title={fileNode.path}
+      <div data-testid="code-viewer-container" className="contents">
+        {/* Active line indicator for E2E tests */}
+        {activeTarget?.line != null && (
+          <div
+            data-testid="code-line-highlighted"
+            data-line-number={activeTarget.line}
+            className="sr-only"
+            aria-live="polite"
           >
-            {fileNode.path}
-          </span>
+            Line {activeTarget.line} highlighted
+          </div>
+        )}
+
+        {/* File Header Bar */}
+        <div className="px-3 py-2 border-b border-border-subtle bg-surface-panel flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 overflow-hidden min-w-0">
+            <FileCode className="w-3.5 h-3.5 text-text-secondary shrink-0" />
+            <span
+              className="text-xs font-mono font-medium text-text-primary truncate"
+              title={fileNode.path}
+              data-testid="code-viewer-filepath"
+            >
+              {fileNode.path}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSharePermalink}
+              className="h-6 px-2 text-[11px] flex items-center gap-1 text-text-secondary hover:text-text-primary"
+              title="Copy deep link permalink for this file and line"
+              aria-label="Copy deep link permalink"
+              data-testid="share-permalink-btn"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3 h-3 text-status-success" />
+                  <span className="text-status-success text-[10px]">
+                    Copied!
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3 h-3" />
+                  <span className="text-[10px] hidden sm:inline">Share</span>
+                </>
+              )}
+            </Button>
+            <Badge variant="syntax-ts">{fileNode.extension || language}</Badge>
+            <span className="text-[10px] text-text-muted font-mono">
+              {fileNode.lineCount} lines
+            </span>
+            <span className="text-[10px] text-text-muted font-mono">
+              ({formatBytes(fileNode.sizeBytes)})
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSharePermalink}
-            className="h-6 px-2 text-[11px] flex items-center gap-1 text-text-secondary hover:text-text-primary"
-            title="Copy deep link permalink for this file and line"
-            aria-label="Copy deep link permalink"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3 h-3 text-status-success" />
-                <span className="text-status-success text-[10px]">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Share2 className="w-3 h-3" />
-                <span className="text-[10px] hidden sm:inline">Share</span>
-              </>
-            )}
-          </Button>
-          <Badge variant="syntax-ts">{fileNode.extension || language}</Badge>
-          <span className="text-[10px] text-text-muted font-mono">
-            {fileNode.lineCount} lines
-          </span>
-          <span className="text-[10px] text-text-muted font-mono">
-            ({formatBytes(fileNode.sizeBytes)})
-          </span>
-        </div>
-      </div>
+        {/* Syntax error warning banner if any */}
+        {fileNode.parseError && (
+          <div className="px-3 py-1.5 bg-status-warning/10 border-b border-status-warning/20 text-status-warning flex items-center gap-2 text-[11px]">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">
+              Syntax Warning: {fileNode.parseError}
+            </span>
+          </div>
+        )}
 
-      {/* Syntax error warning banner if any */}
-      {fileNode.parseError && (
-        <div className="px-3 py-1.5 bg-status-warning/10 border-b border-status-warning/20 text-status-warning flex items-center gap-2 text-[11px]">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">
-            Syntax Warning: {fileNode.parseError}
-          </span>
+        {/* Monaco Editor Canvas */}
+        <div
+          className="flex-1 w-full min-h-0 relative"
+          data-testid="monaco-editor-wrapper"
+        >
+          <Editor
+            path={fileNode.path}
+            height="100%"
+            language={language}
+            value={sourceCode}
+            theme="vs-dark"
+            onMount={handleEditorMount}
+            loading={
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-text-muted bg-surface-panel">
+                <Code2 className="w-6 h-6 animate-pulse mb-2 text-text-secondary" />
+                <span className="text-xs">Loading editor...</span>
+              </div>
+            }
+            options={{
+              readOnly: true,
+              fontSize: 12,
+              lineNumbers: "on",
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              renderWhitespace: "selection",
+              domReadOnly: true,
+              cursorBlinking: "solid",
+              padding: { top: 8, bottom: 8 },
+              fontFamily: "var(--font-mono, monospace)",
+            }}
+          />
         </div>
-      )}
-
-      {/* Monaco Editor Canvas */}
-      <div className="flex-1 w-full min-h-0 relative">
-        <Editor
-          path={fileNode.path}
-          height="100%"
-          language={language}
-          value={sourceCode}
-          theme="vs-dark"
-          onMount={handleEditorMount}
-          loading={
-            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-text-muted bg-surface-panel">
-              <Code2 className="w-6 h-6 animate-pulse mb-2 text-text-secondary" />
-              <span className="text-xs">Loading editor...</span>
-            </div>
-          }
-          options={{
-            readOnly: true,
-            fontSize: 12,
-            lineNumbers: "on",
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            renderWhitespace: "selection",
-            domReadOnly: true,
-            cursorBlinking: "solid",
-            padding: { top: 8, bottom: 8 },
-            fontFamily: "var(--font-mono, monospace)",
-          }}
-        />
       </div>
     </div>
   );

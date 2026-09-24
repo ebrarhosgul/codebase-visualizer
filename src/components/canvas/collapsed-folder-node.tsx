@@ -72,6 +72,8 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
           : "border-border-default hover:border-border-strong",
       )}
       data-testid={`collapsed-folder-${label}`}
+      data-node-id={id}
+      data-selected={Boolean(selected)}
       title="Click to inspect, double click to expand"
     >
       <Handle

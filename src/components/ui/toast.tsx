@@ -18,6 +18,7 @@ export interface ToastProps {
   readonly durationMs?: number;
   readonly onClose: () => void;
   readonly className?: string;
+  readonly "data-testid"?: string;
 }
 
 const variantStyles: Record<
@@ -51,6 +52,7 @@ export function Toast({
   durationMs = 4000,
   onClose,
   className,
+  "data-testid": dataTestId,
 }: ToastProps): React.JSX.Element {
   const { container, icon: Icon } = variantStyles[variant];
 
@@ -72,16 +74,20 @@ export function Toast({
     <div
       role="status"
       aria-live="polite"
-      className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-3 py-2 rounded-lg border shadow-xl text-xs transition-all animate-in fade-in slide-in-from-bottom-2 ${container} ${className ?? ""}`}
-      data-testid="toast-notification"
+      className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-3 py-2 rounded-lg border shadow-xl text-xs backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-2 ${container} ${className ?? ""}`}
+      data-testid={dataTestId ?? "toast-notification"}
+      data-variant={variant}
     >
       <Icon className="w-4 h-4 shrink-0 text-accent-text" />
-      <span className="leading-snug max-w-sm">{message}</span>
+      <span className="leading-snug max-w-sm" data-testid="toast-message">
+        {message}
+      </span>
       <button
         type="button"
         onClick={onClose}
         className="ml-2 p-1 rounded-sm hover:bg-surface-active text-text-muted hover:text-text-primary transition-colors cursor-pointer"
         aria-label="Dismiss notification"
+        data-testid="toast-dismiss-btn"
       >
         <X className="w-3.5 h-3.5" />
       </button>

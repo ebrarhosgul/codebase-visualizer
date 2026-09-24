@@ -16,6 +16,7 @@ export interface DialogProps {
   readonly children: React.ReactNode;
   readonly trigger?: React.ReactNode;
   readonly className?: string;
+  readonly "data-testid"?: string;
 }
 
 /**
@@ -29,6 +30,7 @@ export function Dialog({
   children,
   trigger,
   className,
+  "data-testid": dataTestId,
 }: DialogProps): React.JSX.Element {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -38,6 +40,7 @@ export function Dialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70 animate-in fade-in-0" />
         <DialogPrimitive.Content
+          data-testid={dataTestId}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
             "w-full max-w-lg p-4 rounded-xl shadow-2xl",

@@ -27,6 +27,7 @@ import { GraphControlsToolbar } from "./graph-controls-toolbar";
 import { CustomMiniMap } from "./custom-minimap";
 import { LayerFilterBar } from "./layer-filter-bar";
 import { Button } from "@/components/ui/button";
+import { DEMO_REPOS } from "@/components/workspace/repo-submission-bar";
 import { useAsyncGraphLayout } from "@/hooks/use-async-graph-layout";
 import { useGraphStore } from "@/stores/graph-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -51,6 +52,7 @@ function ArchitectureCanvasInner({
   const isIngesting = useGraphStore((state) => state.isIngesting);
   const resetAllFilters = useGraphStore((state) => state.resetAllFilters);
   const activeTarget = useGraphStore((state) => state.activeTarget);
+  const startIngestion = useGraphStore((state) => state.startIngestion);
 
   const { selectedLayers, collapsedFolderIds, searchQuery, hideExternal } =
     useGraphStore(
@@ -816,32 +818,57 @@ function ArchitectureCanvasInner({
     return (
       <div
         className={`relative w-full h-full flex flex-col items-center justify-center p-8 bg-[var(--surface-canvas)] select-none ${className ?? ""}`}
-        data-testid="canvas-empty-state"
+        data-testid="architecture-canvas"
       >
-        <div className="max-w-md text-center space-y-4 z-10">
-          <div className="w-12 h-12 rounded-xl bg-[var(--surface-panel-secondary)] border border-[var(--border-default)] flex items-center justify-center mx-auto text-[var(--accent-primary)] shadow-sm">
-            <Network className="w-6 h-6" />
-          </div>
-
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-              {isIngesting
-                ? "Analyzing Codebase Architecture..."
-                : "Architecture Graph Canvas"}
-            </h2>
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              {isIngesting
-                ? "Streaming repository archive and parsing abstract syntax tree dependencies..."
-                : "Submit a public GitHub repository link in the header bar above to visualize modules, imports, and source code side by side."}
-            </p>
-          </div>
-
-          {!isIngesting && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--surface-panel)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)]">
-              <Sparkles className="w-3 h-3 text-[var(--accent-primary)]" />
-              <span>Try entering facebook/react or vercel/next.js</span>
+        <div
+          className="max-w-md text-center space-y-4 z-10"
+          data-testid="workspace-empty-state"
+        >
+          <div
+            data-testid="canvas-empty-state"
+            className="flex flex-col items-center space-y-4"
+          >
+            <div className="w-12 h-12 rounded-xl bg-[var(--surface-panel-secondary)] border border-[var(--border-default)] flex items-center justify-center mx-auto text-[var(--accent-primary)] shadow-sm">
+              <Network className="w-6 h-6" />
             </div>
-          )}
+
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
+                {isIngesting
+                  ? "Analyzing Codebase Architecture..."
+                  : "Architecture Graph Canvas"}
+              </h2>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                {isIngesting
+                  ? "Streaming repository archive and parsing abstract syntax tree dependencies..."
+                  : "Submit a public GitHub repository link in the header bar above to visualize modules, imports, and source code side by side."}
+              </p>
+            </div>
+
+            {!isIngesting && (
+              <div className="flex flex-col items-center gap-3 pt-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--surface-panel)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)]">
+                  <Sparkles className="w-3 h-3 text-[var(--accent-primary)]" />
+                  <span>Try entering facebook/react or vercel/next.js</span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  {DEMO_REPOS.map((demo) => (
+                    <button
+                      key={demo.name}
+                      type="button"
+                      onClick={() => {
+                        startIngestion({ repositoryUrl: demo.repo });
+                      }}
+                      data-testid={`demo-repo-btn-${demo.name}`}
+                      className="px-2.5 py-1 rounded text-xs font-mono bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors cursor-pointer"
+                    >
+                      {demo.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -924,6 +951,10 @@ function ArchitectureCanvasInner({
               zoomOut({ duration: 200 });
             }}
             onFitView={() => {
+              lastCenteredTargetKeyRef.current = null;
+              fitView({ padding: 0.2, duration: 300 });
+            }}
+            onResetView={() => {
               lastCenteredTargetKeyRef.current = null;
               fitView({ padding: 0.2, duration: 300 });
             }}
