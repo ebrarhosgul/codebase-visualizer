@@ -24,6 +24,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 11 | Canvas performance optimization | Slice 7 | done |
 | 12 | Web Worker isolation for layout and parsing computations | Slice 8 | done |
 | 13 | Zero friction demo mode with graph heuristics | Slice 9 | done |
+| 14 | AI video explainer walkthroughs and canvas state sync | Slice 10 | planned |
 
 ## Foundations
 
@@ -205,6 +206,13 @@ spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/
 - [x] Verify it: `/check verify zero friction demo mode with graph heuristics`
 - [x] Test it: `/test zero friction demo mode with graph heuristics`
 - [x] Review it: `/check review zero friction demo mode with graph heuristics`
+
+## Slice 10: AI video explainer walkthroughs and canvas state sync
+
+### 14. AI video explainer walkthroughs and canvas state sync · planned · needs a decision
+Generate asynchronous video walkthroughs of codebase architecture inside the trace panel using a user supplied API key, and synchronize video playback cues with live node highlighting on the graph canvas.
+**Done when:** users can save a personal video provider key in an encrypted cookie, toggle video generation from the trace panel, watch the generated architectural walkthrough once polling completes, see canvas nodes highlight in sync with video timestamps, and receive a clear quota notice if rate limits are reached.
+- [ ] Design it (spec): `/architect AI video explainer walkthroughs and canvas state sync`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
