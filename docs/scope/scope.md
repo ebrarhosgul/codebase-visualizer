@@ -212,14 +212,14 @@ spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/
 ### 14. AI video explainer walkthroughs and canvas state sync · in-progress
 Generate asynchronous video walkthroughs of codebase architecture inside the trace panel using a user supplied API key, and synchronize video playback cues with live node highlighting on the graph canvas.
 **Done when:** users can save a personal video provider key in an encrypted cookie, toggle video generation from the trace panel, watch the generated architectural walkthrough once polling completes, see canvas nodes highlight in sync with video timestamps, and receive a clear quota notice if rate limits are reached.
-spec [0014](../specs/0014-ai-video-explainer-walkthroughs/index.md)
+spec [0014](../specs/0014-ai-video-explainer-walkthroughs/index.md) · code in `src/lib/ai/video/`, `src/app/api/ai/video/`, `src/components/trace/video-walkthrough-player.tsx`, `src/stores/graph-store.ts`
 - [x] Design it (spec): `/architect AI video explainer walkthroughs and canvas state sync`
-- [ ] Build it: `/develop AI video explainer walkthroughs and canvas state sync`
-  - [ ] Thin end to end walkthrough thread: types, client cue mapper, Scrimba and demo routes, store video highlight state, inline HTML5 player, and canvas cue sync (AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8)
-  - [ ] Encrypted Scrimba BYOK cookie and KeySettingsDialog integration: `cv_ai_key_scrimba` cookie isolation and Scrimba provider tab (AC-1, AC-3)
-  - [ ] Polling resilience, configurable rate limiting, credential redaction, and expired URL recovery (AC-5, AC-11, AC-12)
-  - [ ] Canvas manual pan pause, collapsed folder targeting, hidden node banner, and lifecycle interrupts (AC-8, AC-9, AC-10, AC-12)
-  - [ ] Unit, route, hook, and component verification suite (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, AC-11, AC-12)
+- [x] Build it: `/develop AI video explainer walkthroughs and canvas state sync`
+  - [x] Thin end to end walkthrough thread: types, client cue mapper, Scrimba and demo routes, store video highlight state, inline HTML5 player, and canvas cue sync (AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8)
+  - [x] Encrypted Scrimba BYOK cookie and KeySettingsDialog integration: `cv_ai_key_scrimba` cookie isolation and Scrimba provider tab (AC-1, AC-3)
+  - [x] Polling resilience, configurable rate limiting, credential redaction, and expired URL recovery (AC-5, AC-11, AC-12)
+  - [x] Canvas manual pan pause, collapsed folder targeting, hidden node banner, and lifecycle interrupts (AC-8, AC-9, AC-10, AC-12)
+  - [x] Unit, route, hook, and component verification suite (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, AC-11, AC-12)
 - [ ] Verify it: `/check verify AI video explainer walkthroughs and canvas state sync`
 - [ ] Test it: `/test AI video explainer walkthroughs and canvas state sync`
 

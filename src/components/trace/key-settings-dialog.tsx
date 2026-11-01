@@ -1,20 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Key, Shield, Trash2, CheckCircle2 } from "lucide-react";
+import {
+  Key,
+  Shield,
+  Trash2,
+  CheckCircle2,
+  Video,
+  MessageSquare,
+} from "lucide-react";
 import type { AiProviderId } from "@/lib/ai/types";
+
+export type KeyDialogProviderId = AiProviderId | "scrimba";
 
 export interface KeySettingsDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-  readonly onKeySaved?: (provider: AiProviderId) => void;
+  readonly initialProvider?: KeyDialogProviderId;
+  readonly onKeySaved?: (provider: KeyDialogProviderId) => void;
   readonly onKeyCleared?: () => void;
 }
 
-const PROVIDERS: readonly { id: AiProviderId; name: string; hint: string }[] = [
+const CHAT_PROVIDERS: readonly {
+  id: AiProviderId;
+  name: string;
+  hint: string;
+}[] = [
   {
     id: "gemini",
     name: "Google Gemini",
@@ -32,14 +46,30 @@ const PROVIDERS: readonly { id: AiProviderId; name: string; hint: string }[] = [
   },
 ];
 
+const VIDEO_PROVIDERS: readonly {
+  id: "scrimba";
+  name: string;
+  hint: string;
+}[] = [
+  {
+    id: "scrimba",
+    name: "Scrimba Explain",
+    hint: "Requires personal Scrimba API key starting with scr_live_ for video walkthroughs.",
+  },
+];
+
+const ALL_PROVIDERS = [...CHAT_PROVIDERS, ...VIDEO_PROVIDERS];
+
 export function KeySettingsDialog({
   open,
   onOpenChange,
+  initialProvider,
   onKeySaved,
   onKeyCleared,
 }: KeySettingsDialogProps): React.JSX.Element {
-  const [selectedProvider, setSelectedProvider] =
-    useState<AiProviderId>("gemini");
+  const [selectedProvider, setSelectedProvider] = useState<KeyDialogProviderId>(
+    initialProvider ?? "gemini",
+  );
   const [apiKey, setApiKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
@@ -47,10 +77,32 @@ export function KeySettingsDialog({
     text: string;
   } | null>(null);
 
+  useEffect(() => {
+    if (initialProvider) {
+      setSelectedProvider(initialProvider);
+    }
+  }, [initialProvider, open]);
+
+  const activeProviderMeta = ALL_PROVIDERS.find(
+    (p) => p.id === selectedProvider,
+  );
+
   const handleSaveKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKey.trim()) {
+    const trimmed = apiKey.trim();
+    if (!trimmed) {
       setStatusMessage({ type: "error", text: "Please enter an API key." });
+      return;
+    }
+
+    if (
+      selectedProvider === "scrimba" &&
+      (!trimmed.startsWith("scr_live_") || trimmed.length < 16)
+    ) {
+      setStatusMessage({
+        type: "error",
+        text: "Please enter a valid Scrimba API key starting with scr_live_ (at least 16 characters).",
+      });
       return;
     }
 
@@ -63,7 +115,7 @@ export function KeySettingsDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider: selectedProvider,
-          apiKey: apiKey.trim(),
+          apiKey: trimmed,
         }),
       });
 
@@ -96,13 +148,17 @@ export function KeySettingsDialog({
     setStatusMessage(null);
 
     try {
-      const res = await fetch("/api/ai/keys", { method: "DELETE" });
+      const endpoint =
+        selectedProvider === "scrimba"
+          ? "/api/ai/keys?scope=video"
+          : "/api/ai/keys";
+      const res = await fetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
       setStatusMessage({
         type: "success",
-        text: "Stored API credentials cleared.",
+        text: `Stored ${selectedProvider === "scrimba" ? "video" : "API"} credentials cleared.`,
       });
       onKeyCleared?.();
     } catch (err: unknown) {
@@ -125,13 +181,14 @@ export function KeySettingsDialog({
       description="Store API keys securely in an AES-256-GCM encrypted browser cookie. Keys are never logged or persisted on our servers."
     >
       <form onSubmit={handleSaveKey} className="space-y-4 pt-2">
-        {/* Provider selection */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-text-primary">
-            Active Provider
+        {/* Chat Providers Section */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-text-primary flex items-center gap-1.5">
+            <MessageSquare className="w-3.5 h-3.5 text-text-secondary" />
+            <span>Chat Providers</span>
           </label>
           <div className="grid grid-cols-3 gap-2">
-            {PROVIDERS.map((p) => {
+            {CHAT_PROVIDERS.map((p) => {
               const isSelected = selectedProvider === p.id;
               return (
                 <button
@@ -154,8 +211,45 @@ export function KeySettingsDialog({
               );
             })}
           </div>
-          <p className="text-[11px] text-text-muted">
-            {PROVIDERS.find((p) => p.id === selectedProvider)?.hint}
+        </div>
+
+        {/* Video Provider Section */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-text-primary flex items-center gap-1.5">
+            <Video className="w-3.5 h-3.5 text-text-secondary" />
+            <span>Video Provider</span>
+          </label>
+          <div className="grid grid-cols-1 gap-2">
+            {VIDEO_PROVIDERS.map((p) => {
+              const isSelected = selectedProvider === p.id;
+              return (
+                <button
+                  type="button"
+                  key={p.id}
+                  data-testid={`provider-radio-${p.id}`}
+                  data-selected={isSelected}
+                  onClick={() => {
+                    setSelectedProvider(p.id);
+                    setStatusMessage(null);
+                  }}
+                  className={`p-2 rounded-md border text-left text-xs transition-colors cursor-pointer ${
+                    isSelected
+                      ? "border-accent-border bg-surface-active text-text-primary font-medium"
+                      : "border-border-default bg-surface-canvas text-text-secondary hover:text-text-primary hover:border-border-strong"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>{p.name}</div>
+                    <span className="text-[10px] text-text-muted font-mono">
+                      scr_live_...
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-text-muted pt-0.5">
+            {activeProviderMeta?.hint}
           </p>
         </div>
 
@@ -167,7 +261,11 @@ export function KeySettingsDialog({
           </label>
           <Input
             type="password"
-            placeholder={`Enter your ${selectedProvider} API key...`}
+            placeholder={
+              selectedProvider === "scrimba"
+                ? "Enter your Scrimba API key (scr_live_...)"
+                : `Enter your ${selectedProvider} API key...`
+            }
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             className="w-full text-xs"

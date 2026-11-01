@@ -70,6 +70,9 @@ function ArchitectureCanvasInner({
     highlightedNodeIds,
     highlightedEdgeIds,
     highlightSource,
+    videoFocalNodeId,
+    isVideoAutoPanEnabled,
+    setVideoAutoPan,
   } = useGraphStore(
     useShallow((state) => ({
       activeTrace: state.activeTrace,
@@ -77,6 +80,9 @@ function ArchitectureCanvasInner({
       highlightedNodeIds: state.highlightedNodeIds,
       highlightedEdgeIds: state.highlightedEdgeIds,
       highlightSource: state.highlightSource,
+      videoFocalNodeId: state.videoFocalNodeId,
+      isVideoAutoPanEnabled: state.isVideoAutoPanEnabled,
+      setVideoAutoPan: state.setVideoAutoPan,
     })),
   );
 
@@ -357,6 +363,9 @@ function ArchitectureCanvasInner({
     const isHighlightActive = Boolean(highlightNodeId);
     const isTraceActive = Boolean(activeTrace);
     const isAnswerHighlight = highlightSource === "answer";
+    const isVideoHighlight = highlightSource === "video";
+    const isAnyTraceOrVideoActive =
+      isTraceActive || isAnswerHighlight || isVideoHighlight;
     const traceNodeSet = new Set(highlightedNodeIds);
     const activeStepNodeId =
       activeTrace && activeStepIndex !== null && activeStepIndex >= 0
@@ -366,18 +375,40 @@ function ArchitectureCanvasInner({
     setNodes((currentNodes) => {
       let changed = false;
       const nextNodes = currentNodes.map((n) => {
-        if (n.type === "folderGroup") {
+        if (n.type === "folderGroup" || n.type === "collapsedFolder") {
           const entity = n.data?.entity as
-            { childFileIds?: readonly string[] } | undefined;
+            | {
+                childFileIds?: readonly string[];
+                path?: string;
+                directoryId?: string;
+              }
+            | undefined;
           const childIds = entity?.childFileIds ?? [];
-          const hasActiveChild = childIds.some(
-            (id) =>
-              ((isTraceActive || isAnswerHighlight) && traceNodeSet.has(id)) ||
-              id === highlightNodeId ||
-              id === selectedNodeId ||
-              id === activeTarget?.fileId ||
-              id === activeTarget?.symbolId,
-          );
+          const folderPath = entity?.path;
+          const hasActiveChild =
+            childIds.some(
+              (id) =>
+                (isAnyTraceOrVideoActive && traceNodeSet.has(id)) ||
+                id === highlightNodeId ||
+                id === selectedNodeId ||
+                id === activeTarget?.fileId ||
+                id === activeTarget?.symbolId,
+            ) ||
+            (folderPath && graph
+              ? Array.from(traceNodeSet).some((id) => {
+                  const file =
+                    graph.files[id] ??
+                    (graph.symbols[id]
+                      ? graph.files[graph.symbols[id].fileId]
+                      : null);
+                  return (
+                    file?.directoryId === entity?.directoryId ||
+                    file?.path.startsWith(
+                      folderPath.endsWith("/") ? folderPath : `${folderPath}/`,
+                    )
+                  );
+                })
+              : false);
           if (
             n.data?.hasActiveChild === hasActiveChild &&
             n.data?.isHighlighted === hasActiveChild
@@ -395,7 +426,7 @@ function ArchitectureCanvasInner({
           };
         }
 
-        if (isTraceActive || isAnswerHighlight) {
+        if (isAnyTraceOrVideoActive) {
           const isKeyNode = traceNodeSet.has(n.id);
           const isStepFocused = isTraceActive && activeStepNodeId === n.id;
           const isSelected = n.id === selectedNodeId || isStepFocused;
@@ -466,13 +497,15 @@ function ArchitectureCanvasInner({
     activeStepIndex,
     highlightedNodeIds,
     highlightSource,
+    graph,
     setNodes,
   ]);
 
-  // Sync edge visual states (highlighting connected imports/importers or active trace path)
+  // Sync edge visual states (highlighting connected imports/importers or active trace path / video cue)
   useEffect(() => {
     const isHighlightActive = Boolean(highlightNodeId);
-    const isTraceActive = Boolean(activeTrace);
+    const isTraceOrVideoActive =
+      Boolean(activeTrace) || highlightSource === "video";
     const traceEdgeSet = new Set(highlightedEdgeIds);
 
     const getMarkerColor = (marker: unknown): string | undefined => {
@@ -485,7 +518,7 @@ function ArchitectureCanvasInner({
     setEdges((currentEdges) => {
       let changed = false;
       const nextEdges = currentEdges.map((e) => {
-        if (isTraceActive) {
+        if (isTraceOrVideoActive) {
           if (traceEdgeSet.has(e.id)) {
             if (
               e.animated === true &&
@@ -665,6 +698,7 @@ function ArchitectureCanvasInner({
     incomingEdgeIds,
     activeTrace,
     highlightedEdgeIds,
+    highlightSource,
     setEdges,
   ]);
 
@@ -777,6 +811,88 @@ function ArchitectureCanvasInner({
     isFollowCursorActive,
   ]);
 
+  // Programmatically center camera when active video walkthrough cue transitions (AC-8, AC-10)
+  useEffect(() => {
+    if (
+      highlightSource !== "video" ||
+      !isVideoAutoPanEnabled ||
+      !videoFocalNodeId
+    ) {
+      return;
+    }
+
+    // Look for target node directly in layoutNodes
+    let targetNode = layoutNodes.find((n) => n.id === videoFocalNodeId);
+
+    // If focal node is inside a collapsed folder or folder group, resolve to that container node (AC-10)
+    if (!targetNode && graph) {
+      const focalFile =
+        graph.files[videoFocalNodeId] ??
+        (graph.symbols[videoFocalNodeId]
+          ? graph.files[graph.symbols[videoFocalNodeId].fileId]
+          : null);
+
+      if (focalFile) {
+        targetNode = layoutNodes.find((n) => {
+          if (n.type === "collapsedFolder" || n.type === "folderGroup") {
+            const entity = n.data?.entity as
+              | {
+                  childFileIds?: readonly string[];
+                  path?: string;
+                  directoryId?: string;
+                }
+              | undefined;
+            if (entity?.childFileIds?.includes(focalFile.id)) return true;
+            if (
+              entity?.path &&
+              focalFile.path.startsWith(
+                entity.path.endsWith("/") ? entity.path : `${entity.path}/`,
+              )
+            ) {
+              return true;
+            }
+            if (
+              entity?.directoryId &&
+              focalFile.directoryId === entity.directoryId
+            ) {
+              return true;
+            }
+          }
+          return false;
+        });
+      }
+    }
+
+    if (!targetNode) {
+      return;
+    }
+
+    const anyNode = targetNode as unknown as {
+      measured?: { width?: number; height?: number };
+      width?: number;
+      height?: number;
+    };
+    const nodeWidth = anyNode.measured?.width ?? anyNode.width ?? 240;
+    const nodeHeight = anyNode.measured?.height ?? anyNode.height ?? 80;
+    const centerX = targetNode.position.x + nodeWidth / 2;
+    const centerY = targetNode.position.y + nodeHeight / 2;
+
+    const targetKey = `video:${targetNode.id}:${videoFocalNodeId}`;
+    if (lastCenteredTargetKeyRef.current === targetKey) {
+      return;
+    }
+    lastCenteredTargetKeyRef.current = targetKey;
+
+    setCenter(centerX, centerY, { zoom: 1.2, duration: 800 });
+  }, [
+    highlightSource,
+    isVideoAutoPanEnabled,
+    videoFocalNodeId,
+    layoutNodes,
+    setCenter,
+    graph,
+  ]);
+
   // Handle node selection: synchronize selection, navigate target, and switch right tab to code (AC-2, AC-7)
   const handleNodeClick: NodeMouseHandler = useCallback(
     (_, node) => {
@@ -796,9 +912,19 @@ function ArchitectureCanvasInner({
     lastCenteredTargetKeyRef.current = null;
   }, [selectNode]);
 
-  const handleMoveStart = useCallback(() => {
-    // Preserve lastCenteredTargetKeyRef to prevent canvas panning from causing sudden auto-centering
-  }, []);
+  const handleMoveStart = useCallback(
+    (event: MouseEvent | TouchEvent | null) => {
+      // If user manually pans or zooms during active video walkthrough, pause camera auto pan (AC-9)
+      if (
+        event !== null &&
+        highlightSource === "video" &&
+        isVideoAutoPanEnabled
+      ) {
+        setVideoAutoPan(false);
+      }
+    },
+    [highlightSource, isVideoAutoPanEnabled, setVideoAutoPan],
+  );
 
   const handleNodeMouseEnter: NodeMouseHandler = useCallback(
     (_, node) => {

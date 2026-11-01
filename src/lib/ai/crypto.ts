@@ -5,8 +5,10 @@ import {
 } from "@/lib/security/cookie-crypto";
 
 export const AI_KEY_COOKIE_NAME = "cv_ai_key";
+export const VIDEO_KEY_COOKIE_NAME = "cv_ai_key_scrimba";
 
 const COOKIE_PURPOSE = "ai-key";
+const VIDEO_COOKIE_PURPOSE = "video-key";
 
 /**
  * Reads the cookie encryption secret from AI_COOKIE_SECRET.
@@ -45,6 +47,50 @@ export function decryptApiKey(encryptedValue: string): EncryptedPayload | null {
   const payload = openCookiePayload(
     encryptedValue,
     COOKIE_PURPOSE,
+    getCookieSecret(),
+  );
+  if (!payload) {
+    return null;
+  }
+
+  const { apiKey, provider } = payload;
+  if (
+    typeof apiKey !== "string" ||
+    typeof provider !== "string" ||
+    !apiKey ||
+    !provider
+  ) {
+    return null;
+  }
+
+  return { apiKey, provider };
+}
+
+/**
+ * Encrypts a Scrimba video API key into an AES-256-GCM encrypted string
+ * with purpose "video-key".
+ */
+export function encryptVideoApiKey(
+  apiKey: string,
+  provider = "scrimba",
+): string {
+  return sealCookiePayload(
+    { apiKey, provider },
+    VIDEO_COOKIE_PURPOSE,
+    getCookieSecret(),
+  );
+}
+
+/**
+ * Decrypts an AES-256-GCM encrypted string back to video API key and provider.
+ * Returns null if decryption fails or purpose is mismatched.
+ */
+export function decryptVideoApiKey(
+  encryptedValue: string,
+): EncryptedPayload | null {
+  const payload = openCookiePayload(
+    encryptedValue,
+    VIDEO_COOKIE_PURPOSE,
     getCookieSecret(),
   );
   if (!payload) {
