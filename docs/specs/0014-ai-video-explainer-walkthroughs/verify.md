@@ -23,16 +23,16 @@ _Steps derived from spec 0014 acceptance criteria. `/check verify` runs these; `
 
 ## Commands
 
-- [ ] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/lib/ai/video/__tests__/cue-mapper.test.ts` → passes with interval validation, ID pruning, and boundary cases verified → AC-6
-- [ ] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/lib/ai/video/__tests__/url-validator.test.ts` → passes with allowed origins and safe media URIs verified → AC-5
-- [ ] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/lib/ai/__tests__/crypto-video.test.ts` → passes with purpose tag isolation between chat and video cookies verified → AC-1
-- [ ] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/app/api/ai/keys/__tests__/route.test.ts` → passes with Scrimba key validation and scoped cookie deletion verified → AC-1
-- [ ] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/app/api/ai/video/__tests__/route.test.ts` → passes with rate limiting, error classification, and redaction verified → AC-4, AC-5, AC-11
-- [ ] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/hooks/__tests__/use-video-walkthrough.test.ts` → passes with demo fallback, polling backoff, and timeout verified → AC-3, AC-5, AC-11
-- [ ] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/components/trace/__tests__/video-walkthrough-player.test.tsx` → passes with discrete cue updates, pause on drag, and resume sync verified → AC-7, AC-8, AC-9, AC-10
-- [ ] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/components/canvas/__tests__/video-canvas-sync.test.tsx` → passes with canvas highlight dimming, edge animation, and collapsed folder centering verified → AC-8, AC-10
-- [ ] `/usr/local/bin/node ./node_modules/typescript/bin/tsc --noEmit` → typecheck completes with zero errors across the entire codebase
-- [ ] `npm run lint` → ESLint completes with zero errors and zero warnings
+- [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/lib/ai/video/__tests__/cue-mapper.test.ts` → passes with interval validation, ID pruning, and boundary cases verified → AC-6
+- [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/lib/ai/video/__tests__/url-validator.test.ts` → passes with allowed origins and safe media URIs verified → AC-5
+- [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/lib/ai/__tests__/crypto-video.test.ts` → passes with purpose tag isolation between chat and video cookies verified → AC-1
+- [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/app/api/ai/keys/__tests__/route.test.ts` → passes with Scrimba key validation and scoped cookie deletion verified → AC-1
+- [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/app/api/ai/video/__tests__/route.test.ts` → passes with rate limiting, error classification, and redaction verified → AC-4, AC-5, AC-11
+- [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/hooks/__tests__/use-video-walkthrough.test.ts` → passes with demo fallback, polling backoff, and timeout verified → AC-3, AC-5, AC-11
+- [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/components/trace/__tests__/video-walkthrough-player.test.tsx` → passes with discrete cue updates, pause on drag, and resume sync verified → AC-7, AC-8, AC-9, AC-10
+- [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/components/canvas/__tests__/video-canvas-sync.test.tsx` → passes with canvas highlight dimming, edge animation, and collapsed folder centering verified → AC-8, AC-10
+- [x] `/usr/local/bin/node ./node_modules/typescript/bin/tsc --noEmit` → typecheck completes with zero errors across the entire codebase
+- [x] `npm run lint` → ESLint completes with zero errors and zero warnings
 
 ## Acceptance-criteria coverage
 
