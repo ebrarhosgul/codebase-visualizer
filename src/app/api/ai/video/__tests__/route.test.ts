@@ -106,9 +106,61 @@ describe("/api/ai/video routes (AC-4, AC-5, AC-11, AC-12)", () => {
         }),
       );
     });
+
+    it("returns 400 when repositoryFullName or prompt is invalid", async () => {
+      const req = createRequest("POST", "http://localhost:3000/api/ai/video", {
+        repositoryFullName: "",
+        messageId: "msg-123",
+        prompt: "",
+        answerText: "Short text",
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.success).toBe(false);
+      expect(data.error).toMatch(/invalid request payload/i);
+    });
+
+    it("returns 502 with sanitized message when upstream Scrimba returns an error", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => "Internal rendering engine failure",
+      } as unknown as Response);
+
+      const req = createRequest("POST", "http://localhost:3000/api/ai/video", {
+        repositoryFullName: "facebook/react",
+        messageId: "msg-123",
+        prompt: "Walkthrough React",
+        answerText: "React architecture explanation",
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(502);
+      const data = await res.json();
+      expect(data.success).toBe(false);
+      expect(data.fallbackNotice?.code).toBe("provider_outage");
+    });
   });
 
   describe("GET /api/ai/video/[jobId]", () => {
+    it("returns 401 when cv_ai_key_scrimba cookie is missing", async () => {
+      const req = createRequest(
+        "GET",
+        "http://localhost:3000/api/ai/video/job-valid-123",
+        undefined,
+        false, // no cookie
+      );
+      const res = await GET_JOB(req, {
+        params: Promise.resolve({ jobId: "job-valid-123" }),
+      });
+      expect(res.status).toBe(401);
+      const data = await res.json();
+      expect(data.fallbackNotice?.code).toBe("auth_error");
+      expect(data.fallbackNotice?.suggestedAction).toBe("open_keys");
+    });
+
     it("rejects path traversal or malicious jobId with HTTP 400", async () => {
       const req = createRequest(
         "GET",
@@ -170,6 +222,118 @@ describe("/api/ai/video routes (AC-4, AC-5, AC-11, AC-12)", () => {
         params: Promise.resolve({ jobId: "job-evil-123" }),
       });
       expect(res.status).toBe(502);
+    });
+
+    it("returns 200 with polling status while upstream job is still in progress", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          id: "job-poll-123",
+          status: "queued",
+          durationSeconds: 30,
+          scenes: [],
+        }),
+      } as unknown as Response);
+
+      const req = createRequest(
+        "GET",
+        "http://localhost:3000/api/ai/video/job-poll-123",
+      );
+      const res = await GET_JOB(req, {
+        params: Promise.resolve({ jobId: "job-poll-123" }),
+      });
+      expect(res.status).toBe(200);
+
+      const data = await res.json();
+      expect(data.status).toBe("polling");
+      expect(data.videoUri).toBeNull();
+    });
+
+    it("returns 200 with failed status and errorNotice when upstream reports failure", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          id: "job-failed-123",
+          status: "failed",
+          error: "Rendering timeout occurred",
+          durationSeconds: 30,
+        }),
+      } as unknown as Response);
+
+      const req = createRequest(
+        "GET",
+        "http://localhost:3000/api/ai/video/job-failed-123",
+      );
+      const res = await GET_JOB(req, {
+        params: Promise.resolve({ jobId: "job-failed-123" }),
+      });
+      expect(res.status).toBe(200);
+
+      const data = await res.json();
+      expect(data.status).toBe("failed");
+      expect(data.videoUri).toBeNull();
+      expect(data.errorNotice).toBeDefined();
+    });
+
+    it("forwards 429 rate limit with Retry-After header when upstream is throttled", async () => {
+      const headers = new Headers();
+      headers.set("retry-after", "25");
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        headers,
+        text: async () => "Rate limit exceeded",
+      } as unknown as Response);
+
+      const req = createRequest(
+        "GET",
+        "http://localhost:3000/api/ai/video/job-throttle-123",
+      );
+      const res = await GET_JOB(req, {
+        params: Promise.resolve({ jobId: "job-throttle-123" }),
+      });
+      expect(res.status).toBe(429);
+      expect(res.headers.get("retry-after")).toBe("25");
+      const data = await res.json();
+      expect(data.fallbackNotice?.code).toBe("rate_limit");
+    });
+
+    it("returns 404 when upstream job is not found", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: async () => "Not found",
+      } as unknown as Response);
+
+      const req = createRequest(
+        "GET",
+        "http://localhost:3000/api/ai/video/job-missing-123",
+      );
+      const res = await GET_JOB(req, {
+        params: Promise.resolve({ jobId: "job-missing-123" }),
+      });
+      expect(res.status).toBe(404);
+      const data = await res.json();
+      expect(data.error).toBe("Walkthrough job not found.");
+    });
+
+    it("returns 502 with fallback notice when upstream fetch throws network error", async () => {
+      global.fetch = vi
+        .fn()
+        .mockRejectedValue(new Error("Connection reset by peer"));
+
+      const req = createRequest(
+        "GET",
+        "http://localhost:3000/api/ai/video/job-net-error-123",
+      );
+      const res = await GET_JOB(req, {
+        params: Promise.resolve({ jobId: "job-net-error-123" }),
+      });
+      expect(res.status).toBe(502);
+      const data = await res.json();
+      expect(data.fallbackNotice?.suggestedAction).toBe("retry");
     });
   });
 });

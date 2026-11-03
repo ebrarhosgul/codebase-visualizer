@@ -24,7 +24,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 11 | Canvas performance optimization | Slice 7 | done |
 | 12 | Web Worker isolation for layout and parsing computations | Slice 8 | done |
 | 13 | Zero friction demo mode with graph heuristics | Slice 9 | done |
-| 14 | AI video explainer walkthroughs and canvas state sync | Slice 10 | in-progress |
+| 14 | AI video explainer walkthroughs and canvas state sync | Slice 10 | done |
 
 ## Foundations
 
@@ -209,7 +209,7 @@ spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/
 
 ## Slice 10: AI video explainer walkthroughs and canvas state sync
 
-### 14. AI video explainer walkthroughs and canvas state sync · in-progress
+### 14. AI video explainer walkthroughs and canvas state sync · done
 Generate asynchronous video walkthroughs of codebase architecture inside the trace panel using a user supplied API key, and synchronize video playback cues with live node highlighting on the graph canvas.
 **Done when:** users can save a personal video provider key in an encrypted cookie, toggle video generation from the trace panel, watch the generated architectural walkthrough once polling completes, see canvas nodes highlight in sync with video timestamps, and receive a clear quota notice if rate limits are reached.
 spec [0014](../specs/0014-ai-video-explainer-walkthroughs/index.md) · code in `src/lib/ai/video/`, `src/app/api/ai/video/`, `src/components/trace/video-walkthrough-player.tsx`, `src/stores/graph-store.ts`
@@ -221,7 +221,7 @@ spec [0014](../specs/0014-ai-video-explainer-walkthroughs/index.md) · code in `
   - [x] Canvas manual pan pause, collapsed folder targeting, hidden node banner, and lifecycle interrupts (AC-8, AC-9, AC-10, AC-12)
   - [x] Unit, route, hook, and component verification suite (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, AC-11, AC-12)
 - [x] Verify it: `/check verify AI video explainer walkthroughs and canvas state sync`
-- [ ] Test it: `/test AI video explainer walkthroughs and canvas state sync`
+- [x] Test it: `/test AI video explainer walkthroughs and canvas state sync`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.

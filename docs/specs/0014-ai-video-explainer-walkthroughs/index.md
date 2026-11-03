@@ -1,7 +1,7 @@
 # 0014. AI video explainer walkthroughs and canvas state sync
 
 **Date**: 2026-11-01
-**Status**: In Progress
+**Status**: Accepted
 **Code area**: `src/lib/ai/`, `src/app/api/ai/`, `src/hooks/`, `src/components/trace/`, `src/components/canvas/`, `src/stores/`
 
 ## Summary

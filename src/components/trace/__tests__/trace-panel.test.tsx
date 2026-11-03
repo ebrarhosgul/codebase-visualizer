@@ -1324,4 +1324,39 @@ export function useTelemetry() { return {}; }
       expect(otherThread).toEqual([]);
     });
   });
+
+  describe("Video walkthrough integration (AC-2, AC-3, AC-12)", () => {
+    it("toggles video walkthrough generation mode via the input bar toggle button (AC-2)", () => {
+      render(<TracePanel />);
+
+      const toggle = screen.getByTestId("video-walkthrough-toggle");
+      expect(toggle).toBeInTheDocument();
+      expect(toggle.getAttribute("data-active")).toBe("false");
+
+      fireEvent.click(toggle);
+      expect(toggle.getAttribute("data-active")).toBe("true");
+
+      fireEvent.click(toggle);
+      expect(toggle.getAttribute("data-active")).toBe("false");
+    });
+
+    it("displays Clear Glow action when video highlights are active and clears them on click (AC-12)", () => {
+      act(() => {
+        useGraphStore.getState().setVideoCueHighlight({
+          nodeIds: ["file:src/index.ts"],
+          edgeIds: [],
+          focalNodeId: "file:src/index.ts",
+        });
+      });
+
+      render(<TracePanel />);
+
+      const clearGlowBtn = screen.getByRole("button", { name: /clear glow/i });
+      expect(clearGlowBtn).toBeInTheDocument();
+
+      fireEvent.click(clearGlowBtn);
+      expect(useGraphStore.getState().highlightSource).toBeNull();
+      expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
+    });
+  });
 });
