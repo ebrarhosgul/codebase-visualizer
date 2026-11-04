@@ -89,6 +89,62 @@ function findConnectingEdgeIds(
 }
 
 /**
+ * Resolves contiguous non-overlapping time intervals across [0, durationSeconds].
+ * Uses valid upstream scene timestamps when present and monotonic; otherwise falls back
+ * to equal proportional slices.
+ */
+function resolveContiguousIntervals(
+  candidateScenes: readonly ScrimbaUpstreamScene[],
+  count: number,
+  durationSeconds: number,
+): { start: number; end: number }[] {
+  const hasValidTimestamps =
+    candidateScenes.length === count &&
+    count > 0 &&
+    candidateScenes.every((scene, idx) => {
+      const s = scene.startTimeSeconds;
+      const e = scene.endTimeSeconds;
+      if (typeof s !== "number" || typeof e !== "number") return false;
+      if (!Number.isFinite(s) || !Number.isFinite(e)) return false;
+      if (s < 0 || e <= s) return false;
+      if (e > durationSeconds + 1) return false;
+      if (idx > 0) {
+        const prevEnd = candidateScenes[idx - 1].endTimeSeconds ?? 0;
+        if (s < prevEnd - 0.5) return false;
+      }
+      return true;
+    });
+
+  if (hasValidTimestamps) {
+    const intervals: { start: number; end: number }[] = [];
+    for (let i = 0; i < count; i++) {
+      const start = i === 0 ? 0 : intervals[i - 1].end;
+      const upstreamEnd = candidateScenes[i].endTimeSeconds!;
+      const end =
+        i === count - 1
+          ? durationSeconds
+          : Math.min(
+              durationSeconds - (count - 1 - i) * 0.5,
+              Math.max(start + 0.5, Math.round(upstreamEnd * 100) / 100),
+            );
+      intervals.push({ start, end });
+    }
+    return intervals;
+  }
+
+  const intervals: { start: number; end: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    const start = i === 0 ? 0 : intervals[i - 1].end;
+    const end =
+      i === count - 1
+        ? durationSeconds
+        : Math.round(((i + 1) * durationSeconds * 100) / count) / 100;
+    intervals.push({ start, end });
+  }
+  return intervals;
+}
+
+/**
  * Pure client-side cue validator and normalizer.
  * Enforces contiguous non-overlapping intervals across [0, durationSeconds]
  * and validates all IDs against the in-memory CodebaseGraph.
@@ -121,16 +177,12 @@ export function buildValidatedVideoCues(
     candidateScenes = candidateScenes.slice(0, 6);
   }
 
-  // Partition proportional time slices: [0, durationSeconds]
-  const intervals: { start: number; end: number }[] = [];
-  for (let i = 0; i < count; i++) {
-    const start = i === 0 ? 0 : intervals[i - 1].end;
-    const end =
-      i === count - 1
-        ? durationSeconds
-        : Math.round(((i + 1) * durationSeconds * 100) / count) / 100;
-    intervals.push({ start, end });
-  }
+  // Contiguous time slices across [0, durationSeconds]
+  const intervals = resolveContiguousIntervals(
+    candidateScenes,
+    count,
+    durationSeconds,
+  );
 
   const cues: VideoTimelineCue[] = [];
 

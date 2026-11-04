@@ -17,7 +17,6 @@ import {
 } from "./key-settings-dialog";
 import { VideoWalkthroughPlayer } from "./video-walkthrough-player";
 import { useVideoWalkthrough } from "@/hooks/use-video-walkthrough";
-import type { VideoWalkthroughJob } from "@/lib/ai/video/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,6 +33,7 @@ import {
   Copy,
   Check,
   Video,
+  VideoOff,
 } from "lucide-react";
 import type {
   AiFallbackNotice,
@@ -224,30 +224,6 @@ export function TracePanel(): React.JSX.Element {
         setIsKeyDialogOpen(true);
       },
     });
-
-  const computeHiddenCueNodeCount = useCallback(
-    (job: VideoWalkthroughJob): number => {
-      if (
-        highlightSource !== "video" ||
-        !visibleFileIds ||
-        visibleFileIds.length === 0
-      ) {
-        return 0;
-      }
-      const visibleSet = new Set(visibleFileIds);
-      const activeCue = job.cues[0];
-      if (!activeCue) return 0;
-      let hidden = 0;
-      for (const id of activeCue.nodeIds) {
-        const fileId = graph?.symbols[id]?.fileId ?? id;
-        if (!visibleSet.has(fileId)) {
-          hidden++;
-        }
-      }
-      return hidden;
-    },
-    [highlightSource, visibleFileIds, graph],
-  );
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -976,9 +952,6 @@ export function TracePanel(): React.JSX.Element {
                     {msg.videoWalkthrough ? (
                       <VideoWalkthroughPlayer
                         job={msg.videoWalkthrough}
-                        hiddenCueNodeCount={computeHiddenCueNodeCount(
-                          msg.videoWalkthrough,
-                        )}
                         onShowAllNodes={handleShowAll}
                         onOpenKeys={() => {
                           setKeyDialogInitialProvider("scrimba");
@@ -1038,15 +1011,47 @@ export function TracePanel(): React.JSX.Element {
             onClick={() => setIsVideoModeEnabled((prev) => !prev)}
             data-testid="video-walkthrough-toggle"
             data-active={isVideoModeEnabled}
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] transition-colors cursor-pointer border ${
+            aria-pressed={isVideoModeEnabled}
+            aria-label={
               isVideoModeEnabled
-                ? "bg-surface-active text-text-primary border-accent-border font-medium"
-                : "bg-surface-panel-secondary text-text-muted border-border-default hover:text-text-secondary hover:border-border-strong"
+                ? "Video walkthrough enabled"
+                : "Enable video walkthrough"
+            }
+            title={
+              isVideoModeEnabled
+                ? "Video walkthrough enabled (click to disable)"
+                : "Enable video walkthrough"
+            }
+            className={`group relative flex items-center h-7 rounded-md text-[11px] font-medium transition-all duration-300 ease-out cursor-pointer border overflow-hidden select-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-border-focus ${
+              isVideoModeEnabled
+                ? "bg-accent-subtle text-accent-text border-accent-border px-2.5 py-1 shadow-xs hover:border-accent-primary hover:bg-accent-subtle/80"
+                : "bg-surface-panel-secondary text-text-muted border-border-default hover:text-text-primary hover:border-border-strong hover:bg-surface-hover px-2 hover:px-2.5 py-1"
             }`}
-            title="Automatically trigger video walkthrough when assistant completes an answer"
           >
-            <Video className="w-3 h-3 text-accent-text" />
-            <span>Video Walkthrough</span>
+            {isVideoModeEnabled ? (
+              <>
+                <span className="relative flex items-center justify-center shrink-0">
+                  <Video
+                    className="w-3.5 h-3.5 text-accent-text"
+                    aria-hidden="true"
+                  />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-accent-text" />
+                </span>
+                <span className="ml-1.5 whitespace-nowrap text-accent-text font-medium">
+                  Video walkthrough enabled
+                </span>
+              </>
+            ) : (
+              <>
+                <VideoOff
+                  className="w-3.5 h-3.5 shrink-0 text-text-muted group-hover:text-text-secondary transition-colors duration-200"
+                  aria-hidden="true"
+                />
+                <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 group-hover:ml-1.5 group-focus-visible:max-w-xs group-focus-visible:opacity-100 group-focus-visible:ml-1.5 transition-all duration-300 ease-out whitespace-nowrap overflow-hidden text-text-secondary">
+                  Enable video walkthrough
+                </span>
+              </>
+            )}
           </button>
         </div>
         <form

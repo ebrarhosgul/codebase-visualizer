@@ -40,7 +40,7 @@ function formatTime(seconds: number): string {
 
 export function VideoWalkthroughPlayer({
   job,
-  hiddenCueNodeCount = 0,
+  hiddenCueNodeCount,
   onShowAllNodes,
   onOpenKeys,
   onRetry,
@@ -61,14 +61,54 @@ export function VideoWalkthroughPlayer({
     isVideoAutoPanEnabled,
     setVideoCueHighlight,
     setVideoAutoPan,
+    graph,
+    visibleFileIds,
+    isCalculatingLayout,
   } = useGraphStore(
     useShallow((state) => ({
       highlightSource: state.highlightSource,
       isVideoAutoPanEnabled: state.isVideoAutoPanEnabled,
       setVideoCueHighlight: state.setVideoCueHighlight,
       setVideoAutoPan: state.setVideoAutoPan,
+      graph: state.graph,
+      visibleFileIds: state.visibleFileIds,
+      isCalculatingLayout: state.isCalculatingLayout,
     })),
   );
+
+  // Dynamic hidden cue node count tracking active chapter (AC-10)
+  const effectiveHiddenCueNodeCount = React.useMemo(() => {
+    if (hiddenCueNodeCount !== undefined) {
+      return hiddenCueNodeCount;
+    }
+    if (
+      highlightSource !== "video" ||
+      isCalculatingLayout ||
+      !visibleFileIds ||
+      visibleFileIds.length === 0
+    ) {
+      return 0;
+    }
+    const currentCue = job.cues[activeCueIndex];
+    if (!currentCue) return 0;
+    const visibleSet = new Set(visibleFileIds);
+    let hidden = 0;
+    for (const id of currentCue.nodeIds) {
+      const fileId = graph?.symbols[id]?.fileId ?? id;
+      if (!visibleSet.has(fileId)) {
+        hidden++;
+      }
+    }
+    return hidden;
+  }, [
+    hiddenCueNodeCount,
+    highlightSource,
+    isCalculatingLayout,
+    visibleFileIds,
+    job.cues,
+    activeCueIndex,
+    graph,
+  ]);
 
   // Poll timer display while queued or polling
   useEffect(() => {
@@ -497,7 +537,7 @@ export function VideoWalkthroughPlayer({
         </div>
 
         {/* Hidden Nodes Filter Notice (AC-10) */}
-        {hiddenCueNodeCount > 0 && (
+        {effectiveHiddenCueNodeCount > 0 && (
           <div
             className="flex items-center justify-between p-2 rounded bg-status-warning/10 border border-status-warning/20 text-xs text-status-warning"
             data-testid="hidden-cue-nodes-banner"
@@ -505,8 +545,9 @@ export function VideoWalkthroughPlayer({
             <div className="flex items-center gap-1.5">
               <Eye className="w-3.5 h-3.5 shrink-0" />
               <span>
-                {hiddenCueNodeCount} cue node
-                {hiddenCueNodeCount === 1 ? "" : "s"} hidden by current filters
+                {effectiveHiddenCueNodeCount} cue node
+                {effectiveHiddenCueNodeCount === 1 ? "" : "s"} hidden by current
+                filters
               </span>
             </div>
             {onShowAllNodes && (

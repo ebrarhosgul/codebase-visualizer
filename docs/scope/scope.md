@@ -222,6 +222,8 @@ spec [0014](../specs/0014-ai-video-explainer-walkthroughs/index.md) · code in `
   - [x] Unit, route, hook, and component verification suite (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, AC-11, AC-12)
 - [x] Verify it: `/check verify AI video explainer walkthroughs and canvas state sync`
 - [x] Test it: `/test AI video explainer walkthroughs and canvas state sync`
+- [x] Review it: `/check review AI video explainer walkthroughs and canvas state sync`
+- [x] Document it: `/document AI video explainer walkthroughs and canvas state sync`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.

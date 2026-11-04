@@ -136,7 +136,7 @@ describe("KeySettingsDialog", () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        "/api/ai/keys",
+        "/api/ai/keys?scope=chat",
         expect.objectContaining({ method: "DELETE" }),
       );
     });

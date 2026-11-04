@@ -151,7 +151,7 @@ export function KeySettingsDialog({
       const endpoint =
         selectedProvider === "scrimba"
           ? "/api/ai/keys?scope=video"
-          : "/api/ai/keys";
+          : "/api/ai/keys?scope=chat";
       const res = await fetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);

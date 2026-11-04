@@ -160,4 +160,91 @@ describe("VideoWalkthroughPlayer component (AC-7, AC-8, AC-9, AC-10)", () => {
     fireEvent.click(showAllBtn);
     expect(onShowAllNodes).toHaveBeenCalled();
   });
+
+  it("dynamically recomputes hidden cue node count when switching active chapters", () => {
+    // Only node-1 is visible; node-2 and node-3 are hidden by filters
+    useGraphStore.setState({
+      highlightSource: "video",
+      visibleFileIds: ["node-1"],
+      isCalculatingLayout: false,
+      graph: {
+        schemaVersion: 1,
+        repository: {
+          id: "repo:1",
+          owner: "facebook",
+          name: "react",
+          fullName: "facebook/react",
+          defaultBranch: "main",
+          commitSha: "abc",
+          analyzedAt: new Date().toISOString(),
+          totalFiles: 3,
+          totalSymbols: 0,
+          languages: {},
+          schemaVersion: 1,
+        },
+        files: {
+          "node-1": {
+            id: "node-1",
+            path: "src/node-1.ts",
+            name: "node-1.ts",
+            extension: ".ts",
+            language: "typescript",
+            sizeBytes: 100,
+            lineCount: 10,
+            directoryId: "d1",
+            symbolIds: [],
+            importIds: [],
+            exportIds: [],
+          },
+          "node-2": {
+            id: "node-2",
+            path: "src/node-2.ts",
+            name: "node-2.ts",
+            extension: ".ts",
+            language: "typescript",
+            sizeBytes: 100,
+            lineCount: 10,
+            directoryId: "d1",
+            symbolIds: [],
+            importIds: [],
+            exportIds: [],
+          },
+          "node-3": {
+            id: "node-3",
+            path: "src/node-3.ts",
+            name: "node-3.ts",
+            extension: ".ts",
+            language: "typescript",
+            sizeBytes: 100,
+            lineCount: 10,
+            directoryId: "d1",
+            symbolIds: [],
+            importIds: [],
+            exportIds: [],
+          },
+        },
+        directories: {},
+        symbols: {},
+        externalModules: {},
+        edges: {},
+      },
+    });
+
+    render(<VideoWalkthroughPlayer job={mockJob} />);
+
+    // At chapter 0 (node-1), node-1 is visible so no hidden notice is displayed
+    expect(
+      screen.queryByTestId("hidden-cue-nodes-banner"),
+    ).not.toBeInTheDocument();
+
+    // Click Chapter 2 (idx 1 with node-2)
+    const chapter2Btn = screen.getByTestId("chapter-cue-1");
+    fireEvent.click(chapter2Btn);
+
+    // Now chapter 1 is active with node-2, which is hidden
+    expect(screen.getByTestId("hidden-cue-nodes-banner")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 cue node hidden by current filters"),
+    ).toBeInTheDocument();
+  });
 });

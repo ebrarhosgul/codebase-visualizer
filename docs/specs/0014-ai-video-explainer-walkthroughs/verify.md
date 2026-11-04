@@ -20,6 +20,9 @@ _Steps derived from spec 0014 acceptance criteria. `/check verify` runs these; `
 - [ ] Simulate an upstream 429 rate limit response from Scrimba → expect a rate limit notice card displaying a live countdown timer and retry action → AC-11
 - [ ] Trigger a network timeout past 120 seconds or a media playback error → expect a network timeout or refresh video banner with manual chapter stepping remaining functional → AC-11
 - [ ] Select a canvas node, click Clear Glow in the trace panel, switch repositories, or clear chat → expect active video highlights to clear and active polling to abort immediately → AC-12
+- [ ] View the video walkthrough toggle in idle state → expect a compact button showing only the camera off icon → AC-2
+- [ ] Hover over the inactive video walkthrough toggle → expect smooth sideways expansion revealing the label "Enable video walkthrough" → AC-2
+- [ ] Toggle video walkthrough on → expect distinct visual feedback showing "Video walkthrough enabled" with camera icon and accent styling → AC-2
 
 ## Commands
 
@@ -31,6 +34,7 @@ _Steps derived from spec 0014 acceptance criteria. `/check verify` runs these; `
 - [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/hooks/__tests__/use-video-walkthrough.test.ts` → passes with demo fallback, polling backoff, and timeout verified → AC-3, AC-5, AC-11
 - [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/components/trace/__tests__/video-walkthrough-player.test.tsx` → passes with discrete cue updates, pause on drag, and resume sync verified → AC-7, AC-8, AC-9, AC-10
 - [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/components/canvas/__tests__/video-canvas-sync.test.tsx` → passes with canvas highlight dimming, edge animation, and collapsed folder centering verified → AC-8, AC-10
+- [x] `/usr/local/bin/node ./node_modules/vitest/vitest.mjs run src/components/trace/__tests__/trace-panel.test.tsx` → passes with idle compact camera off, hover expansion, and prominent active state verified → AC-2
 - [x] `/usr/local/bin/node ./node_modules/typescript/bin/tsc --noEmit` → typecheck completes with zero errors across the entire codebase
 - [x] `npm run lint` → ESLint completes with zero errors and zero warnings
 

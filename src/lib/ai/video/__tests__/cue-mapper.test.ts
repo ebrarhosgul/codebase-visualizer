@@ -155,6 +155,82 @@ describe("cue-mapper", () => {
       });
       expect(cuesLong[cuesLong.length - 1].endTimeSeconds).toBe(45);
     });
+
+    it("preserves valid upstream non-uniform scene timestamps", () => {
+      const cues = buildValidatedVideoCues({
+        durationSeconds: 30,
+        upstreamScenes: [
+          {
+            title: "Intro",
+            narration: "Quick intro",
+            startTimeSeconds: 0,
+            endTimeSeconds: 6,
+            targetNodeIds: ["file-1"],
+          },
+          {
+            title: "Core logic",
+            narration: "Deep dive into core parsing",
+            startTimeSeconds: 6,
+            endTimeSeconds: 24,
+            targetNodeIds: ["file-2"],
+          },
+          {
+            title: "Conclusion",
+            narration: "Summary and export",
+            startTimeSeconds: 24,
+            endTimeSeconds: 30,
+            targetNodeIds: ["file-3"],
+          },
+        ],
+        messageContent: "Full walkthrough",
+        graph,
+      });
+
+      expect(cues).toHaveLength(3);
+      expect(cues[0].startTimeSeconds).toBe(0);
+      expect(cues[0].endTimeSeconds).toBe(6);
+      expect(cues[1].startTimeSeconds).toBe(6);
+      expect(cues[1].endTimeSeconds).toBe(24);
+      expect(cues[2].startTimeSeconds).toBe(24);
+      expect(cues[2].endTimeSeconds).toBe(30);
+    });
+
+    it("falls back to proportional intervals when upstream timestamps are invalid or non-monotonic", () => {
+      const cues = buildValidatedVideoCues({
+        durationSeconds: 30,
+        upstreamScenes: [
+          {
+            title: "Intro",
+            startTimeSeconds: 20, // starts after next scene ends (non-monotonic)
+            endTimeSeconds: 25,
+            targetNodeIds: ["file-1"],
+          },
+          {
+            title: "Core",
+            startTimeSeconds: 5,
+            endTimeSeconds: 10,
+            targetNodeIds: ["file-2"],
+          },
+          {
+            title: "Outro",
+            startTimeSeconds: 25,
+            endTimeSeconds: 30,
+            targetNodeIds: ["file-3"],
+          },
+        ],
+        messageContent: "Fallback test",
+        graph,
+      });
+
+      expect(cues).toHaveLength(3);
+      // Fell back to equal proportional intervals of 30 / 3 = 10s each
+      expect(cues[0].startTimeSeconds).toBe(0);
+      expect(cues[0].endTimeSeconds).toBe(10);
+      expect(cues[1].startTimeSeconds).toBe(10);
+      expect(cues[1].endTimeSeconds).toBe(20);
+      expect(cues[2].startTimeSeconds).toBe(20);
+      expect(cues[2].endTimeSeconds).toBe(30);
+    });
   });
 
   describe("findActiveCueIndex", () => {
