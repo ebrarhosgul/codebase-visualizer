@@ -1364,4 +1364,77 @@ describe("useGraphStore", () => {
       expect(useGraphStore.getState().layoutDurationMs).toBeNull();
     });
   });
+
+  describe("Video walkthrough canvas state sync (AC-8, AC-9, AC-12)", () => {
+    it("sets video cue highlights, edge highlights, and focal node with highlightSource video", () => {
+      useGraphStore.getState().setVideoCueHighlight({
+        nodeIds: ["node-alpha", "node-beta"],
+        edgeIds: ["edge-alpha-beta"],
+        focalNodeId: "node-alpha",
+      });
+
+      const state = useGraphStore.getState();
+      expect(state.highlightSource).toBe("video");
+      expect(state.highlightedNodeIds).toEqual(["node-alpha", "node-beta"]);
+      expect(state.highlightedEdgeIds).toEqual(["edge-alpha-beta"]);
+      expect(state.videoFocalNodeId).toBe("node-alpha");
+      expect(state.activeTrace).toBeNull();
+    });
+
+    it("toggles video auto pan state via setVideoAutoPan", () => {
+      expect(useGraphStore.getState().isVideoAutoPanEnabled).toBe(true);
+
+      useGraphStore.getState().setVideoAutoPan(false);
+      expect(useGraphStore.getState().isVideoAutoPanEnabled).toBe(false);
+
+      useGraphStore.getState().setVideoAutoPan(true);
+      expect(useGraphStore.getState().isVideoAutoPanEnabled).toBe(true);
+    });
+
+    it("clears video highlights when a canvas node is selected (AC-12)", () => {
+      useGraphStore.getState().setVideoCueHighlight({
+        nodeIds: ["node-alpha"],
+        edgeIds: [],
+        focalNodeId: "node-alpha",
+      });
+      expect(useGraphStore.getState().highlightSource).toBe("video");
+
+      useGraphStore.getState().selectNode("file:src/index.ts");
+      const state = useGraphStore.getState();
+      expect(state.highlightSource).toBeNull();
+      expect(state.highlightedNodeIds).toEqual([]);
+      expect(state.videoFocalNodeId).toBeNull();
+    });
+
+    it("clears video highlights when trace or glow is cleared (AC-12)", () => {
+      useGraphStore.getState().setVideoCueHighlight({
+        nodeIds: ["node-alpha"],
+        edgeIds: ["edge-1"],
+        focalNodeId: "node-alpha",
+      });
+
+      useGraphStore.getState().clearTrace();
+      const state = useGraphStore.getState();
+      expect(state.highlightSource).toBeNull();
+      expect(state.highlightedNodeIds).toEqual([]);
+      expect(state.highlightedEdgeIds).toEqual([]);
+      expect(state.videoFocalNodeId).toBeNull();
+    });
+
+    it("resets video state to defaults on store reset", () => {
+      useGraphStore.getState().setVideoCueHighlight({
+        nodeIds: ["node-1"],
+        edgeIds: ["edge-1"],
+        focalNodeId: "node-1",
+      });
+      useGraphStore.getState().setVideoAutoPan(false);
+
+      useGraphStore.getState().reset();
+      const state = useGraphStore.getState();
+      expect(state.highlightSource).toBeNull();
+      expect(state.highlightedNodeIds).toEqual([]);
+      expect(state.videoFocalNodeId).toBeNull();
+      expect(state.isVideoAutoPanEnabled).toBe(true);
+    });
+  });
 });

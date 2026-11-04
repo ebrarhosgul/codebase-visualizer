@@ -10,6 +10,7 @@ interface RateLimitBucket {
 const rateLimitStore = new Map<string, RateLimitBucket>();
 
 const WINDOW_MS = 60 * 1000;
+const MAX_WINDOW_MS = 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 const MAX_TRACKED_KEYS = 10_000;
 let lastCleanup = Date.now();
@@ -20,7 +21,7 @@ function cleanupExpired(now: number): void {
   }
   lastCleanup = now;
   for (const [key, bucket] of rateLimitStore.entries()) {
-    const valid = bucket.timestamps.filter((t) => now - t < WINDOW_MS);
+    const valid = bucket.timestamps.filter((t) => now - t < MAX_WINDOW_MS);
     if (valid.length === 0) {
       rateLimitStore.delete(key);
     } else {
@@ -29,21 +30,22 @@ function cleanupExpired(now: number): void {
   }
 }
 
-function checkWindow(
+export function checkWindow(
   key: string,
   maxRequests: number,
+  windowMs = WINDOW_MS,
 ): { isAllowed: boolean; retryAfterSeconds?: number } {
   const now = Date.now();
 
   cleanupExpired(now);
 
   const bucket = rateLimitStore.get(key) ?? { timestamps: [] };
-  bucket.timestamps = bucket.timestamps.filter((t) => now - t < WINDOW_MS);
+  bucket.timestamps = bucket.timestamps.filter((t) => now - t < windowMs);
 
   if (bucket.timestamps.length >= maxRequests) {
     const oldestTimestamp = bucket.timestamps[0];
     const retryAfterSeconds = Math.ceil(
-      (WINDOW_MS - (now - oldestTimestamp)) / 1000,
+      (windowMs - (now - oldestTimestamp)) / 1000,
     );
     return {
       isAllowed: false,
@@ -74,6 +76,34 @@ export function checkRateLimit(
   isDemo: boolean,
 ): { isAllowed: boolean; retryAfterSeconds?: number } {
   return checkWindow(clientIp, isDemo ? 10 : 30);
+}
+
+export const VIDEO_CREATE_WINDOW_MS = 60 * 60 * 1000; // 60 minutes
+export const VIDEO_CREATE_MAX_REQUESTS = 10;
+
+export const VIDEO_POLL_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+export const VIDEO_POLL_MAX_REQUESTS = 120;
+
+export function checkVideoCreateRateLimit(clientIp: string): {
+  isAllowed: boolean;
+  retryAfterSeconds?: number;
+} {
+  return checkWindow(
+    `video-create:${clientIp}`,
+    VIDEO_CREATE_MAX_REQUESTS,
+    VIDEO_CREATE_WINDOW_MS,
+  );
+}
+
+export function checkVideoPollRateLimit(clientIp: string): {
+  isAllowed: boolean;
+  retryAfterSeconds?: number;
+} {
+  return checkWindow(
+    `video-poll:${clientIp}`,
+    VIDEO_POLL_MAX_REQUESTS,
+    VIDEO_POLL_WINDOW_MS,
+  );
 }
 
 const INGEST_MAX_REQUESTS_PER_MINUTE = 10;

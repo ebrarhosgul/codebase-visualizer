@@ -11,7 +11,7 @@ export interface ClassifyErrorInput {
   readonly message?: string;
   readonly code?: AiFallbackCode;
   readonly suggestedAction?: AiFallbackAction;
-  readonly provider?: AiProviderId | "demo";
+  readonly provider?: AiProviderId | "demo" | "scrimba";
   readonly retryAfterSeconds?: number;
 }
 
@@ -31,6 +31,12 @@ export function sanitizeErrorMessage(rawMessage: string): string {
 
   // Redact Anthropic API keys
   cleaned = cleaned.replace(/sk-ant-[0-9A-Za-z_-]{20,}/g, "[REDACTED_API_KEY]");
+
+  // Redact Scrimba API keys
+  cleaned = cleaned.replace(
+    /scr_live_[0-9A-Za-z_-]{12,}/g,
+    "[REDACTED_API_KEY]",
+  );
 
   // Redact Bearer tokens
   cleaned = cleaned.replace(
@@ -113,11 +119,15 @@ export function classifyError(input: ClassifyErrorInput): AiFallbackNotice {
 
   if (isRateLimit) {
     const waitTime = retryAfterSeconds ?? extractRetrySeconds(rawText) ?? 60;
+    const isScrimba = provider === "scrimba";
     return {
       code: "rate_limit",
       title: "Rate Limit Exceeded",
-      message: `The AI query rate limit has been reached. Please wait ${waitTime} seconds before submitting again, or switch to Demo Mode for instant local responses.`,
-      suggestedAction: input.suggestedAction ?? "switch_demo",
+      message: isScrimba
+        ? `The video generation rate limit has been reached. Please wait ${waitTime} seconds before submitting again.`
+        : `The AI query rate limit has been reached. Please wait ${waitTime} seconds before submitting again, or switch to Demo Mode for instant local responses.`,
+      suggestedAction:
+        input.suggestedAction ?? (isScrimba ? "retry" : "switch_demo"),
       retryAfterSeconds: waitTime,
       provider,
     };
@@ -136,11 +146,13 @@ export function classifyError(input: ClassifyErrorInput): AiFallbackNotice {
     lower.includes("invalid_api_key");
 
   if (isAuthError) {
+    const isScrimba = provider === "scrimba";
     return {
       code: "auth_error",
-      title: "API Key Required",
-      message:
-        "No valid API key was found or the provided credentials have expired. Update your key in Key Settings or switch to Demo Mode.",
+      title: isScrimba ? "Scrimba Key Required" : "API Key Required",
+      message: isScrimba
+        ? "No valid Scrimba API key was found or the provided credentials have expired. Add a valid Scrimba key in settings."
+        : "No valid API key was found or the provided credentials have expired. Update your key in Key Settings or switch to Demo Mode.",
       suggestedAction: input.suggestedAction ?? "open_keys",
       provider,
     };
@@ -160,12 +172,15 @@ export function classifyError(input: ClassifyErrorInput): AiFallbackNotice {
     lower.includes("offline");
 
   if (isNetworkTimeout) {
+    const isScrimba = provider === "scrimba";
     return {
       code: "network_timeout",
       title: "Connection Lost",
-      message:
-        "Unable to reach the AI service due to network unavailability. You can switch to Demo Mode to explore local architecture offline.",
-      suggestedAction: input.suggestedAction ?? "switch_demo",
+      message: isScrimba
+        ? "Unable to reach the video generation service or the polling request timed out. Please try again."
+        : "Unable to reach the AI service due to network unavailability. You can switch to Demo Mode to explore local architecture offline.",
+      suggestedAction:
+        input.suggestedAction ?? (isScrimba ? "retry" : "switch_demo"),
       provider,
     };
   }

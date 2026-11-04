@@ -3,7 +3,10 @@ import { z } from "zod";
 import {
   encryptApiKey,
   decryptApiKey,
+  encryptVideoApiKey,
+  decryptVideoApiKey,
   AI_KEY_COOKIE_NAME,
+  VIDEO_KEY_COOKIE_NAME,
 } from "@/lib/ai/crypto";
 import { CREDENTIAL_COOKIE_TTL_SECONDS } from "@/lib/security/cookie-crypto";
 import { isSameOriginRequest, readJsonBody } from "@/lib/security/request";
@@ -11,7 +14,7 @@ import type { AiProviderId } from "@/lib/ai/types";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_PROVIDERS: readonly AiProviderId[] = [
+const ALLOWED_CHAT_PROVIDERS: readonly AiProviderId[] = [
   "gemini",
   "openai",
   "claude",
@@ -27,8 +30,7 @@ const saveKeyRequestSchema = z.object({
 /**
  * Route handler for POST /api/ai/keys.
  * Encrypts user API key with AES-256-GCM and stores in secure HTTP-only cookie.
- * Only same origin JSON requests are accepted so another site cannot plant a
- * key in the visitor's browser.
+ * Supports chat providers (stored in cv_ai_key) and Scrimba video provider (stored in cv_ai_key_scrimba).
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!isSameOriginRequest(req)) {
@@ -58,30 +60,85 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const { apiKey } = parsed.data;
-  const provider = parsed.data.provider as AiProviderId;
+  const rawProvider = parsed.data.provider.toLowerCase();
 
-  if (!ALLOWED_PROVIDERS.includes(provider)) {
+  const isVideoProvider = rawProvider === "scrimba";
+  const isChatProvider = ALLOWED_CHAT_PROVIDERS.includes(
+    rawProvider as AiProviderId,
+  );
+
+  if (!isVideoProvider && !isChatProvider) {
     return NextResponse.json(
       {
         success: false,
-        error: `Unsupported provider "${parsed.data.provider}". Allowed: ${ALLOWED_PROVIDERS.join(
-          ", ",
-        )}`,
+        error: `Unsupported provider "${parsed.data.provider}". Allowed: ${[
+          ...ALLOWED_CHAT_PROVIDERS,
+          "scrimba",
+        ].join(", ")}`,
       },
       { status: 400 },
     );
   }
 
-  if (apiKey.trim().length === 0) {
+  const trimmedKey = apiKey.trim();
+  if (trimmedKey.length === 0) {
     return NextResponse.json(
       { success: false, error: "API key cannot be empty." },
       { status: 400 },
     );
   }
 
+  if (isVideoProvider) {
+    if (!trimmedKey.startsWith("scr_live_") || trimmedKey.length < 16) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Invalid Scrimba API key format. Keys must start with 'scr_live_' and be at least 16 characters long.",
+        },
+        { status: 400 },
+      );
+    }
+
+    let encryptedValue: string;
+    try {
+      encryptedValue = encryptVideoApiKey(trimmedKey, "scrimba");
+    } catch (err: unknown) {
+      console.error(
+        "Unable to encrypt video API key cookie:",
+        err instanceof Error ? err.message : err,
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Secure credential storage is not configured on this server.",
+        },
+        { status: 500 },
+      );
+    }
+
+    const response = NextResponse.json({
+      success: true,
+      provider: "scrimba",
+    });
+
+    response.cookies.set({
+      name: VIDEO_KEY_COOKIE_NAME,
+      value: encryptedValue,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: CREDENTIAL_COOKIE_TTL_SECONDS,
+    });
+
+    return response;
+  }
+
+  const chatProvider = rawProvider as AiProviderId;
   let encryptedValue: string;
   try {
-    encryptedValue = encryptApiKey(apiKey.trim(), provider);
+    encryptedValue = encryptApiKey(trimmedKey, chatProvider);
   } catch (err: unknown) {
     console.error(
       "Unable to encrypt API key cookie:",
@@ -98,7 +155,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const response = NextResponse.json({
     success: true,
-    provider,
+    provider: chatProvider,
   });
 
   response.cookies.set({
@@ -116,7 +173,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 /**
  * Route handler for DELETE /api/ai/keys.
- * Clears the stored BYOK encrypted cookie.
+ * Clears stored BYOK encrypted cookies. Supports ?scope=chat | video | all.
  */
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   if (!isSameOriginRequest(req)) {
@@ -126,45 +183,80 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  const scope = req.nextUrl.searchParams.get("scope") ?? "all";
+
   const response = NextResponse.json({
     success: true,
-    message: "Stored credentials cleared.",
+    message: `Stored credentials cleared (${scope}).`,
   });
 
-  response.cookies.set({
-    name: AI_KEY_COOKIE_NAME,
-    value: "",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0,
-  });
+  if (scope === "chat" || scope === "all") {
+    response.cookies.set({
+      name: AI_KEY_COOKIE_NAME,
+      value: "",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 0,
+    });
+  }
+
+  if (scope === "video" || scope === "all") {
+    response.cookies.set({
+      name: VIDEO_KEY_COOKIE_NAME,
+      value: "",
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 0,
+    });
+  }
 
   return response;
 }
 
 /**
  * Route handler for GET /api/ai/keys.
- * Checks if a BYOK encrypted cookie exists and returns the provider.
+ * Checks if BYOK encrypted cookies exist and returns status for chat and video providers.
  */
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const cookie = req.cookies.get(AI_KEY_COOKIE_NAME);
+  const chatCookie = req.cookies.get(AI_KEY_COOKIE_NAME);
+  const videoCookie = req.cookies.get(VIDEO_KEY_COOKIE_NAME);
 
   const headers = new Headers();
   headers.set("Cache-Control", "no-store, max-age=0");
 
-  if (!cookie?.value) {
-    return NextResponse.json({ hasKey: false }, { headers });
+  let hasKey = false;
+  let provider: string | undefined = undefined;
+
+  if (chatCookie?.value) {
+    const payload = decryptApiKey(chatCookie.value);
+    if (payload) {
+      hasKey = true;
+      provider = payload.provider;
+    }
   }
 
-  const payload = decryptApiKey(cookie.value);
-  if (!payload) {
-    return NextResponse.json({ hasKey: false }, { headers });
+  let hasVideoKey = false;
+  let videoProvider: "scrimba" | undefined = undefined;
+
+  if (videoCookie?.value) {
+    const payload = decryptVideoApiKey(videoCookie.value);
+    if (payload) {
+      hasVideoKey = true;
+      videoProvider = "scrimba";
+    }
   }
 
   return NextResponse.json(
-    { hasKey: true, provider: payload.provider },
+    {
+      hasKey,
+      provider,
+      hasVideoKey,
+      videoProvider,
+    },
     { headers },
   );
 }

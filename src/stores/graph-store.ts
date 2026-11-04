@@ -71,7 +71,9 @@ export interface ActiveTraceState {
   readonly activeStepIndex: number | null;
   readonly highlightedNodeIds: readonly string[];
   readonly highlightedEdgeIds: readonly string[];
-  readonly highlightSource: "trace" | "answer" | null;
+  readonly highlightSource: "trace" | "answer" | "video" | null;
+  readonly videoFocalNodeId: string | null;
+  readonly isVideoAutoPanEnabled: boolean;
   readonly visibleFileIds: readonly string[];
 }
 
@@ -137,6 +139,12 @@ export interface GraphStoreActions {
   readonly focusTraceStep: (stepIndex: number | null) => void;
   readonly clearTrace: () => void;
   readonly setAnswerHighlight: (nodeIds: readonly string[]) => void;
+  readonly setVideoCueHighlight: (payload: {
+    readonly nodeIds: readonly string[];
+    readonly edgeIds: readonly string[];
+    readonly focalNodeId: string | null;
+  }) => void;
+  readonly setVideoAutoPan: (enabled: boolean) => void;
   readonly setVisibleFileIds: (ids: readonly string[]) => void;
   readonly setLayoutCalculationState: (
     isCalculating: boolean,
@@ -172,6 +180,8 @@ const initialState: GraphStoreState = {
   highlightedNodeIds: Object.freeze([]),
   highlightedEdgeIds: Object.freeze([]),
   highlightSource: null,
+  videoFocalNodeId: null,
+  isVideoAutoPanEnabled: true,
   visibleFileIds: Object.freeze([]),
   isCacheHit: false,
   offlineFallback: false,
@@ -603,9 +613,14 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     nodeId: string | null,
     source: NavigationSource = "canvas",
   ): void => {
-    if (get().highlightSource === "answer") {
+    if (
+      get().highlightSource === "answer" ||
+      get().highlightSource === "video"
+    ) {
       set({
         highlightedNodeIds: Object.freeze([]),
+        highlightedEdgeIds: Object.freeze([]),
+        videoFocalNodeId: null,
         highlightSource: null,
       });
     }
@@ -682,15 +697,21 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       highlightedNodeIds: Object.freeze([]),
       highlightedEdgeIds: Object.freeze([]),
       highlightSource: null,
+      videoFocalNodeId: null,
       visibleFileIds: Object.freeze([]),
     });
     get().flushPendingDeepLink();
   },
 
   navigateToTarget: (target: NavigationTarget): void => {
-    if (get().highlightSource === "answer") {
+    if (
+      get().highlightSource === "answer" ||
+      get().highlightSource === "video"
+    ) {
       set({
         highlightedNodeIds: Object.freeze([]),
+        highlightedEdgeIds: Object.freeze([]),
+        videoFocalNodeId: null,
         highlightSource: null,
       });
     }
@@ -1055,6 +1076,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
         highlightedNodeIds: Object.freeze([]),
         highlightedEdgeIds: Object.freeze([]),
         highlightSource: null,
+        videoFocalNodeId: null,
       });
       return;
     }
@@ -1064,6 +1086,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       highlightedNodeIds: trace.stepNodeIds,
       highlightedEdgeIds: trace.stepEdgeIds,
       highlightSource: "trace",
+      videoFocalNodeId: null,
     });
   },
 
@@ -1092,6 +1115,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       highlightedNodeIds: Object.freeze([]),
       highlightedEdgeIds: Object.freeze([]),
       highlightSource: null,
+      videoFocalNodeId: null,
     });
   },
 
@@ -1102,7 +1126,27 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       activeTrace: null,
       activeStepIndex: null,
       highlightedEdgeIds: Object.freeze([]),
+      videoFocalNodeId: null,
     });
+  },
+
+  setVideoCueHighlight: (payload: {
+    readonly nodeIds: readonly string[];
+    readonly edgeIds: readonly string[];
+    readonly focalNodeId: string | null;
+  }): void => {
+    set({
+      activeTrace: null,
+      activeStepIndex: null,
+      highlightedNodeIds: Object.freeze([...payload.nodeIds]),
+      highlightedEdgeIds: Object.freeze([...payload.edgeIds]),
+      videoFocalNodeId: payload.focalNodeId,
+      highlightSource: "video",
+    });
+  },
+
+  setVideoAutoPan: (enabled: boolean): void => {
+    set({ isVideoAutoPanEnabled: enabled });
   },
 
   setVisibleFileIds: (ids: readonly string[]): void => {

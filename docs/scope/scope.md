@@ -24,6 +24,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 11 | Canvas performance optimization | Slice 7 | done |
 | 12 | Web Worker isolation for layout and parsing computations | Slice 8 | done |
 | 13 | Zero friction demo mode with graph heuristics | Slice 9 | done |
+| 14 | AI video explainer walkthroughs and canvas state sync | Slice 10 | done |
 
 ## Foundations
 
@@ -206,6 +207,24 @@ spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/
 - [x] Test it: `/test zero friction demo mode with graph heuristics`
 - [x] Review it: `/check review zero friction demo mode with graph heuristics`
 
+## Slice 10: AI video explainer walkthroughs and canvas state sync
+
+### 14. AI video explainer walkthroughs and canvas state sync · done
+Generate asynchronous video walkthroughs of codebase architecture inside the trace panel using a user supplied API key, and synchronize video playback cues with live node highlighting on the graph canvas.
+**Done when:** users can save a personal video provider key in an encrypted cookie, toggle video generation from the trace panel, watch the generated architectural walkthrough once polling completes, see canvas nodes highlight in sync with video timestamps, and receive a clear quota notice if rate limits are reached.
+spec [0014](../specs/0014-ai-video-explainer-walkthroughs/index.md) · code in `src/lib/ai/video/`, `src/app/api/ai/video/`, `src/components/trace/video-walkthrough-player.tsx`, `src/stores/graph-store.ts`
+- [x] Design it (spec): `/architect AI video explainer walkthroughs and canvas state sync`
+- [x] Build it: `/develop AI video explainer walkthroughs and canvas state sync`
+  - [x] Thin end to end walkthrough thread: types, client cue mapper, Scrimba and demo routes, store video highlight state, inline HTML5 player, and canvas cue sync (AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8)
+  - [x] Encrypted Scrimba BYOK cookie and KeySettingsDialog integration: `cv_ai_key_scrimba` cookie isolation and Scrimba provider tab (AC-1, AC-3)
+  - [x] Polling resilience, configurable rate limiting, credential redaction, and expired URL recovery (AC-5, AC-11, AC-12)
+  - [x] Canvas manual pan pause, collapsed folder targeting, hidden node banner, and lifecycle interrupts (AC-8, AC-9, AC-10, AC-12)
+  - [x] Unit, route, hook, and component verification suite (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-9, AC-10, AC-11, AC-12)
+- [x] Verify it: `/check verify AI video explainer walkthroughs and canvas state sync`
+- [x] Test it: `/test AI video explainer walkthroughs and canvas state sync`
+- [x] Review it: `/check review AI video explainer walkthroughs and canvas state sync`
+- [x] Document it: `/document AI video explainer walkthroughs and canvas state sync`
+
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.
 - User accounts and authentication: sign in, personal repository dashboard, and cloud sync · needs a decision
@@ -221,6 +240,7 @@ Out of scope for the current build pass, kept so the plan stays honest.
 - Tree sitter or native WebAssembly parser: replace Babel with Tree sitter or WASM parsers · needs a decision
 - Remove the server side demo AI branch and its rate limit tier once the zero friction demo UI has shipped and no client depends on it · from spec 0013
 - A fourth demo chip, "Entry points & dead ends", if the zero friction demo proves popular · from spec 0013
+- Opt in code editor tab and line scroll sync during video walkthrough playback · from spec 0014
 
 ## Legend
 

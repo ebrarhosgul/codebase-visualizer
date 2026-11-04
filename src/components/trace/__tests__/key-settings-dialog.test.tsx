@@ -6,6 +6,7 @@ import { KeySettingsDialog } from "../key-settings-dialog";
 describe("KeySettingsDialog", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    global.fetch = vi.fn();
   });
 
   it("renders dialog when open is true with provider options and password input", () => {
@@ -135,7 +136,7 @@ describe("KeySettingsDialog", () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        "/api/ai/keys",
+        "/api/ai/keys?scope=chat",
         expect.objectContaining({ method: "DELETE" }),
       );
     });
@@ -172,5 +173,129 @@ describe("KeySettingsDialog", () => {
     fireEvent.click(closeButtons[closeButtons.length - 1]);
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  describe("Scrimba video provider (AC-1)", () => {
+    it("switches to Scrimba video provider and displays video hint", () => {
+      render(<KeySettingsDialog open={true} onOpenChange={vi.fn()} />);
+
+      const scrimbaButton = screen.getByTestId("provider-radio-scrimba");
+      fireEvent.click(scrimbaButton);
+
+      expect(
+        screen.getByPlaceholderText(/enter your scrimba api key/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /requires personal scrimba api key starting with scr_live_/i,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("displays error when submitting a Scrimba key that does not start with scr_live_", async () => {
+      render(
+        <KeySettingsDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          initialProvider="scrimba"
+        />,
+      );
+
+      const input = screen.getByPlaceholderText(/enter your scrimba api key/i);
+      fireEvent.change(input, {
+        target: { value: "invalid_prefix_key_12345" },
+      });
+
+      const saveButton = screen.getByRole("button", {
+        name: /save encrypted/i,
+      });
+      fireEvent.click(saveButton);
+
+      expect(
+        await screen.findByText(
+          /please enter a valid scrimba api key starting with scr_live_/i,
+        ),
+      ).toBeInTheDocument();
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("saves valid Scrimba key starting with scr_live_ to /api/ai/keys (covers: AC-1)", async () => {
+      const onKeySaved = vi.fn();
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, provider: "scrimba" }),
+      } as unknown as Response);
+
+      render(
+        <KeySettingsDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          initialProvider="scrimba"
+          onKeySaved={onKeySaved}
+        />,
+      );
+
+      const input = screen.getByPlaceholderText(/enter your scrimba api key/i);
+      fireEvent.change(input, {
+        target: { value: "scr_live_validkey123456" },
+      });
+
+      const saveButton = screen.getByRole("button", {
+        name: /save encrypted/i,
+      });
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          "/api/ai/keys",
+          expect.objectContaining({
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              provider: "scrimba",
+              apiKey: "scr_live_validkey123456",
+            }),
+          }),
+        );
+      });
+
+      expect(onKeySaved).toHaveBeenCalledWith("scrimba");
+    });
+
+    it("clears Scrimba key via DELETE /api/ai/keys?scope=video without affecting chat keys (covers: AC-1)", async () => {
+      const onKeyCleared = vi.fn();
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true }),
+      } as unknown as Response);
+
+      render(
+        <KeySettingsDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          initialProvider="scrimba"
+          onKeyCleared={onKeyCleared}
+        />,
+      );
+
+      const clearButton = screen.getByRole("button", {
+        name: /clear stored key/i,
+      });
+      fireEvent.click(clearButton);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          "/api/ai/keys?scope=video",
+          expect.objectContaining({ method: "DELETE" }),
+        );
+      });
+
+      expect(
+        await screen.findByText("Stored video credentials cleared."),
+      ).toBeInTheDocument();
+      expect(onKeyCleared).toHaveBeenCalledTimes(1);
+    });
   });
 });
