@@ -79,6 +79,26 @@ describe("cookie secret handling (fail closed)", () => {
     const sealed = sealCookiePayload({ value: "x" }, "ai-key", SECRET);
     expect(openCookiePayload(sealed, "ai-key", `${SECRET}-other`)).toBeNull();
   });
+
+  it("derives a deterministic local development secret when NODE_ENV is development and variable is undefined", () => {
+    const prevSecret = process.env.AI_COOKIE_SECRET;
+    delete process.env.AI_COOKIE_SECRET;
+    vi.stubEnv("NODE_ENV", "development");
+
+    try {
+      const secret = requireCookieSecret(["AI_COOKIE_SECRET"]);
+      expect(secret.length).toBeGreaterThanOrEqual(32);
+
+      const sealed = encryptApiKey("AIzaSyDevTestKey12345", "gemini");
+      const decrypted = decryptApiKey(sealed);
+      expect(decrypted?.apiKey).toBe("AIzaSyDevTestKey12345");
+      expect(decrypted?.provider).toBe("gemini");
+    } finally {
+      if (prevSecret !== undefined) {
+        process.env.AI_COOKIE_SECRET = prevSecret;
+      }
+    }
+  });
 });
 
 describe("sealed cookie payloads", () => {

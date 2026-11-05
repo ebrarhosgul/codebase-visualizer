@@ -82,6 +82,43 @@ describe("/api/ai/keys route", () => {
       const videoCookie = res.cookies.get(VIDEO_KEY_COOKIE_NAME);
       expect(videoCookie).toBeUndefined();
     });
+
+    it("preserves previously saved chat provider keys when adding a new chat provider key", async () => {
+      const firstReq = createRequest("POST", undefined, {
+        provider: "gemini",
+        apiKey: "AIzaSyGeminiKey123456",
+      });
+      const firstRes = await POST(firstReq);
+      const firstCookie = firstRes.cookies.get(AI_KEY_COOKIE_NAME)?.value ?? "";
+
+      const secondReq = createRequest(
+        "POST",
+        undefined,
+        {
+          provider: "openai",
+          apiKey: "sk-proj-OpenAiKey987654",
+        },
+        { [AI_KEY_COOKIE_NAME]: firstCookie },
+      );
+      const secondRes = await POST(secondReq);
+      const secondData = await secondRes.json();
+      expect(secondData.configuredProviders).toEqual(["gemini", "openai"]);
+
+      const mergedCookie =
+        secondRes.cookies.get(AI_KEY_COOKIE_NAME)?.value ?? "";
+      const getRes = await GET(
+        createRequest("GET", undefined, undefined, {
+          [AI_KEY_COOKIE_NAME]: mergedCookie,
+        }),
+      );
+      const getData = await getRes.json();
+      expect(getData.hasKey).toBe(true);
+      expect(getData.provider).toBe("openai");
+      expect(getData.configuredProviders).toEqual(["gemini", "openai"]);
+      expect(getData.configuredKeyCount).toBe(2);
+      expect(getData.maskedKeys.gemini).toBe("AIza••••3456");
+      expect(getData.maskedKeys.openai).toBe("sk-p••••7654");
+    });
   });
 
   describe("GET /api/ai/keys", () => {
@@ -91,6 +128,7 @@ describe("/api/ai/keys route", () => {
       const noKeysData = await noKeysRes.json();
       expect(noKeysData.hasKey).toBe(false);
       expect(noKeysData.hasVideoKey).toBe(false);
+      expect(noKeysData.configuredKeyCount).toBe(0);
 
       const chatCipher = encryptApiKey("sk-chat-key", "claude");
       const videoCipher = encryptVideoApiKey(
@@ -106,8 +144,10 @@ describe("/api/ai/keys route", () => {
       const bothKeysData = await bothKeysRes.json();
       expect(bothKeysData.hasKey).toBe(true);
       expect(bothKeysData.provider).toBe("claude");
+      expect(bothKeysData.configuredProviders).toEqual(["claude"]);
       expect(bothKeysData.hasVideoKey).toBe(true);
       expect(bothKeysData.videoProvider).toBe("scrimba");
+      expect(bothKeysData.configuredKeyCount).toBe(2);
     });
   });
 
@@ -140,6 +180,55 @@ describe("/api/ai/keys route", () => {
 
       const videoCookie = res.cookies.get(VIDEO_KEY_COOKIE_NAME);
       expect(videoCookie).toBeUndefined();
+    });
+
+    it("deletes an individual chat provider key via ?provider=openai while preserving other configured keys", async () => {
+      const firstRes = await POST(
+        createRequest("POST", undefined, {
+          provider: "gemini",
+          apiKey: "AIzaSyGeminiKey123456",
+        }),
+      );
+      const firstCookie = firstRes.cookies.get(AI_KEY_COOKIE_NAME)?.value ?? "";
+      const secondRes = await POST(
+        createRequest(
+          "POST",
+          undefined,
+          {
+            provider: "openai",
+            apiKey: "sk-proj-OpenAiKey987654",
+          },
+          { [AI_KEY_COOKIE_NAME]: firstCookie },
+        ),
+      );
+      const mergedCookie =
+        secondRes.cookies.get(AI_KEY_COOKIE_NAME)?.value ?? "";
+
+      const deleteOpenAiRes = await DELETE(
+        createRequest(
+          "DELETE",
+          "http://localhost:3000/api/ai/keys?provider=openai",
+          undefined,
+          { [AI_KEY_COOKIE_NAME]: mergedCookie },
+        ),
+      );
+      expect(deleteOpenAiRes.status).toBe(200);
+      const deleteData = await deleteOpenAiRes.json();
+      expect(deleteData.configuredProviders).toEqual(["gemini"]);
+
+      const updatedCookie =
+        deleteOpenAiRes.cookies.get(AI_KEY_COOKIE_NAME)?.value ?? "";
+      expect(updatedCookie.length).toBeGreaterThan(0);
+
+      const getRes = await GET(
+        createRequest("GET", undefined, undefined, {
+          [AI_KEY_COOKIE_NAME]: updatedCookie,
+        }),
+      );
+      const getData = await getRes.json();
+      expect(getData.hasKey).toBe(true);
+      expect(getData.provider).toBe("gemini");
+      expect(getData.configuredProviders).toEqual(["gemini"]);
     });
   });
 });

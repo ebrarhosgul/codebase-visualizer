@@ -298,4 +298,166 @@ describe("KeySettingsDialog", () => {
       expect(onKeyCleared).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("Key visibility, summary, and granular key deletion", () => {
+    it("displays configured provider keys summary and count, and updates when a new key is saved", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          provider: "openai",
+          maskedKey: "sk-p••••9876",
+        }),
+      } as unknown as Response);
+
+      render(
+        <KeySettingsDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          configuredProviders={["gemini"]}
+          maskedKeys={{ gemini: "AIza••••1234" }}
+        />,
+      );
+
+      expect(screen.getByTestId("configured-keys-count")).toHaveTextContent(
+        "1 key configured",
+      );
+      expect(
+        screen.getByTestId("configured-key-item-gemini"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("masked-key-gemini")).toHaveTextContent(
+        "AIza••••1234",
+      );
+      expect(
+        screen.getByTestId("provider-configured-gemini"),
+      ).toBeInTheDocument();
+
+      // Switch to OpenAI and save a second key
+      fireEvent.click(screen.getByTestId("provider-radio-openai"));
+      fireEvent.change(screen.getByTestId("api-key-input"), {
+        target: { value: "sk-proj-testkey9876" },
+      });
+      fireEvent.click(screen.getByTestId("save-key-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("configured-keys-count")).toHaveTextContent(
+          "2 keys configured",
+        );
+      });
+      expect(
+        screen.getByTestId("configured-key-item-openai"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("masked-key-openai")).toHaveTextContent(
+        "sk-p••••9876",
+      );
+    });
+
+    it("deletes an individual provider key without wiping other configured keys", async () => {
+      const onKeyCleared = vi.fn();
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          provider: "gemini",
+          configuredProviders: ["openai"],
+        }),
+      } as unknown as Response);
+
+      render(
+        <KeySettingsDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          configuredProviders={["gemini", "openai"]}
+          maskedKeys={{ gemini: "AIza••••1234", openai: "sk-p••••9876" }}
+          onKeyCleared={onKeyCleared}
+        />,
+      );
+
+      expect(screen.getByTestId("configured-keys-count")).toHaveTextContent(
+        "2 keys configured",
+      );
+
+      fireEvent.click(screen.getByTestId("delete-key-gemini"));
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          "/api/ai/keys?provider=gemini",
+          expect.objectContaining({ method: "DELETE" }),
+        );
+      });
+
+      expect(screen.getByTestId("configured-keys-count")).toHaveTextContent(
+        "1 key configured",
+      );
+      expect(
+        screen.queryByTestId("configured-key-item-gemini"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId("configured-key-item-openai"),
+      ).toBeInTheDocument();
+      expect(onKeyCleared).toHaveBeenCalledWith("gemini");
+    });
+
+    it("toggles API key input visibility between password and text", () => {
+      render(<KeySettingsDialog open={true} onOpenChange={vi.fn()} />);
+
+      const input = screen.getByTestId("api-key-input");
+      expect(input).toHaveAttribute("type", "password");
+
+      const toggleBtn = screen.getByTestId("toggle-key-visibility");
+      fireEvent.click(toggleBtn);
+      expect(input).toHaveAttribute("type", "text");
+
+      fireEvent.click(toggleBtn);
+      expect(input).toHaveAttribute("type", "password");
+    });
+
+    it("clears status message when dialog is closed and reopened", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          provider: "gemini",
+          configuredProviders: [],
+        }),
+      } as unknown as Response);
+
+      const { rerender } = render(
+        <KeySettingsDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          configuredProviders={["gemini"]}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("delete-key-gemini"));
+
+      expect(
+        await screen.findByText("Stored gemini credentials cleared."),
+      ).toBeInTheDocument();
+
+      // Close and reopen popup
+      rerender(
+        <KeySettingsDialog
+          open={false}
+          onOpenChange={vi.fn()}
+          configuredProviders={[]}
+        />,
+      );
+      rerender(
+        <KeySettingsDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          configuredProviders={[]}
+        />,
+      );
+
+      expect(
+        screen.queryByText("Stored gemini credentials cleared."),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

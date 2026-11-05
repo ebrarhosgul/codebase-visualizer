@@ -39,6 +39,14 @@ export function requireCookieSecret(variableNames: readonly string[]): string {
       return value;
     }
   }
+  if (
+    process.env.NODE_ENV === "development" &&
+    variableNames.every((name) => process.env[name] === undefined)
+  ) {
+    return createHash("sha256")
+      .update(`codebase-visualizer:dev-secret:${process.cwd()}`)
+      .digest("hex");
+  }
   throw new CookieSecretMissingError(variableNames);
 }
 

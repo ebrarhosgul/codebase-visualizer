@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
-  encryptApiKey,
-  decryptApiKey,
+  encryptApiKeysMap,
+  decryptApiKeysMap,
   encryptVideoApiKey,
   decryptVideoApiKey,
+  maskApiKey,
   AI_KEY_COOKIE_NAME,
   VIDEO_KEY_COOKIE_NAME,
 } from "@/lib/ai/crypto";
@@ -30,7 +31,7 @@ const saveKeyRequestSchema = z.object({
 /**
  * Route handler for POST /api/ai/keys.
  * Encrypts user API key with AES-256-GCM and stores in secure HTTP-only cookie.
- * Supports chat providers (stored in cv_ai_key) and Scrimba video provider (stored in cv_ai_key_scrimba).
+ * Supports multiple chat providers (stored in cv_ai_key) and Scrimba video provider (stored in cv_ai_key_scrimba).
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!isSameOriginRequest(req)) {
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const response = NextResponse.json({
       success: true,
       provider: "scrimba",
+      maskedKey: maskApiKey(trimmedKey),
     });
 
     response.cookies.set({
@@ -137,8 +139,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const chatProvider = rawProvider as AiProviderId;
   let encryptedValue: string;
+  let updatedProviders: AiProviderId[] = [chatProvider];
   try {
-    encryptedValue = encryptApiKey(trimmedKey, chatProvider);
+    const existingCookie = req.cookies.get(AI_KEY_COOKIE_NAME)?.value;
+    const existingPayload = existingCookie
+      ? decryptApiKeysMap(existingCookie)
+      : null;
+    const mergedKeys: Partial<Record<AiProviderId, string>> = {
+      ...(existingPayload?.keys ?? {}),
+      [chatProvider]: trimmedKey,
+    };
+    updatedProviders = Object.keys(mergedKeys) as AiProviderId[];
+    encryptedValue = encryptApiKeysMap(mergedKeys, chatProvider);
   } catch (err: unknown) {
     console.error(
       "Unable to encrypt API key cookie:",
@@ -156,6 +168,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const response = NextResponse.json({
     success: true,
     provider: chatProvider,
+    configuredProviders: updatedProviders,
+    maskedKey: maskApiKey(trimmedKey),
   });
 
   response.cookies.set({
@@ -173,7 +187,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 /**
  * Route handler for DELETE /api/ai/keys.
- * Clears stored BYOK encrypted cookies. Supports ?scope=chat | video | all.
+ * Clears stored BYOK encrypted cookies. Supports granular ?provider=gemini|openai|claude|scrimba
+ * as well as ?scope=chat | video | all.
  */
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   if (!isSameOriginRequest(req)) {
@@ -181,6 +196,99 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
       { success: false, error: "Cross site requests are not allowed." },
       { status: 403 },
     );
+  }
+
+  const targetProvider = req.nextUrl.searchParams
+    .get("provider")
+    ?.toLowerCase();
+
+  if (targetProvider) {
+    if (targetProvider === "scrimba") {
+      const response = NextResponse.json({
+        success: true,
+        provider: "scrimba",
+        message: "Stored Scrimba video credentials cleared.",
+      });
+      response.cookies.set({
+        name: VIDEO_KEY_COOKIE_NAME,
+        value: "",
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 0,
+      });
+      return response;
+    }
+
+    if (ALLOWED_CHAT_PROVIDERS.includes(targetProvider as AiProviderId)) {
+      const chatProvider = targetProvider as AiProviderId;
+      const existingCookie = req.cookies.get(AI_KEY_COOKIE_NAME)?.value;
+      let existingPayload: ReturnType<typeof decryptApiKeysMap> = null;
+      try {
+        existingPayload = existingCookie
+          ? decryptApiKeysMap(existingCookie)
+          : null;
+      } catch {
+        existingPayload = null;
+      }
+
+      const remainingKeys: Partial<Record<AiProviderId, string>> = {
+        ...(existingPayload?.keys ?? {}),
+      };
+      delete remainingKeys[chatProvider];
+
+      const remainingProviders = Object.keys(remainingKeys) as AiProviderId[];
+      const response = NextResponse.json({
+        success: true,
+        provider: chatProvider,
+        configuredProviders: remainingProviders,
+        message: `Stored ${chatProvider} credentials cleared.`,
+      });
+
+      if (remainingProviders.length > 0) {
+        const nextActive =
+          existingPayload?.activeProvider &&
+          existingPayload.activeProvider !== chatProvider &&
+          remainingKeys[existingPayload.activeProvider]
+            ? existingPayload.activeProvider
+            : remainingProviders[0];
+        try {
+          const reencrypted = encryptApiKeysMap(remainingKeys, nextActive);
+          response.cookies.set({
+            name: AI_KEY_COOKIE_NAME,
+            value: reencrypted,
+            httpOnly: true,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+            path: "/",
+            maxAge: CREDENTIAL_COOKIE_TTL_SECONDS,
+          });
+        } catch {
+          response.cookies.set({
+            name: AI_KEY_COOKIE_NAME,
+            value: "",
+            httpOnly: true,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+            path: "/",
+            maxAge: 0,
+          });
+        }
+      } else {
+        response.cookies.set({
+          name: AI_KEY_COOKIE_NAME,
+          value: "",
+          httpOnly: true,
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+          path: "/",
+          maxAge: 0,
+        });
+      }
+
+      return response;
+    }
   }
 
   const scope = req.nextUrl.searchParams.get("scope") ?? "all";
@@ -219,7 +327,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 
 /**
  * Route handler for GET /api/ai/keys.
- * Checks if BYOK encrypted cookies exist and returns status for chat and video providers.
+ * Checks if BYOK encrypted cookies exist and returns status and masked previews for chat and video providers.
  */
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const chatCookie = req.cookies.get(AI_KEY_COOKIE_NAME);
@@ -229,13 +337,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   headers.set("Cache-Control", "no-store, max-age=0");
 
   let hasKey = false;
-  let provider: string | undefined = undefined;
+  let provider: AiProviderId | undefined = undefined;
+  let configuredProviders: AiProviderId[] = [];
+  const maskedKeys: Record<string, string> = {};
 
   if (chatCookie?.value) {
-    const payload = decryptApiKey(chatCookie.value);
-    if (payload) {
-      hasKey = true;
-      provider = payload.provider;
+    try {
+      const payload = decryptApiKeysMap(chatCookie.value);
+      if (payload) {
+        configuredProviders = Object.keys(payload.keys) as AiProviderId[];
+        hasKey = configuredProviders.length > 0;
+        provider = payload.activeProvider;
+        for (const id of configuredProviders) {
+          const raw = payload.keys[id];
+          if (raw) {
+            maskedKeys[id] = maskApiKey(raw);
+          }
+        }
+      }
+    } catch {
+      // Treat undecryptable cookie as unconfigured
     }
   }
 
@@ -243,19 +364,33 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   let videoProvider: "scrimba" | undefined = undefined;
 
   if (videoCookie?.value) {
-    const payload = decryptVideoApiKey(videoCookie.value);
-    if (payload) {
-      hasVideoKey = true;
-      videoProvider = "scrimba";
+    try {
+      const payload = decryptVideoApiKey(videoCookie.value);
+      if (payload) {
+        hasVideoKey = true;
+        videoProvider = "scrimba";
+        maskedKeys.scrimba = maskApiKey(payload.apiKey);
+      }
+    } catch {
+      // Treat undecryptable video cookie as unconfigured
     }
   }
+
+  const allConfiguredProviders = [
+    ...configuredProviders,
+    ...(hasVideoKey ? (["scrimba"] as const) : []),
+  ];
 
   return NextResponse.json(
     {
       hasKey,
       provider,
+      configuredProviders,
       hasVideoKey,
       videoProvider,
+      allConfiguredProviders,
+      configuredKeyCount: allConfiguredProviders.length,
+      maskedKeys,
     },
     { headers },
   );
