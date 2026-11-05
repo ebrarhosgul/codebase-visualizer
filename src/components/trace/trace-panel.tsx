@@ -34,6 +34,7 @@ import {
   Check,
   Video,
   VideoOff,
+  ChevronDown,
 } from "lucide-react";
 import type {
   AiFallbackNotice,
@@ -78,6 +79,13 @@ export function TracePanel(): React.JSX.Element {
   const [isDemoMode, setIsDemoMode] = useState(true);
   const [selectedProvider, setSelectedProvider] =
     useState<AiProviderId>("gemini");
+  const [configuredProviders, setConfiguredProviders] = useState<
+    readonly AiProviderId[]
+  >([]);
+  const [maskedKeys, setMaskedKeys] = useState<
+    Partial<Record<KeyDialogProviderId, string>>
+  >({});
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isKeyDialogOpen, setIsKeyDialogOpen] = useState(false);
   const [keyDialogInitialProvider, setKeyDialogInitialProvider] =
     useState<KeyDialogProviderId>("gemini");
@@ -86,6 +94,8 @@ export function TracePanel(): React.JSX.Element {
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const pendingVideoEnableRef = useRef(false);
   const isVideoModeEnabledRef = useRef(isVideoModeEnabled);
   isVideoModeEnabledRef.current = isVideoModeEnabled;
 
@@ -190,11 +200,43 @@ export function TracePanel(): React.JSX.Element {
     fetch("/api/ai/keys")
       .then((res) => res.json())
       .then((data) => {
-        if (data.hasKey && data.provider) {
-          setIsDemoMode(false);
-          setSelectedProvider(data.provider);
+        const chatProviders: AiProviderId[] = Array.isArray(
+          data.configuredProviders,
+        )
+          ? data.configuredProviders
+          : data.hasKey && data.provider
+            ? [data.provider as AiProviderId]
+            : [];
+
+        setConfiguredProviders((prev) =>
+          prev.length === 0 && chatProviders.length === 0
+            ? prev
+            : chatProviders,
+        );
+        if (
+          data.maskedKeys &&
+          typeof data.maskedKeys === "object" &&
+          Object.keys(data.maskedKeys).length > 0
+        ) {
+          setMaskedKeys(data.maskedKeys);
         }
-        setHasVideoKey(Boolean(data.hasVideoKey));
+
+        if (chatProviders.length > 0) {
+          setIsDemoMode(false);
+          setSelectedProvider((prev) =>
+            chatProviders.includes(prev)
+              ? prev
+              : ((data.provider as AiProviderId) ?? chatProviders[0]),
+          );
+        } else {
+          setIsDemoMode(true);
+        }
+
+        const videoKeyPresent = Boolean(data.hasVideoKey);
+        setHasVideoKey(videoKeyPresent);
+        if (!videoKeyPresent) {
+          setIsVideoModeEnabled(false);
+        }
       })
       .catch(() => {
         // Silently default if check fails
@@ -204,6 +246,28 @@ export function TracePanel(): React.JSX.Element {
   useEffect(() => {
     checkKeys();
   }, [checkKeys]);
+
+  useEffect(() => {
+    if (!isModelDropdownOpen || typeof document === "undefined") return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        modelDropdownRef.current &&
+        !modelDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsModelDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [isModelDropdownOpen]);
+
+  const allConfiguredProviders = useMemo<readonly KeyDialogProviderId[]>(
+    () => [
+      ...configuredProviders,
+      ...(hasVideoKey ? (["scrimba"] as const) : []),
+    ],
+    [configuredProviders, hasVideoKey],
+  );
 
   const { startWalkthrough, cancelWalkthrough, refreshVideoUrl } =
     useVideoWalkthrough({
@@ -609,6 +673,46 @@ export function TracePanel(): React.JSX.Element {
     setWarningMessage(null);
   };
 
+  const handleToggleByokMode = () => {
+    if (isDemoMode) {
+      if (configuredProviders.length === 0) {
+        setKeyDialogInitialProvider("gemini");
+        setIsKeyDialogOpen(true);
+        return;
+      }
+      setSelectedProvider((prev) =>
+        configuredProviders.includes(prev) ? prev : configuredProviders[0],
+      );
+      setIsDemoMode(false);
+    } else {
+      setIsModelDropdownOpen(false);
+      setIsDemoMode(true);
+    }
+  };
+
+  const handleToggleVideoWalkthrough = () => {
+    if (isVideoModeEnabled) {
+      setIsVideoModeEnabled(false);
+      return;
+    }
+    if (!hasVideoKey) {
+      pendingVideoEnableRef.current = true;
+      setKeyDialogInitialProvider("scrimba");
+      setIsKeyDialogOpen(true);
+      return;
+    }
+    setIsVideoModeEnabled(true);
+  };
+
+  const availableModels: readonly AiProviderId[] =
+    configuredProviders.length > 0 ? configuredProviders : [selectedProvider];
+
+  const MODEL_NAMES: Readonly<Record<AiProviderId, string>> = {
+    gemini: "Google Gemini",
+    openai: "OpenAI GPT",
+    claude: "Anthropic Claude",
+  };
+
   return (
     <div
       className="flex flex-col h-full w-full bg-surface-panel select-none text-xs overflow-hidden"
@@ -621,17 +725,72 @@ export function TracePanel(): React.JSX.Element {
           <span className="font-semibold text-text-primary">
             Semantic Trace
           </span>
-          <Badge
-            variant={isDemoMode ? "default" : "accent"}
-            className="text-[10px] h-4.5 px-1.5"
-            title={
-              isDemoMode
-                ? "Answers are computed from the loaded dependency graph in your browser. No AI model is involved."
-                : undefined
-            }
-          >
-            {isDemoMode ? "Demo Mode" : selectedProvider.toUpperCase()}
-          </Badge>
+          {isDemoMode ? (
+            <Badge
+              variant="default"
+              className="text-[10px] h-4.5 px-1.5"
+              title="Answers are computed from the loaded dependency graph in your browser. No AI model is involved."
+            >
+              Demo Mode
+            </Badge>
+          ) : (
+            <div className="relative" ref={modelDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsModelDropdownOpen((prev) => !prev)}
+                data-testid="model-selector-dropdown"
+                aria-haspopup="listbox"
+                aria-expanded={isModelDropdownOpen}
+                aria-label="Select AI model"
+                title="Select active AI model"
+                className="inline-flex items-center gap-1 rounded-sm font-medium text-[10px] h-5 px-1.5 bg-accent-subtle text-accent-text border border-accent-border hover:border-accent-primary transition-colors cursor-pointer"
+              >
+                <span>{selectedProvider.toUpperCase()}</span>
+                <ChevronDown className="w-2.5 h-2.5 shrink-0" />
+              </button>
+
+              {isModelDropdownOpen && (
+                <div
+                  role="listbox"
+                  aria-label="Configured AI models"
+                  data-testid="model-selector-menu"
+                  className="absolute left-0 top-full mt-1 z-50 min-w-[160px] p-1 rounded-md bg-surface-panel-secondary border border-border-default shadow-lg space-y-0.5"
+                >
+                  {availableModels.map((providerId) => {
+                    const isCurrent = selectedProvider === providerId;
+                    return (
+                      <button
+                        key={providerId}
+                        type="button"
+                        role="option"
+                        aria-selected={isCurrent}
+                        data-testid={`model-option-${providerId}`}
+                        onClick={() => {
+                          setSelectedProvider(providerId);
+                          setIsModelDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-2 py-1 rounded-sm text-xs text-left transition-colors cursor-pointer ${
+                          isCurrent
+                            ? "bg-surface-active text-text-primary font-medium"
+                            : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span>{MODEL_NAMES[providerId]}</span>
+                          <span className="text-[10px] font-mono text-text-muted uppercase">
+                            {providerId}
+                          </span>
+                        </div>
+                        {isCurrent && (
+                          <Check className="w-3 h-3 text-accent-text shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-1">
@@ -652,7 +811,8 @@ export function TracePanel(): React.JSX.Element {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsDemoMode((prev) => !prev)}
+            onClick={handleToggleByokMode}
+            data-testid="toggle-byok-btn"
             className="h-6 px-2 text-[10px] text-text-secondary hover:text-text-primary"
             title="Toggle between Zero Cost Demo and Live BYOK"
           >
@@ -662,7 +822,11 @@ export function TracePanel(): React.JSX.Element {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsKeyDialogOpen(true)}
+            onClick={() => {
+              setKeyDialogInitialProvider(selectedProvider);
+              setIsKeyDialogOpen(true);
+            }}
+            data-testid="open-key-settings-btn"
             className="h-6 w-6 p-0 text-text-secondary hover:text-text-primary"
             title="Configure API Keys"
           >
@@ -1008,7 +1172,7 @@ export function TracePanel(): React.JSX.Element {
 
           <button
             type="button"
-            onClick={() => setIsVideoModeEnabled((prev) => !prev)}
+            onClick={handleToggleVideoWalkthrough}
             data-testid="video-walkthrough-toggle"
             data-active={isVideoModeEnabled}
             aria-pressed={isVideoModeEnabled}
@@ -1114,18 +1278,52 @@ export function TracePanel(): React.JSX.Element {
       {/* BYOK Key Settings Dialog */}
       <KeySettingsDialog
         open={isKeyDialogOpen}
-        onOpenChange={setIsKeyDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            pendingVideoEnableRef.current = false;
+          }
+          setIsKeyDialogOpen(nextOpen);
+        }}
         initialProvider={keyDialogInitialProvider}
+        configuredProviders={allConfiguredProviders}
+        maskedKeys={maskedKeys}
         onKeySaved={(provider) => {
-          checkKeys();
-          if (provider !== "scrimba") {
+          if (provider === "scrimba") {
+            setHasVideoKey(true);
+            if (pendingVideoEnableRef.current) {
+              setIsVideoModeEnabled(true);
+              pendingVideoEnableRef.current = false;
+            }
+          } else {
+            setConfiguredProviders((prev) =>
+              prev.includes(provider) ? prev : [...prev, provider],
+            );
             setSelectedProvider(provider);
             setIsDemoMode(false);
           }
-        }}
-        onKeyCleared={() => {
           checkKeys();
-          setIsDemoMode(true);
+        }}
+        onKeyCleared={(deletedProvider) => {
+          if (deletedProvider === "scrimba") {
+            setHasVideoKey(false);
+            setIsVideoModeEnabled(false);
+          } else if (deletedProvider) {
+            setConfiguredProviders((prev) => {
+              const next = prev.filter((id) => id !== deletedProvider);
+              if (next.length === 0) {
+                setIsDemoMode(true);
+              } else {
+                setSelectedProvider((curr) =>
+                  curr === deletedProvider ? next[0] : curr,
+                );
+              }
+              return next;
+            });
+          } else {
+            setConfiguredProviders([]);
+            setIsDemoMode(true);
+          }
+          checkKeys();
         }}
       />
     </div>

@@ -1326,10 +1326,52 @@ export function useTelemetry() { return {}; }
   });
 
   describe("Video walkthrough integration (AC-2, AC-3, AC-12)", () => {
-    it("toggles video walkthrough generation mode via the input bar toggle button (AC-2)", () => {
+    it("prevents enabling video walkthrough mode when Scrimba key is missing and opens key settings modal", () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ hasKey: false, hasVideoKey: false }),
+      } as unknown as Response);
+
       render(<TracePanel />);
 
       const toggle = screen.getByTestId("video-walkthrough-toggle");
+      expect(toggle.getAttribute("data-active")).toBe("false");
+
+      fireEvent.click(toggle);
+
+      // Mode must not be enabled when Scrimba key is missing
+      expect(toggle.getAttribute("data-active")).toBe("false");
+      expect(toggle.getAttribute("aria-pressed")).toBe("false");
+      expect(
+        screen.queryByText("Video walkthrough enabled"),
+      ).not.toBeInTheDocument();
+
+      // Key settings modal must open with Scrimba selected
+      expect(screen.getByText("Bring Your Own Key (BYOK)")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/enter your scrimba api key/i),
+      ).toBeInTheDocument();
+    });
+
+    it("toggles video walkthrough generation mode via the input bar toggle button when Scrimba key is configured (AC-2)", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          hasKey: false,
+          hasVideoKey: true,
+          videoProvider: "scrimba",
+        }),
+      } as unknown as Response);
+
+      render(<TracePanel />);
+
+      const toggle = screen.getByTestId("video-walkthrough-toggle");
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith("/api/ai/keys");
+      });
+
       expect(toggle).toBeInTheDocument();
       expect(toggle.getAttribute("data-active")).toBe("false");
       expect(toggle.getAttribute("aria-pressed")).toBe("false");
@@ -1387,6 +1429,97 @@ export function useTelemetry() { return {}; }
       fireEvent.click(clearGlowBtn);
       expect(useGraphStore.getState().highlightSource).toBeNull();
       expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
+    });
+  });
+
+  describe("BYOK key validation and multi-model dropdown selection", () => {
+    it("prevents enabling BYOK mode when no key is configured and opens KeySettingsDialog instead", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          hasKey: false,
+          configuredProviders: [],
+          hasVideoKey: false,
+        }),
+      } as unknown as Response);
+
+      render(<TracePanel />);
+
+      const enableByokBtn = screen.getByRole("button", {
+        name: /enable byok/i,
+      });
+      fireEvent.click(enableByokBtn);
+
+      // Must stay in Demo Mode and not show GEMINI
+      expect(screen.getByText("Demo Mode")).toBeInTheDocument();
+      expect(screen.queryByText("GEMINI")).not.toBeInTheDocument();
+
+      // Must immediately open KeySettingsDialog
+      expect(screen.getByText("Bring Your Own Key (BYOK)")).toBeInTheDocument();
+    });
+
+    it("renders interactive multi-model dropdown selector and switches active model for queries", async () => {
+      const fetchMock = vi.fn().mockImplementation((url: string) => {
+        if (url === "/api/ai/keys") {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              hasKey: true,
+              provider: "gemini",
+              configuredProviders: ["gemini", "openai", "claude"],
+              hasVideoKey: false,
+            }),
+          } as unknown as Response);
+        }
+        return Promise.resolve(
+          new Response(
+            'data: {"type":"text","text":"Claude model response."}\n\ndata: {"type":"done"}\n\n',
+            { status: 200 },
+          ),
+        );
+      });
+      global.fetch = fetchMock;
+
+      render(<TracePanel />);
+
+      const dropdownTrigger = await screen.findByTestId(
+        "model-selector-dropdown",
+      );
+      expect(dropdownTrigger).toHaveTextContent("GEMINI");
+
+      fireEvent.click(dropdownTrigger);
+
+      const menu = screen.getByTestId("model-selector-menu");
+      expect(menu).toBeInTheDocument();
+      expect(screen.getByTestId("model-option-gemini")).toBeInTheDocument();
+      expect(screen.getByTestId("model-option-openai")).toBeInTheDocument();
+      expect(screen.getByTestId("model-option-claude")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("model-option-claude"));
+
+      expect(dropdownTrigger).toHaveTextContent("CLAUDE");
+      expect(
+        screen.queryByTestId("model-selector-menu"),
+      ).not.toBeInTheDocument();
+
+      // Send a query and verify it queries the selected claude provider
+      fireEvent.click(
+        screen.getByRole("button", { name: /State management flow/ }),
+      );
+
+      expect(
+        await screen.findByText("Claude model response."),
+      ).toBeInTheDocument();
+
+      const queryCall = fetchMock.mock.calls.find(
+        ([url]) => url === "/api/ai/query",
+      );
+      expect(queryCall).toBeDefined();
+      const body = JSON.parse(queryCall![1].body as string);
+      expect(body.provider).toBe("claude");
+      expect(body.isDemo).toBe(false);
     });
   });
 });

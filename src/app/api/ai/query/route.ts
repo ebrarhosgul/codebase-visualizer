@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { decryptApiKey, AI_KEY_COOKIE_NAME } from "@/lib/ai/crypto";
+import {
+  decryptApiKey,
+  decryptApiKeysMap,
+  AI_KEY_COOKIE_NAME,
+} from "@/lib/ai/crypto";
 import { getAIProvider } from "@/lib/ai/provider-registry";
 import { checkRateLimit } from "@/lib/ai/rate-limiter";
 import { classifyError, sanitizeErrorMessage } from "@/lib/ai/error-classifier";
@@ -124,10 +128,19 @@ export async function POST(req: NextRequest): Promise<Response> {
   let apiKey: string | undefined;
   if (!isDemo) {
     const cookieValue = req.cookies.get(AI_KEY_COOKIE_NAME)?.value;
-    const decrypted = cookieValue ? decryptApiKey(cookieValue) : null;
+    try {
+      const decryptedMap = cookieValue ? decryptApiKeysMap(cookieValue) : null;
 
-    if (decrypted && decrypted.provider === provider) {
-      apiKey = decrypted.apiKey;
+      if (decryptedMap?.keys[provider]) {
+        apiKey = decryptedMap.keys[provider];
+      } else {
+        const decryptedSingle = cookieValue ? decryptApiKey(cookieValue) : null;
+        if (decryptedSingle && decryptedSingle.provider === provider) {
+          apiKey = decryptedSingle.apiKey;
+        }
+      }
+    } catch {
+      apiKey = undefined;
     }
 
     if (!apiKey) {
