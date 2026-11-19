@@ -1,6 +1,5 @@
 import type { Repository, CodebaseGraph, PathTrace } from "@/entities";
 import type { DemoIntent } from "./demo/intents";
-import type { VideoWalkthroughJob } from "./video/types";
 
 export type AiProviderId = "gemini" | "openai" | "claude";
 
@@ -38,7 +37,7 @@ export interface AiFallbackNotice {
   readonly message: string;
   readonly suggestedAction: AiFallbackAction;
   readonly retryAfterSeconds?: number;
-  readonly provider?: AiProviderId | "demo" | "scrimba";
+  readonly provider?: AiProviderId | "demo";
 }
 
 export interface AiQueryMessage {
@@ -53,7 +52,6 @@ export interface AiQueryMessage {
   readonly citations: readonly CitationRef[];
   readonly isPathVerified: boolean;
   readonly provenance?: "heuristic" | "model";
-  readonly videoWalkthrough?: VideoWalkthroughJob | null;
   readonly createdAt: string;
 }
 
