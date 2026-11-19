@@ -1325,113 +1325,6 @@ export function useTelemetry() { return {}; }
     });
   });
 
-  describe("Video walkthrough integration (AC-2, AC-3, AC-12)", () => {
-    it("prevents enabling video walkthrough mode when Scrimba key is missing and opens key settings modal", () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ hasKey: false, hasVideoKey: false }),
-      } as unknown as Response);
-
-      render(<TracePanel />);
-
-      const toggle = screen.getByTestId("video-walkthrough-toggle");
-      expect(toggle.getAttribute("data-active")).toBe("false");
-
-      fireEvent.click(toggle);
-
-      // Mode must not be enabled when Scrimba key is missing
-      expect(toggle.getAttribute("data-active")).toBe("false");
-      expect(toggle.getAttribute("aria-pressed")).toBe("false");
-      expect(
-        screen.queryByText("Video walkthrough enabled"),
-      ).not.toBeInTheDocument();
-
-      // Key settings modal must open with Scrimba selected
-      expect(screen.getByText("Bring Your Own Key (BYOK)")).toBeInTheDocument();
-      expect(
-        screen.getByPlaceholderText(/enter your scrimba api key/i),
-      ).toBeInTheDocument();
-    });
-
-    it("toggles video walkthrough generation mode via the input bar toggle button when Scrimba key is configured (AC-2)", async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          hasKey: false,
-          hasVideoKey: true,
-          videoProvider: "scrimba",
-        }),
-      } as unknown as Response);
-
-      render(<TracePanel />);
-
-      const toggle = screen.getByTestId("video-walkthrough-toggle");
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith("/api/ai/keys");
-      });
-
-      expect(toggle).toBeInTheDocument();
-      expect(toggle.getAttribute("data-active")).toBe("false");
-      expect(toggle.getAttribute("aria-pressed")).toBe("false");
-      expect(toggle.getAttribute("aria-label")).toBe(
-        "Enable video walkthrough",
-      );
-      expect(toggle.getAttribute("title")).toBe("Enable video walkthrough");
-      expect(toggle.querySelector("svg.lucide-video-off")).toBeInTheDocument();
-      expect(screen.getByText("Enable video walkthrough")).toBeInTheDocument();
-      expect(
-        screen.queryByText("Video walkthrough enabled"),
-      ).not.toBeInTheDocument();
-
-      fireEvent.click(toggle);
-      expect(toggle.getAttribute("data-active")).toBe("true");
-      expect(toggle.getAttribute("aria-pressed")).toBe("true");
-      expect(toggle.getAttribute("aria-label")).toBe(
-        "Video walkthrough enabled",
-      );
-      expect(toggle.getAttribute("title")).toBe(
-        "Video walkthrough enabled (click to disable)",
-      );
-      expect(toggle.querySelector("svg.lucide-video")).toBeInTheDocument();
-      expect(screen.getByText("Video walkthrough enabled")).toBeInTheDocument();
-      expect(
-        screen.queryByText("Enable video walkthrough"),
-      ).not.toBeInTheDocument();
-      expect(toggle.className).toContain("bg-accent-subtle");
-      expect(toggle.className).toContain("border-accent-border");
-
-      fireEvent.click(toggle);
-      expect(toggle.getAttribute("data-active")).toBe("false");
-      expect(toggle.getAttribute("aria-pressed")).toBe("false");
-      expect(toggle.getAttribute("aria-label")).toBe(
-        "Enable video walkthrough",
-      );
-      expect(toggle.querySelector("svg.lucide-video-off")).toBeInTheDocument();
-      expect(screen.getByText("Enable video walkthrough")).toBeInTheDocument();
-    });
-
-    it("displays Clear Glow action when video highlights are active and clears them on click (AC-12)", () => {
-      act(() => {
-        useGraphStore.getState().setVideoCueHighlight({
-          nodeIds: ["file:src/index.ts"],
-          edgeIds: [],
-          focalNodeId: "file:src/index.ts",
-        });
-      });
-
-      render(<TracePanel />);
-
-      const clearGlowBtn = screen.getByRole("button", { name: /clear glow/i });
-      expect(clearGlowBtn).toBeInTheDocument();
-
-      fireEvent.click(clearGlowBtn);
-      expect(useGraphStore.getState().highlightSource).toBeNull();
-      expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
-    });
-  });
-
   describe("BYOK key validation and multi-model dropdown selection", () => {
     it("prevents enabling BYOK mode when no key is configured and opens KeySettingsDialog instead", async () => {
       global.fetch = vi.fn().mockResolvedValue({
@@ -1440,7 +1333,6 @@ export function useTelemetry() { return {}; }
         json: async () => ({
           hasKey: false,
           configuredProviders: [],
-          hasVideoKey: false,
         }),
       } as unknown as Response);
 
@@ -1469,7 +1361,6 @@ export function useTelemetry() { return {}; }
               hasKey: true,
               provider: "gemini",
               configuredProviders: ["gemini", "openai", "claude"],
-              hasVideoKey: false,
             }),
           } as unknown as Response);
         }

@@ -9,14 +9,13 @@ import {
   Shield,
   Trash2,
   CheckCircle2,
-  Video,
   MessageSquare,
   Eye,
   EyeOff,
 } from "lucide-react";
 import type { AiProviderId } from "@/lib/ai/types";
 
-export type KeyDialogProviderId = AiProviderId | "scrimba";
+export type KeyDialogProviderId = AiProviderId;
 
 export interface KeySettingsDialogProps {
   readonly open: boolean;
@@ -49,20 +48,6 @@ const CHAT_PROVIDERS: readonly {
     hint: "Requires Anthropic API key.",
   },
 ];
-
-const VIDEO_PROVIDERS: readonly {
-  id: "scrimba";
-  name: string;
-  hint: string;
-}[] = [
-  {
-    id: "scrimba",
-    name: "Scrimba Explain",
-    hint: "Requires personal Scrimba API key starting with scr_live_ for video walkthroughs.",
-  },
-];
-
-const ALL_PROVIDERS = [...CHAT_PROVIDERS, ...VIDEO_PROVIDERS];
 
 function formatMaskedKey(rawKey: string): string {
   const trimmed = rawKey.trim();
@@ -119,7 +104,7 @@ export function KeySettingsDialog({
     }
   }, [maskedKeys]);
 
-  const activeProviderMeta = ALL_PROVIDERS.find(
+  const activeProviderMeta = CHAT_PROVIDERS.find(
     (p) => p.id === selectedProvider,
   );
 
@@ -128,17 +113,6 @@ export function KeySettingsDialog({
     const trimmed = apiKey.trim();
     if (!trimmed) {
       setStatusMessage({ type: "error", text: "Please enter an API key." });
-      return;
-    }
-
-    if (
-      selectedProvider === "scrimba" &&
-      (!trimmed.startsWith("scr_live_") || trimmed.length < 16)
-    ) {
-      setStatusMessage({
-        type: "error",
-        text: "Please enter a valid Scrimba API key starting with scr_live_ (at least 16 characters).",
-      });
       return;
     }
 
@@ -233,34 +207,15 @@ export function KeySettingsDialog({
     setStatusMessage(null);
 
     try {
-      const endpoint =
-        selectedProvider === "scrimba"
-          ? "/api/ai/keys?scope=video"
-          : "/api/ai/keys?scope=chat";
-      const res = await fetch(endpoint, { method: "DELETE" });
+      const res = await fetch("/api/ai/keys?scope=chat", { method: "DELETE" });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
-      if (selectedProvider === "scrimba") {
-        setLocalConfiguredProviders((prev) =>
-          prev.filter((id) => id !== "scrimba"),
-        );
-        setLocalMaskedKeys((prev) => {
-          const next = { ...prev };
-          delete next.scrimba;
-          return next;
-        });
-      } else {
-        setLocalConfiguredProviders((prev) =>
-          prev.filter((id) => id === "scrimba"),
-        );
-        setLocalMaskedKeys((prev) =>
-          prev.scrimba ? { scrimba: prev.scrimba } : {},
-        );
-      }
+      setLocalConfiguredProviders([]);
+      setLocalMaskedKeys({});
       setStatusMessage({
         type: "success",
-        text: `Stored ${selectedProvider === "scrimba" ? "video" : "API"} credentials cleared.`,
+        text: "Stored API credentials cleared.",
       });
       onKeyCleared?.();
     } catch (err: unknown) {
@@ -322,7 +277,7 @@ export function KeySettingsDialog({
           ) : (
             <div className="space-y-1.5">
               {localConfiguredProviders.map((providerId) => {
-                const meta = ALL_PROVIDERS.find((p) => p.id === providerId);
+                const meta = CHAT_PROVIDERS.find((p) => p.id === providerId);
                 const label = meta?.name ?? providerId;
                 const masked = localMaskedKeys[providerId];
 
@@ -411,59 +366,11 @@ export function KeySettingsDialog({
           </div>
         </div>
 
-        {/* Video Provider Section */}
+        {/* API key input */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-text-primary flex items-center gap-1.5">
-            <Video className="w-3.5 h-3.5 text-text-secondary" />
-            <span>Video Provider</span>
-          </label>
-          <div className="grid grid-cols-1 gap-2">
-            {VIDEO_PROVIDERS.map((p) => {
-              const isSelected = selectedProvider === p.id;
-              const isConfigured = localConfiguredProviders.includes(p.id);
-              return (
-                <button
-                  type="button"
-                  key={p.id}
-                  data-testid={`provider-radio-${p.id}`}
-                  data-selected={isSelected}
-                  data-configured={isConfigured}
-                  onClick={() => {
-                    setSelectedProvider(p.id);
-                    setStatusMessage(null);
-                  }}
-                  className={`p-2 rounded-md border text-left text-xs transition-colors cursor-pointer ${
-                    isSelected
-                      ? "border-accent-border bg-surface-active text-text-primary font-medium"
-                      : "border-border-default bg-surface-canvas text-text-secondary hover:text-text-primary hover:border-border-strong"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span>{p.name}</span>
-                      {isConfigured && (
-                        <CheckCircle2
-                          className="w-3 h-3 text-status-success shrink-0"
-                          data-testid={`provider-configured-${p.id}`}
-                          aria-label={`${p.name} key configured`}
-                        />
-                      )}
-                    </div>
-                    <span className="text-[10px] text-text-muted font-mono">
-                      scr_live_...
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
           <p className="text-[11px] text-text-muted pt-0.5">
             {activeProviderMeta?.hint}
           </p>
-        </div>
-
-        {/* API key input */}
-        <div className="space-y-1.5">
           <label className="text-xs font-medium text-text-primary flex items-center gap-1.5">
             <Key className="w-3.5 h-3.5 text-text-secondary" />
             <span>API Key</span>
@@ -471,11 +378,7 @@ export function KeySettingsDialog({
           <div className="relative flex items-center">
             <Input
               type={showApiKey ? "text" : "password"}
-              placeholder={
-                selectedProvider === "scrimba"
-                  ? "Enter your Scrimba API key (scr_live_...)"
-                  : `Enter your ${selectedProvider} API key...`
-              }
+              placeholder={`Enter your ${selectedProvider} API key...`}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               className="w-full text-xs pr-8"

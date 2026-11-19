@@ -15,8 +15,6 @@ import {
   KeySettingsDialog,
   type KeyDialogProviderId,
 } from "./key-settings-dialog";
-import { VideoWalkthroughPlayer } from "./video-walkthrough-player";
-import { useVideoWalkthrough } from "@/hooks/use-video-walkthrough";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,8 +30,6 @@ import {
   ArrowRight,
   Copy,
   Check,
-  Video,
-  VideoOff,
   ChevronDown,
 } from "lucide-react";
 import type {
@@ -89,15 +85,10 @@ export function TracePanel(): React.JSX.Element {
   const [isKeyDialogOpen, setIsKeyDialogOpen] = useState(false);
   const [keyDialogInitialProvider, setKeyDialogInitialProvider] =
     useState<KeyDialogProviderId>("gemini");
-  const [hasVideoKey, setHasVideoKey] = useState(false);
-  const [isVideoModeEnabled, setIsVideoModeEnabled] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   const modelDropdownRef = useRef<HTMLDivElement>(null);
-  const pendingVideoEnableRef = useRef(false);
-  const isVideoModeEnabledRef = useRef(isVideoModeEnabled);
-  isVideoModeEnabledRef.current = isVideoModeEnabled;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isStreaming, streamQuery, abortQuery } = useAiQueryStream();
@@ -231,12 +222,6 @@ export function TracePanel(): React.JSX.Element {
         } else {
           setIsDemoMode(true);
         }
-
-        const videoKeyPresent = Boolean(data.hasVideoKey);
-        setHasVideoKey(videoKeyPresent);
-        if (!videoKeyPresent) {
-          setIsVideoModeEnabled(false);
-        }
       })
       .catch(() => {
         // Silently default if check fails
@@ -260,34 +245,6 @@ export function TracePanel(): React.JSX.Element {
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [isModelDropdownOpen]);
-
-  const allConfiguredProviders = useMemo<readonly KeyDialogProviderId[]>(
-    () => [
-      ...configuredProviders,
-      ...(hasVideoKey ? (["scrimba"] as const) : []),
-    ],
-    [configuredProviders, hasVideoKey],
-  );
-
-  const { startWalkthrough, cancelWalkthrough, refreshVideoUrl } =
-    useVideoWalkthrough({
-      repositoryFullName: repository?.fullName,
-      graph,
-      hasVideoKey,
-      onJobUpdate: (messageId, job) => {
-        setMessages((prevMsgs) => {
-          const updated = prevMsgs.map((m) =>
-            m.id === messageId ? { ...m, videoWalkthrough: job } : m,
-          );
-          saveMessages(updated);
-          return updated;
-        });
-      },
-      onOpenKeySettings: (provider) => {
-        setKeyDialogInitialProvider(provider ?? "scrimba");
-        setIsKeyDialogOpen(true);
-      },
-    });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -625,16 +582,13 @@ export function TracePanel(): React.JSX.Element {
     const finalContent = pendingTextRef.current || currentTextRef.current;
     if (assistantId) {
       setMessages((prev) => {
-        let completedMessage: AiQueryMessage | null = null;
         const updated = prev.map((m) => {
           if (m.id !== assistantId) return m;
-          const completed: AiQueryMessage = {
+          return {
             ...m,
             content: finalContent || m.content,
             status: "complete" as const,
           };
-          completedMessage = completed;
-          return completed;
         });
         if (typeof window !== "undefined") {
           try {
@@ -643,25 +597,14 @@ export function TracePanel(): React.JSX.Element {
             // ignore
           }
         }
-        if (
-          completedMessage &&
-          isVideoModeEnabledRef.current &&
-          !(completedMessage as AiQueryMessage).videoWalkthrough
-        ) {
-          const msgToTrigger = completedMessage;
-          setTimeout(() => {
-            startWalkthrough(msgToTrigger);
-          }, 50);
-        }
         return updated;
       });
     }
     activeAssistantIdRef.current = null;
     abortQuery();
-  }, [abortQuery, storageKey, startWalkthrough]);
+  }, [abortQuery, storageKey]);
 
   const handleClearChat = () => {
-    cancelWalkthrough();
     if (rafIdRef.current !== null && typeof window !== "undefined") {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
@@ -688,20 +631,6 @@ export function TracePanel(): React.JSX.Element {
       setIsModelDropdownOpen(false);
       setIsDemoMode(true);
     }
-  };
-
-  const handleToggleVideoWalkthrough = () => {
-    if (isVideoModeEnabled) {
-      setIsVideoModeEnabled(false);
-      return;
-    }
-    if (!hasVideoKey) {
-      pendingVideoEnableRef.current = true;
-      setKeyDialogInitialProvider("scrimba");
-      setIsKeyDialogOpen(true);
-      return;
-    }
-    setIsVideoModeEnabled(true);
   };
 
   const availableModels: readonly AiProviderId[] =
@@ -794,9 +723,7 @@ export function TracePanel(): React.JSX.Element {
         </div>
 
         <div className="flex items-center gap-1">
-          {(Boolean(activeTrace) ||
-            highlightSource === "answer" ||
-            highlightSource === "video") && (
+          {(Boolean(activeTrace) || highlightSource === "answer") && (
             <Button
               variant="ghost"
               size="sm"
@@ -1109,36 +1036,6 @@ export function TracePanel(): React.JSX.Element {
                     onAddKey={() => setIsKeyDialogOpen(true)}
                   />
                 )}
-
-                {/* AI Video Walkthrough Section (AC-2, AC-3, AC-7) */}
-                {msg.role === "assistant" && msg.status === "complete" && (
-                  <div className="mt-2.5 pt-2 border-t border-border-subtle">
-                    {msg.videoWalkthrough ? (
-                      <VideoWalkthroughPlayer
-                        job={msg.videoWalkthrough}
-                        onShowAllNodes={handleShowAll}
-                        onOpenKeys={() => {
-                          setKeyDialogInitialProvider("scrimba");
-                          setIsKeyDialogOpen(true);
-                        }}
-                        onRetry={() => startWalkthrough(msg)}
-                        onRefreshUrl={() => refreshVideoUrl(msg)}
-                      />
-                    ) : (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => startWalkthrough(msg)}
-                        data-testid="generate-walkthrough-btn"
-                        className="h-6 px-2 text-[10px] gap-1.5 text-text-secondary hover:text-text-primary"
-                        title="Generate an interactive video walkthrough synchronized with graph nodes"
-                      >
-                        <Video className="w-3 h-3 text-accent-text" />
-                        <span>Generate Video Walkthrough</span>
-                      </Button>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           ))
@@ -1158,66 +1055,14 @@ export function TracePanel(): React.JSX.Element {
 
       {/* Query input footer */}
       <div className="p-3 border-t border-border-subtle bg-surface-panel">
-        <div className="flex items-center justify-between pb-2">
-          {isDemoMode ? (
-            <div
-              data-testid="demo-answer-footer"
-              className="text-[10px] text-text-muted font-mono"
-            >
-              Zero cost offline demo mode active
-            </div>
-          ) : (
-            <div />
-          )}
-
-          <button
-            type="button"
-            onClick={handleToggleVideoWalkthrough}
-            data-testid="video-walkthrough-toggle"
-            data-active={isVideoModeEnabled}
-            aria-pressed={isVideoModeEnabled}
-            aria-label={
-              isVideoModeEnabled
-                ? "Video walkthrough enabled"
-                : "Enable video walkthrough"
-            }
-            title={
-              isVideoModeEnabled
-                ? "Video walkthrough enabled (click to disable)"
-                : "Enable video walkthrough"
-            }
-            className={`group relative flex items-center h-7 rounded-md text-[11px] font-medium transition-all duration-300 ease-out cursor-pointer border overflow-hidden select-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-border-focus ${
-              isVideoModeEnabled
-                ? "bg-accent-subtle text-accent-text border-accent-border px-2.5 py-1 shadow-xs hover:border-accent-primary hover:bg-accent-subtle/80"
-                : "bg-surface-panel-secondary text-text-muted border-border-default hover:text-text-primary hover:border-border-strong hover:bg-surface-hover px-2 hover:px-2.5 py-1"
-            }`}
+        {isDemoMode && (
+          <div
+            data-testid="demo-answer-footer"
+            className="text-[10px] text-text-muted text-center pb-2 font-mono"
           >
-            {isVideoModeEnabled ? (
-              <>
-                <span className="relative flex items-center justify-center shrink-0">
-                  <Video
-                    className="w-3.5 h-3.5 text-accent-text"
-                    aria-hidden="true"
-                  />
-                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-accent-text" />
-                </span>
-                <span className="ml-1.5 whitespace-nowrap text-accent-text font-medium">
-                  Video walkthrough enabled
-                </span>
-              </>
-            ) : (
-              <>
-                <VideoOff
-                  className="w-3.5 h-3.5 shrink-0 text-text-muted group-hover:text-text-secondary transition-colors duration-200"
-                  aria-hidden="true"
-                />
-                <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 group-hover:ml-1.5 group-focus-visible:max-w-xs group-focus-visible:opacity-100 group-focus-visible:ml-1.5 transition-all duration-300 ease-out whitespace-nowrap overflow-hidden text-text-secondary">
-                  Enable video walkthrough
-                </span>
-              </>
-            )}
-          </button>
-        </div>
+            Zero cost offline demo mode active
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -1278,36 +1123,20 @@ export function TracePanel(): React.JSX.Element {
       {/* BYOK Key Settings Dialog */}
       <KeySettingsDialog
         open={isKeyDialogOpen}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            pendingVideoEnableRef.current = false;
-          }
-          setIsKeyDialogOpen(nextOpen);
-        }}
+        onOpenChange={setIsKeyDialogOpen}
         initialProvider={keyDialogInitialProvider}
-        configuredProviders={allConfiguredProviders}
+        configuredProviders={configuredProviders}
         maskedKeys={maskedKeys}
         onKeySaved={(provider) => {
-          if (provider === "scrimba") {
-            setHasVideoKey(true);
-            if (pendingVideoEnableRef.current) {
-              setIsVideoModeEnabled(true);
-              pendingVideoEnableRef.current = false;
-            }
-          } else {
-            setConfiguredProviders((prev) =>
-              prev.includes(provider) ? prev : [...prev, provider],
-            );
-            setSelectedProvider(provider);
-            setIsDemoMode(false);
-          }
+          setConfiguredProviders((prev) =>
+            prev.includes(provider) ? prev : [...prev, provider],
+          );
+          setSelectedProvider(provider);
+          setIsDemoMode(false);
           checkKeys();
         }}
         onKeyCleared={(deletedProvider) => {
-          if (deletedProvider === "scrimba") {
-            setHasVideoKey(false);
-            setIsVideoModeEnabled(false);
-          } else if (deletedProvider) {
+          if (deletedProvider) {
             setConfiguredProviders((prev) => {
               const next = prev.filter((id) => id !== deletedProvider);
               if (next.length === 0) {
