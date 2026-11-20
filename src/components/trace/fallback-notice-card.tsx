@@ -136,7 +136,7 @@ export function FallbackNoticeCard({
       role="alert"
       aria-live="polite"
       className={cn(
-        "mt-2 p-3 rounded-lg border text-xs space-y-2.5 transition-colors",
+        "mt-4 p-4 rounded-lg border text-sm space-y-3",
         style.border,
         style.bg,
         className,
@@ -154,20 +154,20 @@ export function FallbackNoticeCard({
         </div>
         <Badge
           variant={style.badgeVariant}
-          className="text-[10px] h-4.5 px-1.5 uppercase font-mono"
+          className="text-xs h-4.5 px-1.5 uppercase font-mono"
         >
           {notice.code.replace("_", " ")}
         </Badge>
       </div>
 
       {/* Description message */}
-      <p className="text-[11px] leading-relaxed text-text-secondary">
+      <p className="text-xs leading-relaxed text-text-secondary">
         {notice.message}
       </p>
 
       {/* Rate limit countdown and auto retry checkbox */}
       {notice.code === "rate_limit" && (
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-1 border-t border-border-subtle text-[11px]">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-1 border-t border-border-subtle text-xs">
           <div className="flex items-center gap-1.5 text-status-warning font-medium">
             <Clock className="w-3.5 h-3.5" />
             <span>
@@ -177,7 +177,7 @@ export function FallbackNoticeCard({
             </span>
           </div>
 
-          <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-text-muted hover:text-text-secondary">
+          <label className="flex items-center gap-1.5 cursor-pointer text-xs text-text-muted hover:text-text-secondary">
             <input
               type="checkbox"
               checked={autoRetry}

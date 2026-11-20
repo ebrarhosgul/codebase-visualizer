@@ -71,7 +71,7 @@ describe("FileNodeCard", () => {
       <FileNodeCard {...baseNodeProps} selected={true} />,
     );
     const card = container.querySelector("[role='article']");
-    expect(card?.className).toContain("ring-2");
+    expect(card?.className).toContain("outline-2");
   });
 
   it("renders directory node correctly", () => {
@@ -410,27 +410,27 @@ describe("getMinimapNodeColor", () => {
         position: { x: 0, y: 0 },
         data: { entityType: "file" },
       }),
-    ).toBe("#38bdf8");
+    ).toBe("var(--border-strong)");
     expect(
       getMinimapNodeColor({
         id: "2",
         position: { x: 0, y: 0 },
         data: { entityType: "symbol" },
       }),
-    ).toBe("#a78bfa");
+    ).toBe("var(--border-strong)");
     expect(
       getMinimapNodeColor({
         id: "3",
         position: { x: 0, y: 0 },
         data: { entityType: "directory" },
       }),
-    ).toBe("#64748b");
+    ).toBe("var(--border-strong)");
     expect(
       getMinimapNodeColor({
         id: "4",
         position: { x: 0, y: 0 },
         data: { entityType: "external" },
       }),
-    ).toBe("#f59e0b");
+    ).toBe("var(--border-strong)");
   });
 });

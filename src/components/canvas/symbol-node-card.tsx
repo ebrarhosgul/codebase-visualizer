@@ -68,10 +68,10 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
       data-node-id={id}
       data-selected={Boolean(selected)}
       className={cn(
-        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-colors duration-150 shadow-xs",
+        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none",
         "bg-surface-card border",
         selected
-          ? "border-[var(--accent-primary)] ring-1 ring-[var(--accent-primary)]/50 z-20"
+          ? "border-accent-border outline-2 outline-accent-border outline-offset-2 z-20"
           : isHovered
             ? "border-border-strong bg-surface-card/90 z-10"
             : "border-border-default hover:border-border-strong",
@@ -85,7 +85,7 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="p-1 rounded-md bg-surface-panel-secondary border border-border-default shrink-0 text-text-secondary">
+          <div className="shrink-0 text-text-secondary">
             <Icon className="w-3.5 h-3.5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
@@ -95,21 +95,21 @@ export const SymbolNodeCard = React.memo(function SymbolNodeCard({
             >
               {symbol.name}
             </h4>
-            <p className="text-[10px] text-text-muted truncate font-mono">
+            <p className="text-xs text-text-muted truncate font-mono">
               {symbol.signature || kind}
             </p>
           </div>
         </div>
         <Badge
           variant={badgeVariant}
-          className="shrink-0 text-[10px] font-mono px-1.5 py-0.2"
+          className="shrink-0 text-xs font-mono px-1.5 py-0.2"
         >
           {kind}
         </Badge>
       </div>
 
       {symbol.isExported && (
-        <div className="mt-2 pt-1 border-t border-border-default flex items-center justify-between text-[10px] text-text-secondary font-mono">
+        <div className="mt-2 pt-1 border-t border-border-default flex items-center justify-between text-xs text-text-secondary font-mono">
           <span>exported</span>
           <span className="text-status-success text-[9px] uppercase font-mono">
             {symbol.visibility}

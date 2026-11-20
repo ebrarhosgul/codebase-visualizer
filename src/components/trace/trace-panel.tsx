@@ -251,7 +251,7 @@ export function TracePanel(): React.JSX.Element {
   };
 
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0) scrollToBottom();
   }, [messages, isStreaming]);
 
   // Dual action citation navigation (AC-6)
@@ -644,20 +644,17 @@ export function TracePanel(): React.JSX.Element {
 
   return (
     <div
-      className="flex flex-col h-full w-full bg-surface-panel select-none text-xs overflow-hidden"
+      className="flex flex-col h-full w-full bg-surface-panel text-sm overflow-hidden"
       data-testid="trace-panel"
     >
       {/* Top action header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle bg-surface-panel">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-text-secondary" />
-          <span className="font-semibold text-text-primary">
-            Semantic Trace
-          </span>
+      <div className="flex min-h-14 items-center justify-between gap-2 px-5 py-3 border-b border-border-subtle bg-surface-panel">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="font-semibold text-text-primary">Assistant</span>
           {isDemoMode ? (
             <Badge
               variant="default"
-              className="text-[10px] h-4.5 px-1.5"
+              className="text-xs px-2 py-1 whitespace-nowrap"
               title="Answers are computed from the loaded dependency graph in your browser. No AI model is involved."
             >
               Demo Mode
@@ -730,8 +727,9 @@ export function TracePanel(): React.JSX.Element {
               onClick={clearTrace}
               className="h-6 px-1.5 text-[10px] text-text-secondary hover:text-text-primary"
               title="Clear active trace or highlight glow on canvas"
+              aria-label="Clear Glow"
             >
-              Clear Glow
+              Clear
             </Button>
           )}
 
@@ -740,10 +738,11 @@ export function TracePanel(): React.JSX.Element {
             size="sm"
             onClick={handleToggleByokMode}
             data-testid="toggle-byok-btn"
-            className="h-6 px-2 text-[10px] text-text-secondary hover:text-text-primary"
+            aria-label={isDemoMode ? "Enable BYOK" : "Switch to Demo"}
+            className="h-8 px-2 text-xs text-text-secondary hover:text-text-primary"
             title="Toggle between Zero Cost Demo and Live BYOK"
           >
-            {isDemoMode ? "Enable BYOK" : "Switch to Demo"}
+            {isDemoMode ? "Use AI" : "Use demo"}
           </Button>
 
           <Button
@@ -754,8 +753,9 @@ export function TracePanel(): React.JSX.Element {
               setIsKeyDialogOpen(true);
             }}
             data-testid="open-key-settings-btn"
-            className="h-6 w-6 p-0 text-text-secondary hover:text-text-primary"
+            className="h-8 w-8 p-0 text-text-secondary hover:text-text-primary"
             title="Configure API Keys"
+            aria-label="Configure API Keys"
           >
             <Key className="w-3.5 h-3.5" />
           </Button>
@@ -765,8 +765,9 @@ export function TracePanel(): React.JSX.Element {
               variant="ghost"
               size="sm"
               onClick={handleClearChat}
-              className="h-6 w-6 p-0 text-text-muted hover:text-red-400"
+              className="h-8 w-8 p-0 text-text-muted hover:text-status-error"
               title="Clear thread history"
+              aria-label="Clear thread history"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
@@ -787,24 +788,24 @@ export function TracePanel(): React.JSX.Element {
 
       {/* Message history container */}
       <div
-        className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4"
+        className="flex-1 min-h-0 overflow-y-auto px-5 py-6 space-y-7"
         data-testid="chat-messages-container"
       >
         {messages.length === 0 ? (
-          <div className="py-6 text-center space-y-3">
-            <div className="w-10 h-10 mx-auto rounded-full bg-surface-panel-secondary border border-border-default flex items-center justify-center text-text-secondary">
+          <div className="py-6 text-left space-y-5">
+            <div className="w-10 h-10 rounded-lg bg-surface-panel-secondary flex items-center justify-center text-text-primary">
               <Compass className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-medium text-text-primary">
-                Ask Architectural Questions
+              <div className="text-lg font-semibold tracking-tight text-text-primary">
+                Get to know this codebase
               </div>
-              <p className="text-[11px] text-text-secondary max-w-xs mx-auto mt-1">
+              <p className="text-sm leading-6 text-text-secondary max-w-sm mt-2">
                 Explore module dependencies and visual call paths in natural
                 language.
               </p>
               {!graph && (
-                <p className="text-[11px] text-text-muted mt-1">
+                <p className="text-sm text-text-muted mt-2">
                   Load a repository to ask questions.
                 </p>
               )}
@@ -827,10 +828,10 @@ export function TracePanel(): React.JSX.Element {
               }`}
             >
               <div
-                className={`max-w-[90%] rounded-lg p-3 text-xs ${
+                className={`max-w-[94%] text-sm leading-6 ${
                   msg.role === "user"
-                    ? "bg-surface-active text-text-primary border border-border-strong rounded-br-none"
-                    : "bg-surface-card border border-border-default text-text-primary rounded-bl-none shadow-xs"
+                    ? "rounded-2xl rounded-br-sm bg-surface-active px-4 py-3 text-text-primary"
+                    : "w-full text-text-primary"
                 }`}
                 data-testid={
                   msg.role === "user"
@@ -846,17 +847,17 @@ export function TracePanel(): React.JSX.Element {
                   </div>
                 ) : (
                   <div>
-                    <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-border-subtle text-[10px] text-text-muted">
+                    <div className="flex items-center justify-between mb-3 text-xs text-text-muted">
                       <div className="flex items-center gap-1.5 font-medium text-text-secondary">
                         <Sparkles className="w-3 h-3 text-text-secondary" />
-                        <span>Semantic Assistant</span>
+                        <span>Codebase assistant</span>
                       </div>
                       {msg.content && msg.status !== "streaming" && (
                         <button
                           type="button"
                           onClick={() => handleCopyMessage(msg.content, msg.id)}
                           data-testid="copy-response-btn"
-                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] text-text-secondary hover:text-text-primary hover:bg-surface-active transition-colors cursor-pointer"
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-text-secondary hover:text-text-primary hover:bg-surface-active transition-colors cursor-pointer"
                           title="Copy response"
                           aria-label={
                             copiedMessageId === msg.id
@@ -887,16 +888,6 @@ export function TracePanel(): React.JSX.Element {
                       knownFilePaths={knownFilePaths}
                       onFileClick={handleDirectFileNavigation}
                     />
-
-                    {isDemoMode && (
-                      <div
-                        data-testid="demo-answer-footer"
-                        className="mt-2 pt-1.5 border-t border-zinc-800/40 text-[10px] text-zinc-500 font-mono"
-                      >
-                        Generated in offline demo mode using topological
-                        heuristics.
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -1054,23 +1045,16 @@ export function TracePanel(): React.JSX.Element {
       )}
 
       {/* Query input footer */}
-      <div className="p-3 border-t border-border-subtle bg-surface-panel">
-        {isDemoMode && (
-          <div
-            data-testid="demo-answer-footer"
-            className="text-[10px] text-text-muted text-center pb-2 font-mono"
-          >
-            Zero cost offline demo mode active
-          </div>
-        )}
+      <div className="px-5 pb-5 pt-3 bg-surface-panel">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleSend();
           }}
-          className="flex items-end gap-2"
+          className="flex items-end gap-2 rounded-xl border border-border-default bg-surface-panel-secondary p-2 focus-within:border-border-focus"
         >
           <textarea
+            aria-label="Ask about this codebase"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
@@ -1086,7 +1070,7 @@ export function TracePanel(): React.JSX.Element {
             }
             disabled={!graph || isStreaming}
             rows={2}
-            className="flex-1 p-2 rounded-md bg-surface-canvas border border-border-default text-xs text-text-primary placeholder:text-text-muted focus:outline-hidden focus:border-accent-primary focus:ring-1 focus:ring-border-focus/30 resize-none disabled:opacity-50 transition-all"
+            className="flex-1 min-w-0 bg-transparent px-2 py-2 text-sm leading-6 text-text-primary placeholder:text-text-muted focus:outline-none resize-none disabled:opacity-50"
             data-testid="trace-chat-input"
           />
 
@@ -1097,7 +1081,7 @@ export function TracePanel(): React.JSX.Element {
               size="sm"
               onClick={handleStopQuery}
               data-testid="trace-stop-btn"
-              className="h-14 px-3 shrink-0 gap-1"
+              className="h-10 px-3 shrink-0 gap-2"
               title="Stop response"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
@@ -1110,7 +1094,7 @@ export function TracePanel(): React.JSX.Element {
               size="sm"
               disabled={!graph || !prompt.trim()}
               data-testid="trace-submit-btn"
-              className="h-14 px-3 shrink-0 gap-1"
+              className="h-10 px-3 shrink-0 gap-2"
               title="Send query (Enter)"
             >
               <Send className="w-3.5 h-3.5" />
@@ -1118,6 +1102,9 @@ export function TracePanel(): React.JSX.Element {
             </Button>
           )}
         </form>
+        <p className="mt-2 px-1 text-xs text-text-muted">
+          Enter to send · Shift + Enter for a new line
+        </p>
       </div>
 
       {/* BYOK Key Settings Dialog */}

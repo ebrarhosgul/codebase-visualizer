@@ -335,7 +335,7 @@ export const FolderTree = React.memo(function FolderTree({
                 toggleFolder(node.id);
               }
             }}
-            className="flex items-center justify-between py-1 px-1.5 rounded-sm text-xs hover:bg-[var(--surface-hover)] cursor-pointer group transition-colors"
+            className="flex items-center justify-between py-1.5 px-2 rounded-md text-xs hover:bg-[var(--surface-hover)] cursor-pointer group transition-colors"
             style={{ paddingLeft: `${indentPx}px` }}
             aria-expanded={isExpanded}
             aria-label={`Folder ${node.name}`}
@@ -356,13 +356,13 @@ export const FolderTree = React.memo(function FolderTree({
                 <Folder className="w-3.5 h-3.5 text-text-muted shrink-0" />
               )}
               <span
-                className="font-mono text-[11px] font-medium text-text-secondary group-hover:text-text-primary truncate"
+                className="font-mono text-xs font-medium text-text-secondary group-hover:text-text-primary truncate"
                 title={node.path}
               >
                 {node.name}
               </span>
             </div>
-            <span className="text-[9px] font-mono text-text-muted bg-surface-hover border border-border-strong px-1 py-0.2 rounded-sm shrink-0">
+            <span className="text-xs font-mono text-text-muted px-1 py-0.2 rounded-sm shrink-0">
               {node.children.length}
             </span>
           </div>
@@ -389,7 +389,7 @@ export const FolderTree = React.memo(function FolderTree({
         <div key={node.id} style={{ paddingLeft: `${indentPx}px` }}>
           <Tooltip content="Not allowed yet" side="right">
             <div
-              className="flex items-center justify-between py-1 px-1.5 rounded-sm text-xs opacity-65 cursor-not-allowed hover:bg-surface-hover select-none transition-opacity group"
+              className="flex items-center justify-between py-1.5 px-2 rounded-md text-xs opacity-65 cursor-not-allowed hover:bg-surface-hover select-none transition-opacity group"
               tabIndex={-1}
               role="button"
               aria-disabled={true}
@@ -406,7 +406,7 @@ export const FolderTree = React.memo(function FolderTree({
                   )}
                 />
                 <span
-                  className="font-mono text-[11px] truncate text-text-secondary group-hover:text-text-primary"
+                  className="font-mono text-xs truncate text-text-secondary group-hover:text-text-primary"
                   title={node.path}
                 >
                   {node.name}
@@ -414,7 +414,7 @@ export const FolderTree = React.memo(function FolderTree({
               </div>
               <span
                 className={cn(
-                  "text-[9px] font-mono px-1 py-0.2 rounded-sm border shrink-0",
+                  "text-xs font-mono px-1 py-0.2 rounded-sm border shrink-0",
                   style.badgeClass,
                 )}
               >
@@ -442,7 +442,7 @@ export const FolderTree = React.memo(function FolderTree({
             }
           }}
           className={cn(
-            "flex items-center justify-between py-1 px-1.5 rounded-sm text-xs cursor-pointer select-none transition-colors group",
+            "flex items-center justify-between py-1.5 px-2 rounded-md text-xs cursor-pointer select-none transition-colors group",
             isSelected
               ? "bg-surface-active text-text-primary font-medium border-l-2 border-[var(--accent-primary)]"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-hover",
@@ -461,7 +461,7 @@ export const FolderTree = React.memo(function FolderTree({
             />
             <span
               className={cn(
-                "font-mono text-[11px] truncate",
+                "font-mono text-xs truncate",
                 isSelected
                   ? "text-text-primary font-medium"
                   : "text-text-secondary group-hover:text-text-primary",
@@ -473,7 +473,7 @@ export const FolderTree = React.memo(function FolderTree({
           </div>
           <span
             className={cn(
-              "text-[9px] font-mono px-1.5 py-0.5 rounded-sm border shrink-0",
+              "text-xs font-mono px-1.5 py-0.5 rounded-sm shrink-0",
               style.badgeClass,
             )}
           >
@@ -491,9 +491,7 @@ export const FolderTree = React.memo(function FolderTree({
     >
       {/* Folder Tree Action Toolbar */}
       <div className="flex items-center justify-between px-1 py-1 mb-1 border-b border-border-subtle text-[11px] text-text-muted">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-text-secondary">
-          Folders & Files
-        </span>
+        <span className="text-xs font-semibold text-text-secondary">Files</span>
         <div className="flex items-center gap-1">
           {onToggleShowAllFiles && (
             <Tooltip
@@ -508,7 +506,7 @@ export const FolderTree = React.memo(function FolderTree({
                 type="button"
                 onClick={onToggleShowAllFiles}
                 className={cn(
-                  "flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-mono border transition-colors cursor-pointer",
+                  "flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-xs border transition-colors cursor-pointer",
                   showAllFiles
                     ? "bg-surface-active border-border-strong text-text-primary"
                     : "bg-surface-panel-secondary/60 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-hover",
@@ -528,7 +526,7 @@ export const FolderTree = React.memo(function FolderTree({
             size="sm"
             label="Expand all folders"
             onClick={expandAll}
-            className="w-5 h-5 p-0.5 text-text-muted hover:text-text-primary"
+            className="w-7 h-7 p-1 text-text-muted hover:text-text-primary"
             data-testid="tree-expand-all"
           />
           <IconButton
@@ -537,7 +535,7 @@ export const FolderTree = React.memo(function FolderTree({
             size="sm"
             label="Collapse all folders"
             onClick={collapseAll}
-            className="w-5 h-5 p-0.5 text-text-muted hover:text-text-primary"
+            className="w-7 h-7 p-1 text-text-muted hover:text-text-primary"
             data-testid="tree-collapse-all"
           />
         </div>

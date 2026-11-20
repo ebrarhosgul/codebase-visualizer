@@ -74,7 +74,9 @@ describe("ArchitectureCanvas", () => {
   it("renders empty canvas welcome state when no graph is loaded", () => {
     render(<ArchitectureCanvas />);
     expect(screen.getByTestId("canvas-empty-state")).toBeInTheDocument();
-    expect(screen.getByText("Architecture Graph Canvas")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Understand how your code fits together/),
+    ).toBeInTheDocument();
   });
 
   it("renders interactive React Flow canvas when graph is loaded in store", () => {
@@ -384,11 +386,9 @@ describe("ArchitectureCanvas", () => {
     useGraphStore.setState({ isIngesting: true });
     render(<ArchitectureCanvas />);
 
+    expect(screen.getByText("Your map is taking shape")).toBeInTheDocument();
     expect(
-      screen.getByText("Analyzing Codebase Architecture..."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Streaming repository archive and parsing/i),
+      screen.getByText(/exploring the repository and mapping/i),
     ).toBeInTheDocument();
   });
 
@@ -667,7 +667,7 @@ describe("ArchitectureCanvas", () => {
     // Verify both are housed in a shared flex container preventing horizontal overlap
     const controlsContainer = nav.closest(".pointer-events-none");
     expect(controlsContainer).toBeInTheDocument();
-    expect(controlsContainer).toHaveClass("flex", "justify-between", "gap-3");
+    expect(controlsContainer).toHaveClass("flex", "flex-col", "gap-2");
     expect(controlsContainer).toContainElement(toolbar);
 
     // Toolbar wrapper must not shrink
@@ -771,7 +771,7 @@ describe("ArchitectureCanvas", () => {
     expect(useGraphStore.getState().hoveredNodeId).toBe("file:src/b.ts");
   });
 
-  it("applies high contrast hex colors and marker configuration to active outgoing and incoming edges", () => {
+  it("applies theme aware colors and marker configuration to active outgoing and incoming edges", () => {
     const mockGraph = {
       schemaVersion: 1,
       repository: {
@@ -874,9 +874,9 @@ describe("ArchitectureCanvas", () => {
       (e: Edge) => e.source === "file:src/a.ts",
     );
     expect(idleEdgeAB).toBeDefined();
-    expect(idleEdgeAB?.style?.stroke).toBe("#475569");
+    expect(idleEdgeAB?.style?.stroke).toBe("var(--border-strong)");
     const idleMarker = idleEdgeAB?.markerEnd as { color?: string } | undefined;
-    expect(idleMarker?.color).toBe("rgba(100, 116, 139, 0.6)");
+    expect(idleMarker?.color).toBe("#918ba8");
     // Ensure marker colors use valid hex without CSS var syntax that corrupts SVG marker URLs
     expect(idleMarker?.color).not.toContain("var(");
 
@@ -897,23 +897,23 @@ describe("ArchitectureCanvas", () => {
     );
 
     expect(outgoingEdge).toBeDefined();
-    expect(outgoingEdge?.animated).toBe(true);
-    expect(outgoingEdge?.style?.stroke).toBe("#38bdf8");
+    expect(outgoingEdge?.animated).toBe(false);
+    expect(outgoingEdge?.style?.stroke).toBe("var(--accent-border)");
     expect(outgoingEdge?.style?.strokeWidth).toBe(3);
     expect(outgoingEdge?.style?.strokeOpacity).toBe(1);
-    expect(outgoingEdge?.style?.filter).toContain("drop-shadow");
+    expect(outgoingEdge?.style?.filter).toBeUndefined();
     const outgoingMarker = outgoingEdge?.markerEnd as
       { color?: string } | undefined;
-    expect(outgoingMarker?.color).toBe("#38bdf8");
+    expect(outgoingMarker?.color).toBe("#b59aff");
     expect(outgoingMarker?.color).not.toContain("var(");
 
     expect(dimmedEdge).toBeDefined();
     expect(dimmedEdge?.animated).toBe(false);
-    expect(dimmedEdge?.style?.stroke).toBe("#1e293b");
+    expect(dimmedEdge?.style?.stroke).toBe("var(--border-strong)");
     expect(dimmedEdge?.style?.strokeOpacity).toBe(0.2);
     const dimmedMarker = dimmedEdge?.markerEnd as
       { color?: string } | undefined;
-    expect(dimmedMarker?.color).toBe("rgba(51, 65, 85, 0.2)");
+    expect(dimmedMarker?.color).toBe("#918ba8");
 
     // 3. Select node B: edge A->B becomes active incoming
     act(() => {
@@ -925,13 +925,13 @@ describe("ArchitectureCanvas", () => {
       (e: Edge) => e.target === "file:src/b.ts",
     );
     expect(incomingEdge).toBeDefined();
-    expect(incomingEdge?.animated).toBe(true);
-    expect(incomingEdge?.style?.stroke).toBe("#a78bfa");
+    expect(incomingEdge?.animated).toBe(false);
+    expect(incomingEdge?.style?.stroke).toBe("var(--accent-text)");
     expect(incomingEdge?.style?.strokeWidth).toBe(2.5);
     expect(incomingEdge?.style?.strokeOpacity).toBe(1);
     const incomingMarker = incomingEdge?.markerEnd as
       { color?: string } | undefined;
-    expect(incomingMarker?.color).toBe("#a78bfa");
+    expect(incomingMarker?.color).toBe("#d1beff");
     expect(incomingMarker?.color).not.toContain("var(");
 
     // 4. Advance past navigation time lock and navigate to an inner symbol from editor
@@ -954,13 +954,13 @@ describe("ArchitectureCanvas", () => {
     );
     // The connecting arrow must stay active and clearly visible, not dimmed to 0.2 stroke opacity
     expect(outgoingEdgeFromEditor).toBeDefined();
-    expect(outgoingEdgeFromEditor?.animated).toBe(true);
-    expect(outgoingEdgeFromEditor?.style?.stroke).toBe("#38bdf8");
+    expect(outgoingEdgeFromEditor?.animated).toBe(false);
+    expect(outgoingEdgeFromEditor?.style?.stroke).toBe("var(--accent-border)");
     expect(outgoingEdgeFromEditor?.style?.strokeWidth).toBe(3);
     expect(outgoingEdgeFromEditor?.style?.strokeOpacity).toBe(1);
     const editorMarker = outgoingEdgeFromEditor?.markerEnd as
       { color?: string } | undefined;
-    expect(editorMarker?.color).toBe("#38bdf8");
+    expect(editorMarker?.color).toBe("#b59aff");
 
     // 5. Regression: edge alpha must live in the stroke paint, never in element opacity.
     // Element opacity on a path that also carries an arrow marker forces the rasterizer to
@@ -1324,8 +1324,8 @@ describe("ArchitectureCanvas", () => {
       (e: Edge) =>
         e.source === "file:src/App.tsx" && e.target === "file:src/Button.tsx",
     );
-    expect(activeIncoming?.animated).toBe(true);
-    expect(activeIncoming?.style?.stroke).toBe("#a78bfa");
+    expect(activeIncoming?.animated).toBe(false);
+    expect(activeIncoming?.style?.stroke).toBe("var(--accent-text)");
 
     // Connected file node App.tsx should not be dimmed
     const renderedNodes = capturedReactFlowProps?.nodes ?? [];

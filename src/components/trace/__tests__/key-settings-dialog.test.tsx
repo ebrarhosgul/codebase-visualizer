@@ -13,7 +13,7 @@ describe("KeySettingsDialog", () => {
     render(<KeySettingsDialog open={true} onOpenChange={vi.fn()} />);
 
     expect(
-      screen.getByRole("heading", { name: /bring your own key/i }),
+      screen.getByRole("heading", { name: /connect an ai provider/i }),
     ).toBeInTheDocument();
     expect(screen.getByText("Google Gemini")).toBeInTheDocument();
     expect(screen.getByText("OpenAI GPT")).toBeInTheDocument();

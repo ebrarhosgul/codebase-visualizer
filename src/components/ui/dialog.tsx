@@ -43,7 +43,7 @@ export function Dialog({
           data-testid={dataTestId}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-            "w-full max-w-lg p-4 rounded-xl shadow-2xl",
+            "w-[calc(100%-2rem)] max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 rounded-xl shadow-xl",
             "bg-surface-panel border border-border-default",
             "animate-in fade-in-0 zoom-in-95",
             className,
@@ -51,11 +51,11 @@ export function Dialog({
         >
           <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
             <div>
-              <DialogPrimitive.Title className="text-sm font-semibold text-text-primary">
+              <DialogPrimitive.Title className="text-lg font-semibold tracking-tight text-text-primary">
                 {title}
               </DialogPrimitive.Title>
               {description && (
-                <DialogPrimitive.Description className="text-xs text-text-secondary mt-0.5 leading-normal">
+                <DialogPrimitive.Description className="text-sm text-text-secondary mt-1 leading-relaxed">
                   {description}
                 </DialogPrimitive.Description>
               )}

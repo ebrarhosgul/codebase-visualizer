@@ -77,14 +77,14 @@ export const FileNodeCard = React.memo(function FileNodeCard({
       data-node-id={id}
       data-selected={Boolean(selected)}
       className={cn(
-        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none transition-colors duration-150 shadow-xs",
+        "relative rounded-lg p-3 w-[240px] max-w-[240px] select-none",
         "bg-surface-card border",
         selected
-          ? "border-[var(--accent-primary)] ring-2 ring-[var(--accent-primary)]/40 z-20"
+          ? "border-accent-border outline-2 outline-accent-border outline-offset-2 z-20"
           : isHovered
             ? "border-border-strong bg-surface-card/90 z-10"
             : isConnected
-              ? "border-border-strong shadow-xs"
+              ? "border-border-strong"
               : "border-border-default hover:border-border-strong",
         isDimmed && !selected && !isHovered && !isConnected && "opacity-25",
       )}
@@ -95,9 +95,9 @@ export const FileNodeCard = React.memo(function FileNodeCard({
         className="w-2 h-2 !bg-text-secondary border border-surface-card rounded-full -left-[4px]"
       />
 
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="p-1.5 rounded-md bg-surface-panel-secondary border border-border-default shrink-0 text-text-secondary">
+          <div className="shrink-0 text-text-secondary">
             <Icon className="w-3.5 h-3.5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
@@ -109,7 +109,7 @@ export const FileNodeCard = React.memo(function FileNodeCard({
             </h4>
             {subtitle && (
               <p
-                className="text-[10px] text-text-muted truncate font-mono"
+                className="text-xs text-text-muted truncate font-mono"
                 title={subtitle}
               >
                 {subtitle}
@@ -119,21 +119,21 @@ export const FileNodeCard = React.memo(function FileNodeCard({
         </div>
         <Badge
           variant={badgeVariant}
-          className="shrink-0 text-[10px] font-mono px-1.5 py-0.2"
+          className="shrink-0 text-xs font-mono px-1.5 py-0.2"
         >
           {badgeLabel}
         </Badge>
       </div>
 
       {entityType === "file" && (
-        <div className="mt-2 pt-2 border-t border-border-default">
+        <div className="mt-3 pt-2 border-t border-border-subtle">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="flex items-center gap-1 text-[11px] text-text-secondary hover:text-text-primary focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] rounded-sm cursor-pointer"
+            className="flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] rounded-sm cursor-pointer"
             aria-expanded={isExpanded}
           >
             {isExpanded ? (
@@ -145,7 +145,7 @@ export const FileNodeCard = React.memo(function FileNodeCard({
           </button>
 
           {isExpanded && (
-            <div className="mt-2 text-[10px] text-text-secondary space-y-1 font-mono">
+            <div className="mt-2 text-xs text-text-secondary space-y-1 font-mono">
               <div className="flex justify-between">
                 <span>Symbols:</span>
                 <span className="text-text-primary font-medium">

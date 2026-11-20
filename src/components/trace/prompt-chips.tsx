@@ -21,11 +21,9 @@ export function PromptChips({
 }: PromptChipsProps): React.JSX.Element {
   if (variant === "empty") {
     return (
-      <div className="pt-2 space-y-1.5 max-w-xs mx-auto text-left">
-        <div className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
-          Suggested Prompts
-        </div>
-        <div className="flex flex-col gap-1.5">
+      <div className="pt-2 space-y-2 text-left">
+        <div className="text-xs font-medium text-text-muted">Try asking</div>
+        <div className="flex flex-col divide-y divide-border-subtle border-y border-border-subtle">
           {chips.map((chip, index) => {
             const descId = `chip-desc-${chip.id}`;
             return (
@@ -46,18 +44,18 @@ export function PromptChips({
                 title={
                   disabled ? "Load a repository to ask questions" : undefined
                 }
-                className={`w-full text-left p-2 rounded-md transition-colors border text-xs ${
+                className={`w-full text-left py-3 px-1 transition-colors text-sm ${
                   disabled
-                    ? "opacity-50 cursor-not-allowed bg-surface-panel-secondary/40 border-border-subtle text-text-muted"
-                    : "cursor-pointer bg-surface-panel-secondary/80 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-active hover:border-border-strong"
+                    ? "opacity-50 cursor-not-allowed text-text-muted"
+                    : "cursor-pointer text-text-secondary hover:text-text-primary hover:bg-surface-hover"
                 }`}
               >
-                <div className="font-medium text-[11.5px] text-text-primary">
+                <div className="font-medium text-sm text-text-primary">
                   {chip.label}
                 </div>
                 <div
                   id={descId}
-                  className="text-[10px] text-text-muted mt-0.5 leading-snug"
+                  className="text-xs text-text-muted mt-1 leading-relaxed"
                 >
                   {chip.description}
                 </div>
@@ -74,7 +72,7 @@ export function PromptChips({
     <div
       role="region"
       aria-label="Suggested prompts"
-      className="flex items-center gap-1.5 overflow-x-auto py-1 px-3 no-scrollbar shrink-0"
+      className="flex items-center gap-2 overflow-x-auto py-2 px-5 no-scrollbar shrink-0"
     >
       {chips.map((chip, index) => (
         <button
@@ -93,7 +91,7 @@ export function PromptChips({
           title={
             disabled ? "Load a repository to ask questions" : chip.description
           }
-          className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border ${
+          className={`shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
             disabled
               ? "opacity-50 cursor-not-allowed bg-surface-panel-secondary border-border-default text-text-muted"
               : "cursor-pointer bg-surface-card/90 border-border-default text-text-secondary hover:text-text-primary hover:bg-surface-active hover:border-border-strong"

@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useEffectiveTheme } from "@/hooks/use-effective-theme";
 import { useResponsiveWorkspace } from "@/hooks/use-responsive-workspace";
 import { ResizableSplitPane, type PanelConfig } from "./resizable-split-pane";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export function WorkspaceLayout({
   className,
 }: WorkspaceLayoutProps): React.JSX.Element {
   useResponsiveWorkspace();
+  useEffectiveTheme();
 
   const isSmallScreen = useWorkspaceStore((state) => state.isSmallScreen);
   const leftSidebarWidth = useWorkspaceStore((state) => state.leftSidebarWidth);
@@ -260,9 +262,9 @@ export function WorkspaceLayout({
           className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-r border-[var(--border-subtle)]"
           data-testid="explorer-sidebar"
         >
-          <div className="h-9 px-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
-            <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">
-              Explorer
+          <div className="h-14 px-4 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
+            <span className="text-sm font-semibold text-text-primary">
+              Your files
             </span>
             <button
               type="button"
@@ -339,9 +341,9 @@ export function WorkspaceLayout({
           className="w-full h-full flex flex-col bg-[var(--surface-panel)] border-l border-[var(--border-subtle)]"
           data-testid="inspector-sidebar"
         >
-          <div className="h-9 px-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
-            <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">
-              Inspector
+          <div className="h-14 px-4 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
+            <span className="text-sm font-semibold text-text-primary">
+              Explore details
             </span>
             <button
               type="button"
@@ -370,7 +372,7 @@ export function WorkspaceLayout({
       data-testid="workspace-root"
     >
       {headerContent && (
-        <header className="min-h-12 h-auto border-b border-[var(--border-subtle)] bg-[var(--surface-panel)] flex flex-col justify-center px-4 py-1.5 shrink-0 z-20">
+        <header className="min-h-16 h-auto border-b border-[var(--border-subtle)] bg-[var(--surface-panel)] flex flex-col justify-center px-5 py-3 shrink-0 z-20">
           {headerContent}
         </header>
       )}

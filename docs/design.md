@@ -1,149 +1,110 @@
-# Design System and UI Foundation
+# Design direction
 
-This document defines the visual language, design tokens, spacing system, typography pairings, component states, and accessibility rules for Codebase Visualizer. All future feature slices follow these foundations.
+Codebase Visualizer is a working instrument for understanding unfamiliar code. The graph and source are the subject. The product should feel inviting and confident, with a distinctive violet identity, generous space, and a clear path from a repository to its architecture.
 
-## Character
+This document defines the target system. The visual migration is ongoing; not every surface has been reviewed against this direction yet. CSS custom properties remain the source of truth for implemented token values. Update this guide and the tokens together when the design changes.
 
-Codebase Visualizer is a dense developer workspace engineered for inspecting deep code architectures. The visual tone is technical, quiet, and precise, closer to an editor than a marketing page. Near neutral dark surfaces minimize eye strain during extended reading sessions. Opaque one pixel panel rules, tight corners, and short hard shadows keep edges crisp. Accent and status hues are kept muted so color carries meaning instead of decoration.
+## Principles
 
-## Build Mandate
+1. **Make structure legible.** Use alignment, spacing, type weight, and a small set of surface colors to express hierarchy. Give the graph room to breathe and keep source code readable.
+2. **Show what matters now.** Keep primary actions visible. Reveal secondary controls when they are relevant. Avoid repeated labels, decorative badges, nested cards, and permanent helper text that adds no information.
+3. **Use color with purpose.** Neutral surfaces carry the workspace. Violet marks action, focus, and selection. Status colors communicate status, not decoration. Do not assign a different bright color to every node type.
+4. **Keep the interface calm.** Use typography, alignment, and space to establish hierarchy. Keep repeated graph items simple, minimize nested cards, and use motion only when it explains a change.
+5. **Respect the work.** Support keyboard navigation, readable contrast, reduced motion, and dense information without making targets difficult to use.
 
-1. Dark mode first: The default appearance is deep slate. Every surface and interactive element must maintain at least 4.5 to 1 text contrast and 3 to 1 non text UI border contrast.
-2. High density layout: Compact padding and fixed line heights maximize screen estate for graph nodes and code inspection.
-3. Accessible by default: Visible keyboard focus rings, full keyboard traversal, and screen reader announcements for panel transitions.
-4. Token discipline: Use semantic tokens from `src/app/globals.css`. Never use arbitrary hex colors or raw palette classes such as `zinc-800` or `blue-500` in component code. Use the semantic utilities (`bg-surface-panel`, `text-text-secondary`, `border-border-subtle`, `text-status-warning`) so both themes follow.
-5. Pointer for actions: Every enabled button and button like control shows the pointer cursor. Disabled controls show the not allowed cursor. A global base rule covers raw elements, and `Button` and `IconButton` also carry `cursor-pointer`.
+## Color
 
-## Color Tokens
+The palette pairs violet action colors with dark ink and soft neutral surfaces. The welcome screen uses a clear introduction and a short list of examples; the working canvas stays legible and efficient. Center the welcome introduction, static architecture illustration, helper copy, and example section horizontally. Keep example card contents left aligned, and stack the cards when the canvas is narrow. Both themes have equal status; dark remains the default until theme behavior is deliberately changed.
 
-Token values live in `src/app/globals.css` as native CSS custom properties and Tailwind CSS v4 inline theme variables.
+### Surfaces and text
 
-### Surfaces
-
-| Token | Dark Value | Light Value | Purpose |
+| Semantic token | Dark | Light | Use |
 |---|---|---|---|
-| `--surface-canvas` | `#0e0f11` | `#eceef1` | Graph canvas backdrop and inset fields |
-| `--surface-panel` | `#141518` | `#ffffff` | Primary sidebars and inspector panels |
-| `--surface-panel-secondary` | `#1a1c20` | `#f4f5f7` | Elevated panel headers, menus, and tooltips |
-| `--surface-card` | `#17181c` | `#ffffff` | Graph node cards and floating dialogs |
-| `--surface-hover` | `rgba(255, 255, 255, 0.045)` | `rgba(0, 0, 0, 0.045)` | Hover highlight state |
-| `--surface-active` | `rgba(255, 255, 255, 0.08)` | `rgba(0, 0, 0, 0.08)` | Selected or active item highlight |
+| `--background`, `--surface-canvas` | `#101019` | `#f4f3fa` | App background and graph field |
+| `--surface-panel` | `#181823` | `#ffffff` | Main panels and editor surround |
+| `--surface-panel-secondary` | `#222230` | `#f5f3fa` | Toolbar, inset section, menu |
+| `--surface-card` | `#242332` | `#ffffff` | Graph node and dialog |
+| `--surface-hover` | `#303041` | `#ebe8f5` | Hover on a panel |
+| `--surface-active` | `#37344c` | `#e5def7` | Selected row or pressed control |
+| `--text-primary`, `--foreground` | `#f5f3ff` | `#272236` | Main text |
+| `--text-secondary` | `#c0bacf` | `#554e65` | Supporting text |
+| `--text-muted` | `#aaa4b9` | `#665e74` | Metadata and hints |
+| `--border-subtle` | `#30303e` | `#e8e4f0` | Decorative separators |
+| `--border-default` | `#484658` | `#cec8dc` | Visible boundaries |
+| `--border-strong` | `#918ba8` | `#777086` | Boundaries needed to identify controls |
+| `--border-focus` | `#c1aaff` | `#5b35b7` | Keyboard focus |
 
-### Borders
+### Action and status
 
-| Token | Dark Value | Light Value | Purpose |
+| Semantic token | Dark | Light | Use |
 |---|---|---|---|
-| `--border-subtle` | `#23262b` | `#e3e6ea` | Dividers and internal panel rules |
-| `--border-default` | `#2f333a` | `#d0d5db` | Panel perimeters, card and input outlines |
-| `--border-strong` | `#444a54` | `#aab1ba` | Hover outlines, selected rows, and scrollbar thumbs |
-| `--border-focus` | `#5b93e8` | `#2b62b8` | Visible focus outline ring |
+| `--accent-primary` | `#754ce2` | `#6740cf` | Primary action fill |
+| `--accent-primary-hover` | `#6540c8` | `#5530b4` | Primary action hover |
+| `--accent-primary-foreground` | `#ffffff` | `#ffffff` | Text on action fill |
+| `--accent-text` | `#d1beff` | `#5830b6` | Links and selected labels |
+| `--accent-subtle` | `#37304f` | `#eee8ff` | Restrained selected surface |
+| `--accent-border` | `#b59aff` | `#7046d6` | Selected boundary where needed |
+| `--status-success` | `#83cba5` | `#246b48` | Success text and icon |
+| `--status-warning` | `#e2b96f` | `#805509` | Warning text and icon |
+| `--status-error` | `#f09b96` | `#a92f2b` | Error text and icon |
+| `--status-error-solid` | `#a92f2b` | `#a92f2b` | Destructive action fill with white text |
+| `--status-info` | `#d1beff` | `#5830b6` | Information text and icon |
 
-Borders are opaque hex values, not translucent overlays, so rules stay one crisp pixel on every surface.
+Use status color with a label or icon, never as the only signal. Syntax tokens `--syntax-ts`, `--syntax-js`, `--syntax-fn`, `--syntax-class`, and `--syntax-type` should use the primary or secondary text tokens. Distinguish kinds through names and compact icons. Keep syntax highlighting inside the code editor independently legible in each theme.
 
-### Text Hierarchy
-
-| Token | Dark Value | Light Value | Contrast Ratio |
-|---|---|---|---|
-| `--text-primary` | `#e6e8eb` | `#1b1e23` | Greater than 13 to 1 |
-| `--text-secondary` | `#a0a6b0` | `#4f5763` | Greater than 6.5 to 1 |
-| `--text-muted` | `#838a96` | `#626a77` | Greater than 4.5 to 1 |
-
-Contrast is checked on every surface, in both themes, by `src/components/ui/__tests__/design-tokens.test.ts`.
-
-### Interactive Accents
-
-| Token | Dark Value | Light Value | Purpose |
-|---|---|---|---|
-| `--accent-primary` | `#3a6fc4` | `#2b62b8` | Primary action fills and selected borders |
-| `--accent-primary-hover` | `#335fa8` | `#234f96` | Hover state on primary actions |
-| `--accent-primary-foreground` | `#ffffff` | `#ffffff` | Readable text on primary accent |
-| `--accent-text` | `#7fa8e8` | `#2b62b8` | Accent colored text and icons on surfaces |
-| `--accent-subtle` | `rgba(91, 147, 232, 0.12)` | `rgba(43, 98, 184, 0.1)` | Tinted accent backgrounds |
-| `--accent-border` | `rgba(91, 147, 232, 0.4)` | `rgba(43, 98, 184, 0.4)` | Accent outlines and text selection |
-
-### Status Indicators
-
-| Status | Dark Value | Light Value | Meaning |
-|---|---|---|---|
-| Success (`--status-success`) | `#5bb98b` | `#26704e` | Verified checks, parsed states, clean builds |
-| Warning (`--status-warning`) | `#d6a24e` | `#91620f` | External packages, cycles, rate limits |
-| Error (`--status-error`) | `#e0706c` | `#b83a36` | Parse errors, broken links, failed queries |
-| Error solid (`--status-error-solid`) | `#b23c3a` | `#b23c3a` | Fill behind white text on danger buttons |
-| Info (`--status-info`) | `#7fa8e8` | `#2b62b8` | Informational callouts and tooltips |
-
-Status hues are for text, icons, and tints at 10 to 30 percent (`bg-status-warning/10`). Only `--status-error-solid` is used as a fill under white text.
-
-### Syntax Badges
-
-| Node Kind | Token Name | Hex Color | Purpose |
-|---|---|---|---|
-| TypeScript | `--syntax-ts` | `#a0a6b0` | TypeScript file nodes |
-| JavaScript | `--syntax-js` | `#a0a6b0` | JavaScript file nodes |
-| Function | `--syntax-fn` | `#cdd1d8` | Callable functions and methods |
-| Class | `--syntax-class` | `#dde0e5` | Classes and constructors |
-| Type | `--syntax-type` | `#a0a6b0` | Types and interfaces |
+Test actual foreground and background pairs, including hover, selection, graph nodes, and tinted notices. Normal text must reach 4.5 to 1 and large text 3 to 1. Essential control boundaries and state indicators must reach 3 to 1 against adjacent colors. Decorative dividers need not meet the control boundary threshold. Do not assume a token passes on every surface merely because it passes on one.
 
 ## Typography
 
-The typography scale pairs Geist Sans for user interface elements and Geist Mono for code, coordinates, file paths, and metrics.
+Use Geist Sans for interface copy and Geist Mono for code, paths, identifiers, and numerical graph metadata. Keep system font fallbacks. Avoid new font downloads for decoration. Use sentence case for labels and headings; use weight and spacing before uppercase or letter spacing to create hierarchy.
 
-| Token | Size | Line Height | Tracking | Usage |
+| Role | Size | Line height | Weight | Use |
 |---|---|---|---|---|
-| `text-xs` | 12px | 16px | normal | Badges, tags, node metadata |
-| `text-sm` | 14px | 20px | normal | Body text, sidebar items, tree rows |
-| `text-base` | 16px | 24px | normal | Primary headings in panels, dialog titles |
-| `text-lg` | 18px | 28px | tight | Section headers |
-| `text-xl` | 20px | 28px | tight | Main navigation headings |
-| `font-mono text-xs` | 12px | 16px | normal | Code identifiers, coordinates, zoom levels |
+| Detail | 12px | 16px | 400 or 500 | Metadata and compact labels |
+| Body | 14px | 20px | 400 | Controls, descriptions, lists |
+| Section | 14px | 20px | 600 | Panel headings |
+| Title | 18px | 24px | 600 | Dialog and page titles |
+| Code | 12px or user setting | at least 16px | 400 | Paths, identifiers, source |
 
-## Spacing and Density
+Do not shrink essential text below 12px. Let long paths truncate with a way to inspect the full value. Respect browser zoom and the editor font size preference.
 
-Compact 4px grid spacing ensures high density layouts without waste:
+## Space, shape, and layers
 
-- `p-1` (4px): Icon buttons, compact badges
-- `p-1.5` (6px): Split handle hit targets, dense tree rows
-- `p-2` (8px): Input fields, dropdown items
-- `p-3` (12px): Panel headers, node card inner body
-- `p-4` (16px): Dialog bodies, inspector detail sections
+Use a 4px base grid. The spacing scale is 4, 8, 12, 16, 24, and 32px. Use 8px within compact controls, 12px inside graph nodes and panel headers, 16px between panel sections, and 24px for larger separations. Use whitespace instead of another border when the relationship remains clear.
 
-Control heights follow the same density. All stay at or above the 24px minimum target size:
+Use compact radii for small indicators and softer 8 to 16px corners for controls, nodes, menus, and dialogs. Pills are reserved for compact status or count indicators where their shape helps recognition. Use a single 1px border for most boundaries. Elevation is rare: a modest static shadow may distinguish a menu or dialog from its surroundings. Canvas nodes and persistent panels use no shadow by default.
 
-| Control | `sm` | `md` | `lg` |
-|---|---|---|---|
-| `Button` | 24px | 28px | 32px |
-| `IconButton` | 24px | 28px | not offered |
-| `Input` | not offered | 28px | not offered |
-| `Tabs` trigger | not offered | 24px in a 32px strip | not offered |
+Controls should normally have a 40px height where space allows. Dense controls may be smaller when needed, with at least a 24 by 24 CSS pixel target or sufficient spacing under WCAG 2.2. Keep primary actions easy to hit on touch screens. Resizable handles may have a thin visible rule but need a larger interactive area.
 
-## Radius and Elevation
+## Workspace and components
 
-Corners are tight, like an editor. The scale lives in `@theme` in `src/app/globals.css`, so the standard `rounded-*` and `shadow-*` utilities pick it up. Bare `rounded` is not used because it ignores the scale. Write `rounded-sm` instead.
+- The graph, code view, and inspector are peers in a resizable workspace. Panel headings identify the current context and expose only relevant actions. Preserve the graph as the largest available area when practical.
+- Use one clear primary action per local task. Secondary actions are quiet buttons or menu items. Icon only controls need accessible names and tooltips when their meaning is not obvious.
+- Nodes use a consistent surface, a concise name, and only metadata useful to the current task. Use a visible border or outline for selection. Paths, errors, and hidden items need clear text as well as visual cues.
+- Edges stay thin and quiet at rest. Highlight the active relationship with a solid color and adequate contrast. Avoid animated dashes and glows across the graph.
+- Empty, loading, and error states say what happened and offer a relevant next action. Avoid ornamental cards or extra prose. Loading feedback should remain stable as content arrives.
+- On narrow screens, keep the graph usable and move supporting panels into accessible drawers or tabs. Preserve the current selection when changing layout.
 
-| Utility | Value | Usage |
-|---|---|---|
-| `rounded-xs` | 2px | Inline code chips |
-| `rounded-sm` | 3px | Badges, menu items, small icon toggles |
-| `rounded-md` | 4px | Buttons, inputs, tabs, tooltips |
-| `rounded-lg` | 6px | Toasts, menus, node cards, list cards |
-| `rounded-xl` | 8px | Dialogs and grouped panels |
-| `rounded-full` | pill | Dots, handles, progress tracks only |
+## Interaction and accessibility
 
-Shadows are short and hard (`shadow-xs` is 1px, `shadow-2xl` reaches 12px down). Do not use `backdrop-blur`. Overlays use a solid dim layer, which also keeps canvas repaint cheap.
+Provide visible keyboard focus with a 2px outline and 2px offset where space permits. Ensure focus is not clipped or obscured. Buttons, fields, menus, tabs, dialogs, and resize handles need appropriate names, semantics, and keyboard behavior. Dialogs return focus to their trigger. Never communicate selection, error, or relationship solely by color.
 
-## Component States
+Keep transitions short and purposeful, generally 120 to 160ms for opacity or color on isolated controls. Respect `prefers-reduced-motion` by removing nonessential movement. Do not animate layout dimensions during graph interaction. Disabled controls need a recognizable disabled state and an explanation when the reason is not apparent.
 
-1. Default: Quiet surface with subtle border.
-2. Hover: Elevated background via `--surface-hover` with smooth transition.
-3. Focus visible: 2px solid outline in `--border-focus` with 2px offset.
-4. Active or Selected: Background highlight via `--surface-active` and accent border.
-5. Disabled: Opacity reduced to 50 percent, cursor not allowed, pointer events disabled.
-6. Cursor: Enabled buttons, tabs, menu items, and other controls use the pointer. Drag handles keep their resize cursors.
+## Performance rules
 
-Button variants (`primary`, `secondary`, `ghost`, `danger`) all carry a one pixel border, transparent for `ghost`, so hover and focus never shift the layout.
+Treat graph nodes and edges as repeated content: even a small per item effect can become expensive at scale. Prefer opaque fills, simple borders, and static styling. Do not use backdrop filters, large blurred shadows, filters, blend modes, animated gradients, or continuous animations on the canvas or repeated nodes. Do not add `will-change` broadly. Avoid transitions on geometry and avoid expensive effects during pan, zoom, drag, or streaming.
 
-## Accessibility Rules
+Keep existing viewport pruning and progressive disclosure. Validate visual changes on a graph with hundreds of nodes using the performance targets in spec 0011 and the relevant current spec. Inspect frame behavior during pan, zoom, selection, and streaming. If a visual treatment harms interaction, simplify it before shipping.
 
-- All interactive controls provide accessible names via text children or `aria-label`.
-- Resizable drag handles provide `role="separator"`, `aria-orientation`, and keyboard arrow navigation.
-- Focus traps in modals preserve tab loops and dismiss on Escape.
-- Theme preference defaults to dark mode and preserves user choice without layout flash.
+## Token and implementation discipline
+
+Define semantic color tokens and the type, spacing, radius, elevation, and motion scales centrally. Components consume those tokens rather than introducing local palette values. Map existing token names to the new values during implementation so migration is deliberate; audit graph, editor, dialogs, tooltips, and both themes for exceptions. Avoid adding tokens for a single decoration. Changes to token values require contrast checks on real component pairs and visual review at typical and dense graph sizes.
+
+## Conversation and controls
+
+Treat the conversation as readable content. Assistant responses sit directly on the panel, with clear spacing between messages. User messages have a quiet distinct surface. Keep citations and trace actions close to the answer they support. Place the input and send action inside one composer, and present suggested questions as simple rows. Use restrained borders, consistent control heights, and selected tabs with a clear underline.
+
+## Workspace
+
+Keep the entry screen focused on starting a repository. In the workspace, give search and view controls enough room to remain usable. Use simple rows for files and relationships, readable metrics, and consistent actions across the inspector, editor, and conversation. Keep graph selection visible without obscuring the map.

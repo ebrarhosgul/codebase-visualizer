@@ -606,10 +606,10 @@ function InlineContent({
                     e.stopPropagation();
                     onFileClick(matchedFile);
                   }}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] font-mono bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--accent-primary)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer align-baseline"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-xs font-mono bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--accent-text)] hover:border-[var(--accent-primary)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer align-baseline"
                   title={`Open ${matchedFile} in code viewer`}
                 >
-                  <FileCode className="w-2.5 h-2.5 text-[var(--accent-primary)] shrink-0" />
+                  <FileCode className="w-2.5 h-2.5 text-[var(--accent-text)] shrink-0" />
                   <span data-testid={`citation-${matchedFile}`}>
                     {token.content}
                   </span>
@@ -619,7 +619,7 @@ function InlineContent({
             return (
               <code
                 key={index}
-                className="px-1.5 py-0.5 rounded-sm text-[11px] font-mono bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--accent-primary)] align-baseline"
+                className="px-1.5 py-0.5 rounded-sm text-xs font-mono bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] text-[var(--accent-text)] align-baseline"
               >
                 {token.content}
               </code>
@@ -631,7 +631,7 @@ function InlineContent({
               return (
                 <span
                   key={index}
-                  className="block my-2 px-3 py-1.5 rounded-sm bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-[11.5px] text-[var(--accent-primary)] text-center tracking-wide overflow-x-auto select-all"
+                  className="block my-2 px-3 py-1.5 rounded-sm bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-xs text-[var(--accent-text)] text-center tracking-wide overflow-x-auto select-all"
                 >
                   {token.content}
                 </span>
@@ -640,7 +640,7 @@ function InlineContent({
             return (
               <span
                 key={index}
-                className="inline-block px-1.5 py-0.5 mx-0.5 rounded-sm bg-[var(--surface-panel-secondary)] font-mono text-[11px] text-[var(--accent-primary)] align-baseline"
+                className="inline-block px-1.5 py-0.5 mx-0.5 rounded-sm bg-[var(--surface-panel-secondary)] font-mono text-[11px] text-[var(--accent-text)] align-baseline"
               >
                 {token.content}
               </span>
@@ -712,7 +712,7 @@ function InlineContent({
                 href={safeHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--accent-primary)] hover:underline inline-flex items-center gap-0.5"
+                className="text-[var(--accent-text)] hover:underline inline-flex items-center gap-0.5"
               >
                 {token.label}
               </a>
@@ -753,7 +753,7 @@ function CodeBlock({
     <div className="my-2.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-panel)] overflow-hidden">
       <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--surface-panel-secondary)] border-b border-[var(--border-subtle)] text-[10px] text-[var(--text-secondary)]">
         <div className="flex items-center gap-1.5 font-mono uppercase tracking-wider">
-          <Terminal className="w-3 h-3 text-[var(--accent-primary)]" />
+          <Terminal className="w-3 h-3 text-[var(--accent-text)]" />
           <span>{language || "code"}</span>
         </div>
         <button
@@ -776,7 +776,7 @@ function CodeBlock({
           )}
         </button>
       </div>
-      <pre className="overflow-x-auto p-3 text-[11px] font-mono leading-relaxed text-[var(--text-primary)] bg-[var(--surface-canvas)]">
+      <pre className="overflow-x-auto p-3 text-xs font-mono leading-relaxed text-[var(--text-primary)] bg-[var(--surface-canvas)]">
         <code>{code}</code>
       </pre>
     </div>
@@ -807,7 +807,7 @@ function MarkdownMessageComponent({
   }
 
   return (
-    <div className={`space-y-2 text-xs leading-relaxed ${className}`}>
+    <div className={`space-y-3 text-sm leading-6 ${className}`}>
       {blocks.map((block, index) => {
         switch (block.type) {
           case "heading": {
@@ -816,7 +816,7 @@ function MarkdownMessageComponent({
               return (
                 <h1
                   key={index}
-                  className="text-sm font-bold text-[var(--text-primary)] mt-3 mb-1.5 pb-1 border-b border-[var(--border-subtle)]"
+                  className="text-base font-semibold tracking-tight text-[var(--text-primary)] mt-4 mb-2"
                 >
                   <InlineContent
                     tokens={inlineTokens}
@@ -830,7 +830,7 @@ function MarkdownMessageComponent({
               return (
                 <h2
                   key={index}
-                  className="text-xs font-semibold text-[var(--text-primary)] mt-3 mb-1"
+                  className="text-sm font-semibold text-[var(--text-primary)] mt-4 mb-2"
                 >
                   <InlineContent
                     tokens={inlineTokens}
@@ -843,7 +843,7 @@ function MarkdownMessageComponent({
             return (
               <h3
                 key={index}
-                className="text-[11px] font-semibold text-[var(--accent-primary)] uppercase tracking-wider mt-2.5 mb-1"
+                className="text-sm font-semibold text-[var(--text-primary)] mt-3 mb-1"
               >
                 <InlineContent
                   tokens={inlineTokens}
@@ -883,7 +883,7 @@ function MarkdownMessageComponent({
             return (
               <div
                 key={index}
-                className="my-2 px-3 py-2 rounded-sm bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-xs text-[var(--accent-primary)] text-center tracking-wide overflow-x-auto select-all"
+                className="my-2 px-3 py-2 rounded-sm bg-[var(--surface-panel-secondary)] border border-[var(--border-subtle)] font-mono text-xs text-[var(--accent-text)] text-center tracking-wide overflow-x-auto select-all"
               >
                 {block.expression}
               </div>
@@ -894,7 +894,7 @@ function MarkdownMessageComponent({
             return (
               <blockquote
                 key={index}
-                className="border-l-2 border-[var(--accent-primary)] pl-2.5 py-0.5 my-2 bg-[var(--surface-panel-secondary)]/40 rounded-r text-[var(--text-secondary)] italic text-[11.5px]"
+                className="border-l-2 border-[var(--accent-primary)] pl-2.5 py-0.5 my-2 bg-[var(--surface-panel-secondary)]/40 rounded-r text-[var(--text-secondary)] italic text-xs"
               >
                 <InlineContent
                   tokens={inlineTokens}
@@ -913,7 +913,7 @@ function MarkdownMessageComponent({
                   return (
                     <li key={itemIdx} className="flex flex-col space-y-1">
                       <div className="flex items-start gap-2">
-                        <span className="flex items-center justify-center w-4 h-4 rounded-full bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] text-[10px] font-semibold shrink-0 mt-0.5">
+                        <span className="flex items-center justify-center w-4 h-4 rounded-full bg-[var(--accent-primary)]/15 text-[var(--accent-text)] text-[10px] font-semibold shrink-0 mt-0.5">
                           {itemIdx + 1}
                         </span>
                         <div className="flex-1 leading-relaxed text-[var(--text-primary)]">
@@ -931,7 +931,7 @@ function MarkdownMessageComponent({
                             return (
                               <li
                                 key={sIdx}
-                                className="flex items-start gap-2 text-[11.5px] text-[var(--text-secondary)]"
+                                className="flex items-start gap-2 text-xs text-[var(--text-secondary)]"
                               >
                                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] shrink-0 mt-1.5 opacity-75" />
                                 <div className="flex-1 leading-relaxed">
@@ -976,7 +976,7 @@ function MarkdownMessageComponent({
                             return (
                               <li
                                 key={sIdx}
-                                className="flex items-start gap-2 text-[11.5px] text-[var(--text-secondary)]"
+                                className="flex items-start gap-2 text-xs text-[var(--text-secondary)]"
                               >
                                 <span className="w-1 h-1 rounded-full bg-[var(--text-muted)] shrink-0 mt-1.5" />
                                 <div className="flex-1 leading-relaxed">

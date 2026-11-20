@@ -192,45 +192,21 @@ export function RepoSubmissionBar({
       className={`w-full flex flex-col gap-2 ${className ?? ""}`}
       data-testid="repo-submission-bar"
     >
-      <div className="w-full flex items-center justify-between gap-3">
-        {/* Logo, Brand and Demo Repo Shortcut Pills */}
+      <div className="w-full flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
+        {/* Logo and brand */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="w-6 h-6 rounded-sm bg-surface-panel border border-border-default flex items-center justify-center">
-            <GitFork className="w-3.5 h-3.5 text-text-primary" />
+          <div className="w-10 h-10 rounded-xl bg-accent-primary flex items-center justify-center shadow-sm">
+            <GitFork className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xs font-semibold tracking-tight text-text-primary hidden sm:inline">
+          <span className="text-sm font-semibold tracking-tight text-text-primary hidden sm:inline">
             Codebase Visualizer
           </span>
-          <div className="hidden lg:flex items-center gap-1 ml-1">
-            {DEMO_REPOS.map((demo) => (
-              <button
-                key={demo.name}
-                type="button"
-                onClick={() => {
-                  setUrl(demo.repo);
-                  startIngestion({ repositoryUrl: demo.repo }).then(() => {
-                    if (
-                      useGraphStore.getState().ingestionPhase === "complete"
-                    ) {
-                      onIngestionComplete?.();
-                    }
-                  });
-                }}
-                disabled={isIngesting}
-                data-testid={`demo-repo-btn-${demo.name}`}
-                className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 transition-colors disabled:opacity-50 cursor-pointer"
-                title={`Load ${demo.repo} demo`}
-              >
-                {demo.name}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Input Controls Form */}
         <form
           onSubmit={handleSubmit}
-          className="flex-1 flex items-center gap-2 max-w-2xl min-w-0"
+          className="flex-1 flex items-center gap-2 max-w-2xl min-w-[220px]"
         >
           <div className="flex-1 min-w-0">
             <Input
@@ -240,7 +216,7 @@ export function RepoSubmissionBar({
               icon={Globe}
               disabled={isIngesting}
               aria-label="Public GitHub Repository URL"
-              className="h-8 text-xs font-mono"
+              className="h-10 text-sm"
               data-testid="repo-url-input"
             />
           </div>
@@ -249,11 +225,11 @@ export function RepoSubmissionBar({
             <Input
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
-              placeholder="branch (opt)"
+              placeholder="Branch"
               icon={GitBranch}
               disabled={isIngesting}
               aria-label="Target Repository Branch"
-              className="h-8 text-xs font-mono"
+              className="h-10 text-sm"
               data-testid="repo-branch-input"
             />
           </div>
@@ -285,7 +261,7 @@ export function RepoSubmissionBar({
               variant="danger"
               size="sm"
               onClick={cancelIngestion}
-              className="h-8 px-3 text-xs flex items-center gap-1.5 shrink-0"
+              className="h-10 px-4 text-sm flex items-center gap-2 shrink-0"
               aria-label="Cancel Ingestion"
               data-testid="cancel-analyze-btn"
             >
@@ -298,12 +274,12 @@ export function RepoSubmissionBar({
               variant="primary"
               size="sm"
               disabled={!url.trim()}
-              className="h-8 px-3 text-xs flex items-center gap-1.5 shrink-0"
+              className="h-10 px-4 text-sm flex items-center gap-2 shrink-0"
               aria-label="Analyze Repository"
               data-testid="submit-analyze-btn"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Analyze</span>
+              <span>Explore</span>
             </Button>
           )}
 
@@ -353,7 +329,7 @@ export function RepoSubmissionBar({
       {/* Token configuration drawer / popup when opened */}
       {isTokenOpen && (
         <div
-          className="p-3 rounded-md bg-surface-panel border border-border-default flex flex-col gap-2.5 text-xs animate-in fade-in-0"
+          className="p-4 rounded-md bg-surface-panel-secondary border border-border-default flex flex-col gap-3 text-sm"
           data-testid="github-token-drawer"
         >
           <div className="flex items-center justify-between">
@@ -368,7 +344,7 @@ export function RepoSubmissionBar({
             )}
           </div>
 
-          <p className="text-[11px] text-text-secondary leading-normal">
+          <p className="text-sm text-text-secondary leading-6">
             Stored in an encrypted httpOnly cookie (`github_pat`). Increases
             your GitHub API rate limit from 60 to 5,000 requests per hour. Only
             public read permissions are needed.

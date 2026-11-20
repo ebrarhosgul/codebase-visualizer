@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useRef, useEffect, useCallback, useState } from "react";
-import Editor, { type OnMount } from "@monaco-editor/react";
+import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
 import { FileCode, AlertTriangle, Code2, Share2, Check } from "lucide-react";
+import { useEffectiveTheme } from "@/hooks/use-effective-theme";
 import { Badge, Button } from "@/components/ui";
 import { useGraphStore, type NavigationTarget } from "@/stores/graph-store";
 import type { SymbolNode } from "@/entities";
@@ -63,6 +64,7 @@ type MonacoDecorationsCollection = ReturnType<
 >;
 
 export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
+  const theme = useEffectiveTheme();
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
   const fileSources = useGraphStore((state) => state.fileSources);
   const graph = useGraphStore((state) => state.graph);
@@ -121,7 +123,9 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
             isWholeLine: true,
             className: "monaco-pulse-line",
             overviewRuler: {
-              color: "#38bdf8",
+              color: getComputedStyle(document.documentElement)
+                .getPropertyValue("--border-focus")
+                .trim(),
               position: monaco.editor.OverviewRulerLane.Full,
             },
           },
@@ -288,10 +292,10 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
           <div className="w-10 h-10 rounded-lg bg-surface-canvas border border-border-default flex items-center justify-center mb-3 text-text-secondary">
             <Code2 className="w-5 h-5" />
           </div>
-          <div className="text-xs font-semibold text-text-primary mb-1">
-            No File Selected
+          <div className="text-sm font-semibold text-text-primary mb-1">
+            Select a file to view its source
           </div>
-          <p className="text-[11px] max-w-xs text-text-secondary leading-relaxed">
+          <p className="text-sm max-w-xs text-text-secondary leading-6">
             Click any file node on the architecture map canvas to inspect its
             source code side by side.
           </p>
@@ -301,6 +305,29 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
   }
 
   const language = getMonacoLanguage(fileNode.path);
+  const defineThemes: BeforeMount = (monaco) => {
+    for (const mode of ["dark", "light"] as const) {
+      const isDark = mode === "dark";
+      monaco.editor.defineTheme(`workspace-${mode}`, {
+        base: isDark ? "vs-dark" : "vs",
+        inherit: true,
+        rules: [],
+        colors: isDark
+          ? {
+              "editor.background": "#181823",
+              "editor.foreground": "#f5f3ff",
+              "editor.selectionBackground": "#37304f",
+              "editorLineNumber.foreground": "#aaa4b9",
+            }
+          : {
+              "editor.background": "#ffffff",
+              "editor.foreground": "#272236",
+              "editor.selectionBackground": "#eee8ff",
+              "editorLineNumber.foreground": "#665e74",
+            },
+      });
+    }
+  };
 
   return (
     <div
@@ -346,22 +373,20 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
               {copied ? (
                 <>
                   <Check className="w-3 h-3 text-status-success" />
-                  <span className="text-status-success text-[10px]">
-                    Copied!
-                  </span>
+                  <span className="text-status-success text-xs">Copied!</span>
                 </>
               ) : (
                 <>
                   <Share2 className="w-3 h-3" />
-                  <span className="text-[10px] hidden sm:inline">Share</span>
+                  <span className="text-xs hidden sm:inline">Share</span>
                 </>
               )}
             </Button>
             <Badge variant="syntax-ts">{fileNode.extension || language}</Badge>
-            <span className="text-[10px] text-text-muted font-mono">
+            <span className="text-xs text-text-muted font-mono">
               {fileNode.lineCount} lines
             </span>
-            <span className="text-[10px] text-text-muted font-mono">
+            <span className="text-xs text-text-muted font-mono">
               ({formatBytes(fileNode.sizeBytes)})
             </span>
           </div>
@@ -387,7 +412,8 @@ export function CodeViewer({ className }: CodeViewerProps): React.JSX.Element {
             height="100%"
             language={language}
             value={sourceCode}
-            theme="vs-dark"
+            theme={`workspace-${theme}`}
+            beforeMount={defineThemes}
             onMount={handleEditorMount}
             loading={
               <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-text-muted bg-surface-panel">

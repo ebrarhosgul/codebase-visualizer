@@ -17,20 +17,8 @@ export interface CustomMiniMapProps {
  * Evaluates semantic minimap node color based on entity type.
  */
 export function getMinimapNodeColor(node: Node): string {
-  const entityType = (node.data as { entityType?: string } | undefined)
-    ?.entityType;
-  switch (entityType) {
-    case "file":
-      return "#38bdf8";
-    case "symbol":
-      return "#a78bfa";
-    case "directory":
-      return "#64748b";
-    case "external":
-      return "#f59e0b";
-    default:
-      return "#334155";
-  }
+  void node;
+  return "var(--border-strong)";
 }
 
 /**
@@ -45,12 +33,12 @@ export function CustomMiniMap({
     <MiniMap
       data-testid="canvas-minimap"
       nodeColor={getMinimapNodeColor}
-      maskColor="rgba(11, 12, 14, 0.85)"
+      maskColor="color-mix(in srgb, var(--surface-panel) 45%, transparent)"
       zoomable={zoomable}
       pannable={pannable}
       ariaLabel="Overview minimap of architecture graph"
       className={cn(
-        "rounded-lg overflow-hidden select-none transition-all shadow-sm",
+        "rounded-lg overflow-hidden select-none",
         "!bg-surface-panel !border !border-border-subtle",
         className,
       )}

@@ -2,6 +2,12 @@
 
 ## Context
 
+### Proposed overhaul context, 2026-11-20
+
+The planned overhaul adopts the target in `docs/design.md`. The current CSS token values differ from that target. Canvas edges and minimap still contain fixed colors, highlighted edges use animation and shadows, and the editor selects `vs-dark` regardless of the workspace theme. A token change by itself would therefore leave visible inconsistencies and can conceal a light theme contrast failure.
+
+For this proposed change, updating existing components in complete slices is preferred. A parallel replacement library would add integration work while still requiring custom graph and editor styling. A direct whole interface replacement would make regressions harder to isolate. The existing foundation decision and completed work remain recorded below; the overhaul is not yet built or verified.
+
 Codebase Visualizer is an interactive developer tool designed to display code architecture maps, hierarchical file trees, and source code files side by side. Exploring unfamiliar codebases requires sustained concentration over extended sessions, making visual clarity, predictable navigation, and low eye fatigue essential product requirements.
 
 Standard web layouts with fixed page scrolling cannot support dense developer workflows. An effective code visualizer requires a flexible multi pane workspace where developers can adjust the balance between the architectural canvas, source files, and symbol inspectors. Without a unified design system and reliable layout foundation, individual feature slices would invent separate styling rules, inconsistent color values, and fragile custom resize handlers.

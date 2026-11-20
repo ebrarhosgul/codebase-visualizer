@@ -81,9 +81,9 @@ describe("TracePanel", () => {
   it("renders panel header, demo badge, and suggested prompt pills", () => {
     render(<TracePanel />);
 
-    expect(screen.getByText("Semantic Trace")).toBeInTheDocument();
+    expect(screen.getByText("Assistant")).toBeInTheDocument();
     expect(screen.getByText("Demo Mode")).toBeInTheDocument();
-    expect(screen.getByText("Suggested Prompts")).toBeInTheDocument();
+    expect(screen.getByText("Try asking")).toBeInTheDocument();
     expect(
       screen.getByText("Architecture & layer breakdown"),
     ).toBeInTheDocument();
@@ -302,7 +302,7 @@ describe("TracePanel", () => {
     });
     fireEvent.click(openKeysBtn);
 
-    expect(screen.getByText("Bring Your Own Key (BYOK)")).toBeInTheDocument();
+    expect(screen.getByText("Connect an AI provider")).toBeInTheDocument();
   });
 
   it("initializes in BYOK mode when /api/ai/keys returns stored provider on mount (covers: AC-3)", async () => {
@@ -540,7 +540,7 @@ describe("TracePanel", () => {
     fireEvent.click(clearButton);
 
     expect(screen.queryByText("Hello")).not.toBeInTheDocument();
-    expect(screen.getByText("Ask Architectural Questions")).toBeInTheDocument();
+    expect(screen.getByText("Get to know this codebase")).toBeInTheDocument();
   });
 
   it("renders structured markdown formatting in assistant messages", () => {
@@ -586,7 +586,7 @@ export function useTelemetry() { return {}; }
     ).toBeInTheDocument();
 
     // Renders assistant message header and copy response button
-    expect(screen.getByText("Semantic Assistant")).toBeInTheDocument();
+    expect(screen.getByText("Codebase assistant")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /copy response/i }),
     ).toBeInTheDocument();
@@ -917,9 +917,7 @@ export function useTelemetry() { return {}; }
 
       expect(useGraphStore.getState().highlightSource).toBeNull();
       expect(useGraphStore.getState().highlightedNodeIds).toEqual([]);
-      expect(
-        screen.getByText("Ask Architectural Questions"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Get to know this codebase")).toBeInTheDocument();
     });
 
     it("clears a previous answer highlight when a new query starts (covers: AC-6, AC-12)", async () => {
@@ -990,7 +988,7 @@ export function useTelemetry() { return {}; }
 
       fireEvent.click(screen.getByRole("button", { name: "Add your own key" }));
 
-      expect(screen.getByText("Bring Your Own Key (BYOK)")).toBeInTheDocument();
+      expect(screen.getByText("Connect an AI provider")).toBeInTheDocument();
     });
 
     it("keeps all three prompt chips disabled when no graph is loaded (covers: AC-10)", () => {
@@ -1315,9 +1313,7 @@ export function useTelemetry() { return {}; }
         expect(screen.queryByTitle("Stop response")).not.toBeInTheDocument();
       });
 
-      expect(
-        screen.getByText("Ask Architectural Questions"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Get to know this codebase")).toBeInTheDocument();
       const otherThread = JSON.parse(
         sessionStorage.getItem("cv:thread:other/lib") ?? "[]",
       ) as unknown[];
@@ -1348,7 +1344,7 @@ export function useTelemetry() { return {}; }
       expect(screen.queryByText("GEMINI")).not.toBeInTheDocument();
 
       // Must immediately open KeySettingsDialog
-      expect(screen.getByText("Bring Your Own Key (BYOK)")).toBeInTheDocument();
+      expect(screen.getByText("Connect an AI provider")).toBeInTheDocument();
     });
 
     it("renders interactive multi-model dropdown selector and switches active model for queries", async () => {

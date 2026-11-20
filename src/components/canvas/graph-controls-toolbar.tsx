@@ -55,7 +55,7 @@ export function GraphControlsToolbar({
       data-testid="graph-controls-toolbar"
       aria-label="Canvas zoom and view controls"
       className={cn(
-        "flex items-center gap-1 p-1 rounded-lg select-none shadow-sm transition-all",
+        "flex items-center gap-1 p-1.5 rounded-lg select-none shadow-sm",
         "bg-surface-panel border border-border-subtle",
         className,
       )}
@@ -91,7 +91,7 @@ export function GraphControlsToolbar({
 
       {formattedZoom && (
         <span
-          className="px-1.5 text-[11px] font-mono font-medium text-text-secondary select-none"
+          className="px-1.5 text-xs font-medium text-text-secondary select-none"
           aria-live="polite"
           title="Current canvas zoom"
         >
