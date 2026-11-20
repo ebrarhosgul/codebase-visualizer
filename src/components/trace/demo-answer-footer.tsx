@@ -45,7 +45,7 @@ export function DemoAnswerFooter({
         </div>
       )}
 
-      <div className="pt-2 border-t border-border-subtle flex flex-wrap items-center justify-between gap-2 text-[10.5px] text-text-muted">
+      <div className="pt-2 border-t border-border-subtle flex flex-wrap items-center justify-between gap-2 text-xs leading-5 text-text-muted">
         <span>
           Computed from the loaded dependency graph, no AI model involved.
         </span>

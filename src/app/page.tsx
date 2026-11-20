@@ -16,6 +16,9 @@ import { DeepLinkingSync } from "@/hooks/use-deep-linking";
 export default function Home(): React.JSX.Element {
   const [fileFilter, setFileFilter] = useState("");
   const [showAllFiles, setShowAllFiles] = useState(false);
+  const [welcomeTab, setWelcomeTab] = useState<"code" | "inspector" | "trace">(
+    "code",
+  );
   const activeRightTab = useWorkspaceStore((state) => state.activeRightTab);
   const setActiveRightTab = useWorkspaceStore(
     (state) => state.setActiveRightTab,
@@ -50,7 +53,7 @@ export default function Home(): React.JSX.Element {
   );
 
   const leftContent = (
-    <div className="p-2 flex flex-col gap-2 h-full select-none">
+    <div className="p-4 flex flex-col gap-4 h-full select-none">
       {/* Active Repository Metadata Bar */}
       <div className="flex items-center justify-between px-1 pt-1">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -59,7 +62,7 @@ export default function Home(): React.JSX.Element {
             className="text-xs font-semibold text-text-primary truncate"
             title={repository?.fullName ?? "No repository loaded"}
           >
-            {repository ? repository.fullName : "No repository"}
+            {repository ? repository.fullName : "No repository yet"}
           </span>
         </div>
         {repository ? (
@@ -105,7 +108,7 @@ export default function Home(): React.JSX.Element {
           onChange={(e) => setFileFilter(e.target.value)}
           placeholder="Filter files..."
           aria-label="Filter repository files"
-          className="h-7 text-xs bg-surface-canvas border-border-default text-text-primary placeholder:text-text-muted"
+          className="h-10 text-sm bg-surface-canvas border-border-default text-text-primary placeholder:text-text-muted"
           data-testid="file-search-input"
         />
       </div>
@@ -129,10 +132,12 @@ export default function Home(): React.JSX.Element {
   const rightContent = (
     <div className="w-full h-full flex-1 min-h-0 flex flex-col">
       <Tabs
-        value={activeRightTab}
-        onValueChange={(val) =>
-          setActiveRightTab(val as "code" | "inspector" | "trace")
-        }
+        value={graph ? activeRightTab : welcomeTab}
+        onValueChange={(val) => {
+          const tab = val as "code" | "inspector" | "trace";
+          if (!graph) setWelcomeTab(tab);
+          setActiveRightTab(tab);
+        }}
         className="w-full h-full flex-1 min-h-0"
         items={[
           {

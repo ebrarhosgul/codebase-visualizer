@@ -24,6 +24,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 11 | Canvas performance optimization | Slice 7 | done |
 | 12 | Web Worker isolation for layout and parsing computations | Slice 8 | done |
 | 13 | Zero friction demo mode with graph heuristics | Slice 9 | done |
+| 14 | Design system overhaul | Slice 10 | in-progress |
 
 ## Foundations
 
@@ -205,6 +206,21 @@ spec [0013](../specs/0013-zero-friction-demo-mode/index.md) · code in `src/lib/
 - [x] Verify it: `/check verify zero friction demo mode with graph heuristics`
 - [x] Test it: `/test zero friction demo mode with graph heuristics`
 - [x] Review it: `/check review zero friction demo mode with graph heuristics`
+
+## Slice 10: Design system overhaul
+
+### 14. Design system overhaul · in-progress
+Refresh the visual language across the workspace using the direction in `docs/design.md`. Keep the interface clear, consistent, accessible, and fast on large graphs.
+**Done when:** color, typography, spacing, components, and graph states follow one cohesive system in both themes, unnecessary visual clutter is removed, and canvas interaction performance is verified against the existing performance goals.
+**Spec:** [0004](../specs/0004-design-system-and-ui-foundation/index.md#proposed-design-system-overhaul)
+- [x] Design it (spec): `/architect design system overhaul`
+- [ ] Build it: `/develop design system overhaul`
+  - [ ] Baseline and a complete token, control, graph, and editor thread in both themes (OAC-1, OAC-3, OAC-5, OAC-6, OAC-7)
+  - [ ] Workspace controls, panels, states, and responsive behavior (OAC-2, OAC-5, OAC-7)
+  - [ ] Graph and editor theme migration (OAC-3, OAC-4, OAC-6, OAC-7)
+  - [ ] Accessibility, contrast, and performance verification (OAC-1 through OAC-7)
+- [ ] Verify it: `/check verify design system overhaul`
+- [ ] Test it: `/test design system overhaul`
 
 ## Deferred
 Out of scope for the current build pass, kept so the plan stays honest.

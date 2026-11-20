@@ -48,7 +48,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
         <div className="relative flex items-center">
           {Icon && (
-            <div className="absolute left-2 pointer-events-none text-[var(--text-muted)]">
+            <div className="absolute left-3 pointer-events-none text-[var(--text-muted)]">
               <Icon className="w-4 h-4" aria-hidden="true" />
             </div>
           )}
@@ -59,11 +59,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             aria-invalid={Boolean(error)}
             aria-describedby={error ? errorId : helperId}
             className={cn(
-              "w-full h-7 px-2 rounded-md text-xs text-text-primary bg-surface-canvas border border-border-default hover:border-border-strong transition-colors",
+              "w-full h-9 px-3 rounded-md text-sm text-text-primary bg-surface-canvas border border-border-default hover:border-border-strong transition-colors",
               "placeholder:text-text-muted",
               "focus-visible:outline-none focus-visible:border-border-focus focus-visible:ring-1 focus-visible:ring-border-focus/40",
               "disabled:opacity-50 disabled:cursor-not-allowed",
-              Icon && "pl-7",
+              Icon && "pl-9",
               error &&
                 "border-status-error focus-visible:border-status-error focus-visible:ring-status-error/30",
               className,

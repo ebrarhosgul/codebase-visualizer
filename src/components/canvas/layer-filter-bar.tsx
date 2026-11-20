@@ -177,7 +177,7 @@ export function LayerFilterBar({
     <nav
       aria-label="Architectural filter and canvas controls"
       className={cn(
-        "flex items-center gap-2 max-w-full overflow-x-auto overflow-y-hidden p-1.5 rounded-xl border border-border-subtle bg-surface-panel shadow-sm select-none",
+        "flex items-center gap-2 max-w-full overflow-x-auto overflow-y-hidden p-2 rounded-lg border border-border-default bg-surface-panel shadow-sm select-none",
         className,
       )}
       data-testid="layer-filter-bar"
@@ -191,7 +191,7 @@ export function LayerFilterBar({
           onChange={(e) => setLocalSearch(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Filter files or symbols..."
-          className="w-full h-7 pl-8 pr-7 text-xs font-mono bg-surface-canvas text-text-primary border border-border-default rounded-lg placeholder:text-text-muted focus:outline-hidden focus:border-accent-primary focus:ring-1 focus:ring-border-focus/30 transition-all"
+          className="w-full h-9 pl-8 pr-7 text-sm bg-surface-panel-secondary text-text-primary border border-border-default rounded-lg placeholder:text-text-muted focus:outline-hidden focus:border-accent-primary focus:ring-1 focus:ring-border-focus/30 transition-all"
           data-testid="canvas-search-input"
           aria-label="Filter canvas by file or symbol name"
         />
@@ -229,22 +229,13 @@ export function LayerFilterBar({
               aria-pressed={isSelected}
               data-layer-active={isSelected}
               className={cn(
-                "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-mono font-medium transition-all shrink-0 cursor-pointer border",
+                "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors shrink-0 cursor-pointer border",
                 isSelected
-                  ? "border-current shadow-xs"
+                  ? "border-accent-border bg-accent-subtle text-accent-text"
                   : isFiltering
-                    ? "border-transparent opacity-40 hover:opacity-80 bg-surface-canvas"
-                    : "border-border-subtle bg-surface-canvas hover:border-border-strong text-text-secondary hover:text-text-primary",
+                    ? "border-transparent opacity-60 hover:opacity-100 bg-surface-panel-secondary"
+                    : "border-transparent bg-surface-panel-secondary hover:border-border-strong text-text-secondary hover:text-text-primary",
               )}
-              style={
-                isSelected
-                  ? {
-                      color: layer.color,
-                      backgroundColor: `${layer.color}15`,
-                      borderColor: `${layer.color}60`,
-                    }
-                  : undefined
-              }
               data-testid={`layer-filter-${layer.id}`}
               aria-label={`Filter by ${layer.label} layer (${count} files)`}
             >
@@ -264,7 +255,7 @@ export function LayerFilterBar({
           <button
             type="button"
             onClick={clearLayerFilters}
-            className="text-[11px] font-mono text-text-secondary hover:text-text-primary underline px-1.5 py-0.5 transition-colors shrink-0"
+            className="text-xs text-text-secondary hover:text-text-primary underline px-1.5 py-0.5 transition-colors shrink-0"
             data-testid="clear-layer-filters"
           >
             All layers
@@ -279,7 +270,7 @@ export function LayerFilterBar({
         <button
           type="button"
           onClick={collapseAllFolders}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-text-secondary hover:text-text-primary hover:bg-surface-active border border-transparent hover:border-border-subtle transition-colors shrink-0"
+          className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-text-secondary hover:text-text-primary hover:bg-surface-active border border-transparent hover:border-border-subtle transition-colors shrink-0"
           title="Collapse all folders into summary cards"
           data-testid="collapse-all-folders"
           aria-label="Collapse all folders"
@@ -291,7 +282,7 @@ export function LayerFilterBar({
         <button
           type="button"
           onClick={expandAllFolders}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-text-secondary hover:text-text-primary hover:bg-surface-active border border-transparent hover:border-border-subtle transition-colors shrink-0"
+          className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-text-secondary hover:text-text-primary hover:bg-surface-active border border-transparent hover:border-border-subtle transition-colors shrink-0"
           title="Expand all folders"
           data-testid="expand-all-folders"
           aria-label="Expand all folders"
@@ -306,7 +297,7 @@ export function LayerFilterBar({
           onClick={toggleHideExternal}
           aria-pressed={hideExternal}
           className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono border transition-colors shrink-0",
+            "flex items-center gap-1 px-2 py-1 rounded-md text-xs border transition-colors shrink-0",
             hideExternal
               ? "bg-accent-subtle text-accent-text border-accent-border"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-active border-transparent hover:border-border-subtle",
@@ -331,7 +322,7 @@ export function LayerFilterBar({
           <button
             type="button"
             onClick={resetAllFilters}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono text-text-secondary hover:text-text-primary hover:bg-surface-hover border border-border-default transition-colors shrink-0"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-text-secondary hover:text-text-primary hover:bg-surface-hover border border-border-default transition-colors shrink-0"
             title="Reset all filters and search query"
             data-testid="reset-all-filters"
           >

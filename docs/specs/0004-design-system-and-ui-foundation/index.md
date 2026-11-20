@@ -3,6 +3,84 @@
 **Date**: 2026-09-02
 **Status**: Accepted
 
+The status above records the shipped foundation. The proposed overhaul below has its own status and does not change the meaning of the completed foundation work or its verification record.
+
+## Proposed design system overhaul
+
+**Date**: 2026-11-20
+**Status**: Proposed
+**Scope**: Slice 10, Design system overhaul
+
+### Summary
+
+Refresh the existing workspace to follow `docs/design.md` in both themes. Keep the current workspace behavior and libraries, and migrate the interface in small complete slices. The guide defines the target values and visual direction; CSS custom properties hold the implemented values.
+
+### Requirements
+
+- **OAC-1**: Both themes use the semantic colors, typography, spacing, shape, elevation, and motion rules in `docs/design.md`. Dark remains the default and the existing theme preference continues to work. Check real foreground and background pairs: normal text reaches 4.5 to 1, large text 3 to 1, and essential control boundaries and state indicators 3 to 1 against adjacent colors.
+- **OAC-2**: The workspace, shared controls, menus, dialogs, notices, trace panel, editor surround, and graph controls follow the guide. Remove redundant decoration and labels without removing useful information or actions. Empty, loading, and error states explain the situation and offer a relevant next action where one exists.
+- **OAC-3**: Graph nodes, folder groups, minimap, edges, selection, and relationship highlights follow the guide in both themes. A selected item and relationship remain identifiable without color alone. Preserve graph navigation, filtering, tracing, node selection, and source linking.
+- **OAC-4**: The editor uses a legible theme matching the active workspace theme. Preserve syntax highlighting, source navigation, and the existing font size preference.
+- **OAC-5**: Keyboard focus is visible and unobscured. Controls retain accessible names and keyboard behavior, dialogs and drawers return focus, and small screen layouts preserve the current selection. Respect reduced motion and the target sizes described in the guide.
+- **OAC-6**: Preserve viewport pruning, node specific updates, and progressive disclosure from spec 0011. On the same graph with hundreds of nodes and the same browser and machine, record before and after traces of pan, zoom, selection, and streaming. Assess the 60 FPS goal and visible stutter against spec 0011, investigate regressions, and record the fixture, environment, results, and any unmet target. A missed target is not a pass.
+- **OAC-7**: Update the design guide and central tokens together if implementation reveals a necessary change. Audit actual component usage, including inline React Flow and Monaco styles, so obsolete palette values and visual rules do not persist in the migrated surfaces.
+
+For migrated surfaces, OAC-1 replaces the foundation's broader contrast wording: decorative separators need not meet the control boundary threshold, and large text may use the stated 3 to 1 threshold. The rest of the foundation remains in force unless this overhaul explicitly changes it.
+
+### Decision and boundaries
+
+**Chosen option**: Update the existing semantic tokens and components in place, using the current Tailwind CSS, Radix, React Flow, Monaco, and Zustand integration. The runner up is a parallel replacement component library; it adds migration and styling overhead without addressing the inline canvas and editor styles.
+
+**Implementation skills**: `modern-web-guidance` (`~/.gemini/config/plugins/modern-web-guidance-plugin/skills/modern-web-guidance/`), for web interface and accessibility guidance.
+
+This is a visual and interaction quality change. It does not add a data model, API, authentication rule, environment variable, or new persistence format. Keep existing stored theme and layout preferences, public component behavior, and graph data contracts. Do not introduce a new component framework or a feature flag solely for this change. Each completed slice can be reverted through its changes in version control.
+
+### Implementation contract
+
+| Surface | Source and required behavior |
+|---|---|
+| Colors and scales | `docs/design.md` supplies target values; `src/app/globals.css` supplies runtime semantic variables. Map existing names deliberately and remove obsolete aliases only after their consumers migrate. |
+| Shared interface | `src/components/ui/`, `layout/`, `workspace/`, and `trace/` consume semantic tokens. Keep accessible primitive behavior and existing functional states. |
+| Graph | `src/components/canvas/` derives styles from the existing selected node, edge direction, active trace, and answer highlight state. Use an outline for selection, arrowheads for direction, and a solid wider stroke for traced edges. Selection remains outlined during a trace; a traced edge keeps its trace treatment while other edges are subdued. Follow the existing mutually exclusive trace and answer highlight lifecycle from spec 0013. Use theme aware values for nodes, edges, markers, minimap, and background. Remove animated dashes and glow effects. |
+| Editor | Resolve the effective light or dark theme from the saved workspace preference, using the operating system preference for `system`. Apply the same resolution at first paint and react to operating system changes while `system` is selected. A central adapter maps semantic theme colors and legible syntax colors to Monaco theme definitions, including selection and loading states. |
+| Responsive and motion | Preserve panel sizes and selection when switching layouts. At 859px use drawers; at 860px use the split workspace. Drawers retain focus management, and collapsing a panel containing focus moves it to its expand control. Suppress nonessential animation for reduced motion. |
+| Failure and storage | Existing repository, loading, and error flows remain functional. Unavailable or invalid saved preferences fall back to existing safe defaults; the overhaul introduces no new stored fields. |
+
+### Welcome canvas presentation
+
+The welcome canvas refresh (2026-11-20) is part of OAC-2 and OAC-5. Center the introduction, illustration, supporting text, repository URL hint, and example section horizontally within the available canvas. Keep the content width constrained and allow vertical scrolling on short screens.
+
+Use a small static inline SVG of connected code and file nodes above the introduction. It is decorative, hidden from assistive technology, and uses existing semantic colors with reserved dimensions. Keep the existing welcome copy and ingestion copy. While ingestion is active, show the existing loading message and hide the URL hint and example section.
+
+Render the existing React and Next.js examples from `DEMO_REPOS`. Cards retain the existing `startIngestion` action, repository names, repository paths, and test identifiers. Use a semantic panel surface, violet icon inset, directional arrow, visible keyboard focus, and color changes on hover. Keep card contents left aligned for scanning while centering the overall example section.
+
+Use the canvas width rather than the browser width for the card layout. At a canvas width of at least 32rem, show two equal columns. Below that width, stack the cards. Use the existing Geist fonts and theme tokens in both themes.
+
+Keep the presentation limited to static markup and CSS. Add no dependencies, external images, font downloads, requests, timers, animation loops, or changes to graph computation and rendering. The illustration appears only in the empty canvas branch. These constraints limit added work but do not establish a measured performance result or complete OAC-6.
+
+### Performance measurement
+
+Use a headed production build with the same browser, machine, viewport, zoom, and a recorded graph of at least 300 nodes before and after the change. Record node and edge counts, fixture identity, browser version, hardware, and any throttling. For each run, record a trace while panning for 10 seconds, zooming across the 1.2 disclosure threshold for 10 seconds, and selecting nodes and tracing relationships for 10 seconds. Repeat each interaction three times and record frame time p95 and visible stalls for every run. Compare matching runs and investigate any regression rather than averaging away a stall.
+
+For streaming, use the demo flow from spec 0013: chunks of 2 to 4 tokens at about 30 ms intervals, with the trace covering wheel zoom throughout the stream and its highlight commit. Record three runs and require p95 frame time at or below 16.7 ms for each, as specified there. The 60 FPS goal applies to the other interactions as well; record any missed target and do not mark OAC-6 complete until it is resolved.
+
+### Build plan
+
+Use the project's Tracer Bullet approach. Each slice works in both themes and is checked through the real workspace before expanding its coverage.
+
+1. [ ] Capture a baseline for the representative large graph and inventory token and inline style consumers, including graph, editor, and shared controls. Record the graph, browser, machine, and interaction traces. **OAC-6, OAC-7**
+2. [ ] Deliver one complete thread through both themes: central tokens, a shared control, a graph node and its selected state, and the editor surround. Check contrast, focus, theme switching, and the existing interaction path. **OAC-1, OAC-3, OAC-5, OAC-7**
+3. [ ] Extend the system across workspace panels, shared primitives, dialogs, drawers, trace and status states, and small screens. Preserve actions, focus, and selection. **OAC-2, OAC-5, OAC-7**
+4. [ ] Migrate remaining graph nodes, groups, edges, markers, minimap, controls, and background. Preserve relationship meaning, filtering, tracing, source links, pruning, and disclosure. **OAC-3, OAC-6, OAC-7**
+5. [ ] Align Monaco themes and editor states with both workspace themes, retaining source navigation and font settings. **OAC-4, OAC-7**
+6. [ ] Verify contrast on actual state pairs, keyboard and reduced motion behavior, both themes and narrow screens. Compare the same performance traces with the baseline, resolve regressions, and run the relevant tests, lint, typecheck, and build. Record results separately from the completed foundation verification. **OAC-1 through OAC-7**
+
+### Consequences and follow up
+
+The current component and state contracts remain familiar, and incremental slices limit the cost of rollback. The audit must include inline canvas and editor values, which a token change alone cannot reach. A calm palette also requires explicit non color signals for relationship direction and selection.
+
+The existing `verify.md` records the completed foundation checks, not verification of this proposed overhaul. Add a separate dated overhaul verification record when the new criteria are checked. Reasoning and current evidence are in [rationale.md](rationale.md).
+
 ## Summary
 
 This specification establishes the design system and user interface foundation for Codebase Visualizer. It defines semantic color tokens tuned for dark mode developer workspaces, resizable split screen layout primitives, and accessible component building blocks. Adopting these primitives ensures that subsequent graph visualization and code inspection features build on consistent styling, smooth panel management, and keyboard friendly controls.

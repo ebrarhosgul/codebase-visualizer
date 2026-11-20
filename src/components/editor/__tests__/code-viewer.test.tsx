@@ -104,7 +104,9 @@ describe("CodeViewer", () => {
   it("renders empty state placeholder when no file is selected", () => {
     render(<CodeViewer />);
     expect(screen.getByTestId("code-viewer-empty")).toBeInTheDocument();
-    expect(screen.getByText("No File Selected")).toBeInTheDocument();
+    expect(
+      screen.getByText("Select a file to view its source"),
+    ).toBeInTheDocument();
   });
 
   it("renders file header, line count, and source code when a file is selected (AC-7)", () => {

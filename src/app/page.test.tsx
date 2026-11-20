@@ -24,7 +24,7 @@ describe("Home Page", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders page header, repository input, canvas, and inspector tabs", () => {
+  it("renders a welcome, repository input, files, and code", () => {
     render(<Home />);
 
     expect(
@@ -35,17 +35,32 @@ describe("Home Page", () => {
       screen.getByLabelText("Public GitHub Repository URL"),
     ).toBeInTheDocument();
 
+    expect(screen.getByTestId("canvas-empty-state")).toBeInTheDocument();
     expect(
       screen.getByLabelText("Filter repository files"),
     ).toBeInTheDocument();
-
     expect(screen.getByRole("tab", { name: /Code/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Inspector/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Trace/i })).toBeInTheDocument();
 
     expect(
       screen.getByRole("button", { name: "Analyze Repository" }),
     ).toBeInTheDocument();
+  });
+
+  it("starts on the code tab without a repository even when another tab was saved", () => {
+    useWorkspaceStore.getState().setActiveRightTab("trace");
+    render(<Home />);
+
+    expect(screen.getByRole("tab", { name: /Code/i })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Trace/i }), {
+      button: 0,
+    });
+    expect(screen.getByRole("tab", { name: /Trace/i })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
   });
 
   it("navigates to code viewer when clicking a file item in the explorer (AC-1, AC-2)", () => {

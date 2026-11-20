@@ -245,13 +245,13 @@ export function KeySettingsDialog({
       open={open}
       onOpenChange={handleOpenChange}
       data-testid="key-settings-dialog"
-      title="Bring Your Own Key (BYOK)"
-      description="Store API keys securely in an AES-256-GCM encrypted browser cookie. Keys are never logged or persisted on our servers."
+      title="Connect an AI provider"
+      description="Add a provider key to ask questions with an AI model. Your key is stored in an encrypted browser cookie."
     >
-      <form onSubmit={handleSaveKey} className="space-y-4 pt-2">
+      <form onSubmit={handleSaveKey} className="space-y-6 pt-1">
         {/* Configured Keys Summary Section */}
         <div
-          className="p-2.5 rounded-md bg-surface-canvas border border-border-default space-y-2"
+          className="pb-4 border-b border-border-subtle space-y-3"
           data-testid="configured-keys-summary"
         >
           <div className="flex items-center justify-between">
@@ -259,7 +259,7 @@ export function KeySettingsDialog({
               Configured Keys
             </span>
             <span
-              className="text-[11px] font-mono px-1.5 py-0.5 rounded-sm bg-surface-panel-secondary border border-border-subtle text-text-secondary"
+              className="text-xs font-mono px-1.5 py-0.5 rounded-sm bg-surface-panel-secondary border border-border-subtle text-text-secondary"
               data-testid="configured-keys-count"
             >
               {keyCount} {keyCount === 1 ? "key" : "keys"} configured
@@ -268,7 +268,7 @@ export function KeySettingsDialog({
 
           {keyCount === 0 ? (
             <p
-              className="text-[11px] text-text-muted"
+              className="text-xs text-text-muted"
               data-testid="no-configured-keys-msg"
             >
               No API keys configured yet. Add a provider key below to enable
@@ -292,12 +292,12 @@ export function KeySettingsDialog({
                       <span className="font-medium text-text-primary truncate">
                         {label}
                       </span>
-                      <span className="text-[10px] uppercase font-mono px-1 py-0.2 rounded-xs bg-surface-active text-text-secondary">
+                      <span className="text-xs uppercase font-mono px-1 py-0.2 rounded-xs bg-surface-active text-text-secondary">
                         {providerId}
                       </span>
                       {masked && (
                         <span
-                          className="text-[10px] font-mono text-text-muted"
+                          className="text-xs font-mono text-text-muted"
                           data-testid={`masked-key-${providerId}`}
                         >
                           {masked}
@@ -311,7 +311,7 @@ export function KeySettingsDialog({
                       data-testid={`delete-key-${providerId}`}
                       aria-label={`Delete ${label} key`}
                       title={`Delete ${label} key`}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-xs text-status-error hover:bg-status-error/10 transition-colors cursor-pointer disabled:opacity-50"
                     >
                       <Trash2 className="w-3 h-3" />
                       <span>Remove</span>
@@ -329,7 +329,7 @@ export function KeySettingsDialog({
             <MessageSquare className="w-3.5 h-3.5 text-text-secondary" />
             <span>Chat Providers</span>
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {CHAT_PROVIDERS.map((p) => {
               const isSelected = selectedProvider === p.id;
               const isConfigured = localConfiguredProviders.includes(p.id);
@@ -344,7 +344,7 @@ export function KeySettingsDialog({
                     setSelectedProvider(p.id);
                     setStatusMessage(null);
                   }}
-                  className={`p-2 rounded-md border text-left text-xs transition-colors cursor-pointer ${
+                  className={`p-3 rounded-md border text-left text-sm transition-colors cursor-pointer ${
                     isSelected
                       ? "border-accent-border bg-surface-active text-text-primary font-medium"
                       : "border-border-default bg-surface-canvas text-text-secondary hover:text-text-primary hover:border-border-strong"
@@ -368,15 +368,19 @@ export function KeySettingsDialog({
 
         {/* API key input */}
         <div className="space-y-1.5">
-          <p className="text-[11px] text-text-muted pt-0.5">
+          <p className="text-xs text-text-muted pt-0.5">
             {activeProviderMeta?.hint}
           </p>
-          <label className="text-xs font-medium text-text-primary flex items-center gap-1.5">
+          <label
+            htmlFor="provider-api-key"
+            className="text-xs font-medium text-text-primary flex items-center gap-1.5"
+          >
             <Key className="w-3.5 h-3.5 text-text-secondary" />
             <span>API Key</span>
           </label>
           <div className="relative flex items-center">
             <Input
+              id="provider-api-key"
               type={showApiKey ? "text" : "password"}
               placeholder={`Enter your ${selectedProvider} API key...`}
               value={apiKey}
@@ -408,7 +412,7 @@ export function KeySettingsDialog({
             className={`p-2.5 rounded-md text-xs flex items-center gap-2 ${
               statusMessage.type === "success"
                 ? "bg-status-success/10 border border-status-success/20 text-status-success"
-                : "bg-red-500/10 border border-red-500/20 text-red-300"
+                : "bg-status-error/10 border border-status-error/30 text-status-error"
             }`}
           >
             {statusMessage.type === "success" && (
@@ -426,7 +430,7 @@ export function KeySettingsDialog({
             onClick={handleClearKey}
             loading={isSubmitting}
             data-testid="clear-key-btn"
-            className="text-red-400 hover:bg-red-500/10 hover:text-red-300 gap-1.5"
+            className="text-status-error hover:bg-status-error/10 gap-1.5"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Clear Stored Key</span>

@@ -60,13 +60,13 @@ export function executeLayoutComputation(
     ...edge,
     type: "smoothstep",
     style: {
-      stroke: "#475569",
+      stroke: "var(--border-strong)",
       strokeWidth: 1.5,
       strokeOpacity: 0.6,
     },
     markerEnd: {
       type: "arrowclosed",
-      color: "rgba(100, 116, 139, 0.6)",
+      color: "#918ba8",
       width: 12,
       height: 12,
     },

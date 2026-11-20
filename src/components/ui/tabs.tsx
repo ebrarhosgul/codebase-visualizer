@@ -46,7 +46,7 @@ export function Tabs({
     >
       <TabsPrimitive.List
         className={cn(
-          "h-8 px-1.5 bg-surface-panel border-b border-border-subtle flex items-center gap-0.5 shrink-0",
+          "h-12 px-4 bg-surface-panel border-b border-border-subtle flex items-stretch gap-5 shrink-0",
           listClassName,
         )}
       >
@@ -57,10 +57,10 @@ export function Tabs({
             disabled={tab.disabled}
             data-testid={`tab-trigger-${tab.value}`}
             className={cn(
-              "px-2 h-6 text-xs font-medium rounded-md border border-transparent transition-colors select-none cursor-pointer",
-              "text-text-secondary hover:text-text-primary hover:bg-surface-hover",
+              "px-0 h-full text-sm font-medium border-b-2 border-transparent transition-colors select-none cursor-pointer",
+              "text-text-secondary hover:text-text-primary ",
               "focus-visible:outline-2 focus-visible:outline-[var(--border-focus)] focus-visible:outline-offset-1",
-              "data-[state=active]:bg-surface-active data-[state=active]:text-text-primary data-[state=active]:border-border-default",
+              "data-[state=active]:text-text-primary data-[state=active]:border-accent-text",
               "disabled:opacity-40 disabled:cursor-not-allowed",
             )}
           >

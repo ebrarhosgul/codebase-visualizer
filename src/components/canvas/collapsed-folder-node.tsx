@@ -66,9 +66,9 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
       onDoubleClick={handleExpand}
       className={cn(
         "group relative w-[260px] rounded-lg border p-3 select-none cursor-pointer transition-colors duration-150",
-        "bg-surface-card shadow-xs",
+        "bg-surface-card",
         selected
-          ? "border-[var(--accent-primary)] ring-1 ring-[var(--accent-primary)]/50"
+          ? "border-accent-border outline-2 outline-accent-border outline-offset-2"
           : "border-border-default hover:border-border-strong",
       )}
       data-testid={`collapsed-folder-${label}`}
@@ -84,7 +84,7 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
 
       <div className="flex items-center justify-between gap-2 border-b border-border-subtle pb-2 mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <div className="p-1 rounded-sm bg-surface-panel-secondary border border-border-default shrink-0 text-text-secondary">
+          <div className="shrink-0 text-text-secondary">
             <Folder className="w-3.5 h-3.5" />
           </div>
           <span
@@ -110,17 +110,17 @@ export const CollapsedFolderNode = React.memo(function CollapsedFolderNode({
         <div className="flex items-center gap-1.5">
           <Badge
             variant="default"
-            className="text-[9px] font-mono px-1.5 py-0.2 border border-border-strong bg-surface-hover text-text-secondary"
+            className="text-xs font-mono px-1.5 py-0.2 border border-border-strong bg-surface-hover text-text-secondary"
           >
             {layerDef.label}
           </Badge>
-          <span className="text-[10px] font-mono text-text-secondary">
+          <span className="text-xs font-mono text-text-secondary">
             {fileCount} {fileCount === 1 ? "file" : "files"}
           </span>
         </div>
 
         {/* Aggregated external dependencies counters */}
-        <div className="flex items-center gap-2 text-[10px] font-mono text-text-secondary">
+        <div className="flex items-center gap-2 text-xs font-mono text-text-secondary">
           {externalImportCount > 0 && (
             <span
               className="flex items-center gap-0.5 text-text-secondary"

@@ -16,14 +16,16 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useShallow } from "zustand/react/shallow";
 import {
-  Sparkles,
-  Network,
+  ArrowUp,
+  ArrowUpRight,
+  GitBranch,
   FilterX,
   RotateCcw,
   AlertTriangle,
 } from "lucide-react";
 import { codebaseNodeTypes } from "./node-types";
 import { GraphControlsToolbar } from "./graph-controls-toolbar";
+import { useEffectiveTheme } from "@/hooks/use-effective-theme";
 import { CustomMiniMap } from "./custom-minimap";
 import { LayerFilterBar } from "./layer-filter-bar";
 import { Button } from "@/components/ui/button";
@@ -44,6 +46,7 @@ export interface ArchitectureCanvasProps {
 function ArchitectureCanvasInner({
   className,
 }: ArchitectureCanvasProps): React.JSX.Element {
+  const theme = useEffectiveTheme();
   const graph = useGraphStore((state) => state.graph);
   const selectedNodeId = useGraphStore((state) => state.selectedNodeId);
   const selectedFileId = useGraphStore((state) => state.selectedFileId);
@@ -85,14 +88,12 @@ function ArchitectureCanvasInner({
     isLeftCollapsed,
     isRightCollapsed,
     setActiveRightTab,
-    theme,
   } = useWorkspaceStore(
     useShallow((state) => ({
       isSmallScreen: state.isSmallScreen,
       isLeftCollapsed: state.isLeftSidebarCollapsed,
       isRightCollapsed: state.isRightPanelCollapsed,
       setActiveRightTab: state.setActiveRightTab,
-      theme: state.theme,
     })),
   );
 
@@ -474,6 +475,11 @@ function ArchitectureCanvasInner({
     const isHighlightActive = Boolean(highlightNodeId);
     const isTraceActive = Boolean(activeTrace);
     const traceEdgeSet = new Set(highlightedEdgeIds);
+    // React Flow includes marker colors in SVG ids, so keep these values free
+    // of CSS variable syntax. The values mirror the semantic theme tokens.
+    const markerStrong = theme === "light" ? "#777086" : "#918ba8";
+    const markerAccent = theme === "light" ? "#7046d6" : "#b59aff";
+    const markerText = theme === "light" ? "#5830b6" : "#d1beff";
 
     const getMarkerColor = (marker: unknown): string | undefined => {
       if (typeof marker === "object" && marker !== null && "color" in marker) {
@@ -488,27 +494,26 @@ function ArchitectureCanvasInner({
         if (isTraceActive) {
           if (traceEdgeSet.has(e.id)) {
             if (
-              e.animated === true &&
-              e.style?.stroke === "#38bdf8" &&
+              e.animated === false &&
+              e.style?.stroke === "var(--accent-border)" &&
               e.style?.strokeWidth === 3 &&
               e.style?.strokeOpacity === 1 &&
-              getMarkerColor(e.markerEnd) === "#38bdf8"
+              getMarkerColor(e.markerEnd) === markerAccent
             ) {
               return e;
             }
             changed = true;
             return {
               ...e,
-              animated: true,
+              animated: false,
               style: {
-                stroke: "#38bdf8",
+                stroke: "var(--accent-border)",
                 strokeWidth: 3,
-                filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4))",
                 strokeOpacity: 1,
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                color: "#38bdf8",
+                color: markerAccent,
                 width: 16,
                 height: 16,
               },
@@ -516,10 +521,10 @@ function ArchitectureCanvasInner({
           }
           if (
             e.animated === false &&
-            e.style?.stroke === "#1e293b" &&
+            e.style?.stroke === "var(--border-strong)" &&
             e.style?.strokeWidth === 1 &&
             e.style?.strokeOpacity === 0.15 &&
-            getMarkerColor(e.markerEnd) === "rgba(51, 65, 85, 0.15)"
+            getMarkerColor(e.markerEnd) === markerStrong
           ) {
             return e;
           }
@@ -528,13 +533,13 @@ function ArchitectureCanvasInner({
             ...e,
             animated: false,
             style: {
-              stroke: "#1e293b",
+              stroke: "var(--border-strong)",
               strokeWidth: 1,
               strokeOpacity: 0.15,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: "rgba(51, 65, 85, 0.15)",
+              color: markerStrong,
               width: 10,
               height: 10,
             },
@@ -549,27 +554,26 @@ function ArchitectureCanvasInner({
         if (isHighlightActive) {
           if (isOutgoing) {
             if (
-              e.animated === true &&
-              e.style?.stroke === "#38bdf8" &&
+              e.animated === false &&
+              e.style?.stroke === "var(--accent-border)" &&
               e.style?.strokeWidth === 3 &&
               e.style?.strokeOpacity === 1 &&
-              getMarkerColor(e.markerEnd) === "#38bdf8"
+              getMarkerColor(e.markerEnd) === markerAccent
             ) {
               return e;
             }
             changed = true;
             return {
               ...e,
-              animated: true,
+              animated: false,
               style: {
-                stroke: "#38bdf8",
+                stroke: "var(--accent-border)",
                 strokeWidth: 3,
-                filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4))",
                 strokeOpacity: 1,
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                color: "#38bdf8",
+                color: markerAccent,
                 width: 16,
                 height: 16,
               },
@@ -577,26 +581,26 @@ function ArchitectureCanvasInner({
           }
           if (isIncoming) {
             if (
-              e.animated === true &&
-              e.style?.stroke === "#a78bfa" &&
+              e.animated === false &&
+              e.style?.stroke === "var(--accent-text)" &&
               e.style?.strokeWidth === 2.5 &&
               e.style?.strokeOpacity === 1 &&
-              getMarkerColor(e.markerEnd) === "#a78bfa"
+              getMarkerColor(e.markerEnd) === markerText
             ) {
               return e;
             }
             changed = true;
             return {
               ...e,
-              animated: true,
+              animated: false,
               style: {
-                stroke: "#a78bfa",
+                stroke: "var(--accent-text)",
                 strokeWidth: 2.5,
                 strokeOpacity: 1,
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                color: "#a78bfa",
+                color: markerText,
                 width: 14,
                 height: 14,
               },
@@ -604,10 +608,10 @@ function ArchitectureCanvasInner({
           }
           if (
             e.animated === false &&
-            e.style?.stroke === "#1e293b" &&
+            e.style?.stroke === "var(--border-strong)" &&
             e.style?.strokeWidth === 1 &&
             e.style?.strokeOpacity === 0.2 &&
-            getMarkerColor(e.markerEnd) === "rgba(51, 65, 85, 0.2)"
+            getMarkerColor(e.markerEnd) === markerStrong
           ) {
             return e;
           }
@@ -616,13 +620,13 @@ function ArchitectureCanvasInner({
             ...e,
             animated: false,
             style: {
-              stroke: "#1e293b",
+              stroke: "var(--border-strong)",
               strokeWidth: 1,
               strokeOpacity: 0.2,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: "rgba(51, 65, 85, 0.2)",
+              color: markerStrong,
               width: 10,
               height: 10,
             },
@@ -632,10 +636,10 @@ function ArchitectureCanvasInner({
         // Default idle edge state
         if (
           e.animated === false &&
-          e.style?.stroke === "#475569" &&
+          e.style?.stroke === "var(--border-strong)" &&
           e.style?.strokeWidth === 1.5 &&
           e.style?.strokeOpacity === 0.6 &&
-          getMarkerColor(e.markerEnd) === "rgba(100, 116, 139, 0.6)"
+          getMarkerColor(e.markerEnd) === markerStrong
         ) {
           return e;
         }
@@ -644,13 +648,13 @@ function ArchitectureCanvasInner({
           ...e,
           animated: false,
           style: {
-            stroke: "#475569",
+            stroke: "var(--border-strong)",
             strokeWidth: 1.5,
             strokeOpacity: 0.6,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "rgba(100, 116, 139, 0.6)",
+            color: markerStrong,
             width: 12,
             height: 12,
           },
@@ -665,6 +669,7 @@ function ArchitectureCanvasInner({
     incomingEdgeIds,
     activeTrace,
     highlightedEdgeIds,
+    theme,
     setEdges,
   ]);
 
@@ -817,41 +822,118 @@ function ArchitectureCanvasInner({
   if (!graph || Object.keys(graph.files).length === 0) {
     return (
       <div
-        className={`relative w-full h-full flex flex-col items-center justify-center p-8 bg-[var(--surface-canvas)] select-none ${className ?? ""}`}
+        className={`welcome-field relative w-full h-full overflow-auto ${className ?? ""}`}
         data-testid="architecture-canvas"
       >
         <div
-          className="max-w-md text-center space-y-4 z-10"
+          className="mx-auto flex min-h-full max-w-2xl items-center px-6 py-10 sm:px-10"
           data-testid="workspace-empty-state"
         >
           <div
             data-testid="canvas-empty-state"
-            className="flex flex-col items-center space-y-4"
+            className="w-full space-y-8 text-center"
           >
-            <div className="w-12 h-12 rounded-xl bg-[var(--surface-panel-secondary)] border border-[var(--border-default)] flex items-center justify-center mx-auto text-[var(--accent-primary)] shadow-sm">
-              <Network className="w-6 h-6" />
-            </div>
-
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-                {isIngesting
-                  ? "Analyzing Codebase Architecture..."
-                  : "Architecture Graph Canvas"}
-              </h2>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                {isIngesting
-                  ? "Streaming repository archive and parsing abstract syntax tree dependencies..."
-                  : "Submit a public GitHub repository link in the header bar above to visualize modules, imports, and source code side by side."}
+            <section className="max-w-2xl">
+              <svg
+                viewBox="0 0 320 96"
+                fill="none"
+                aria-hidden="true"
+                focusable="false"
+                className="mx-auto mb-8 h-24 w-80 max-w-full"
+              >
+                <path
+                  d="M88 48H128Q144 48 144 32V28Q144 20 160 20H192M144 40V68Q144 76 160 76H192"
+                  stroke="var(--accent-border)"
+                  strokeWidth="1.5"
+                />
+                <rect
+                  x="1"
+                  y="25"
+                  width="87"
+                  height="46"
+                  rx="8"
+                  fill="var(--accent-subtle)"
+                  stroke="var(--accent-border)"
+                />
+                <path
+                  d="m23 40-8 8 8 8m10-16 8 8-8 8"
+                  stroke="var(--accent-text)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M54 43h19M54 53h12"
+                  stroke="var(--accent-text)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <rect
+                  x="192"
+                  y="1"
+                  width="104"
+                  height="38"
+                  rx="8"
+                  fill="var(--surface-panel)"
+                  stroke="var(--border-default)"
+                />
+                <rect
+                  x="192"
+                  y="57"
+                  width="104"
+                  height="38"
+                  rx="8"
+                  fill="var(--surface-panel)"
+                  stroke="var(--border-default)"
+                />
+                <path
+                  d="M207 14h10v12h-10zM207 70h10v12h-10z"
+                  stroke="var(--text-muted)"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M229 16h50M229 24h32M229 72h50M229 80h24"
+                  stroke="var(--border-strong)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle cx="144" cy="48" r="3" fill="var(--accent-text)" />
+              </svg>
+              <p className="mb-4 text-xs font-medium text-accent-text">
+                Welcome to Codebase Visualizer
               </p>
-            </div>
-
+              <h2 className="mx-auto max-w-xl text-3xl font-semibold leading-tight tracking-tight text-text-primary sm:text-4xl">
+                {isIngesting
+                  ? "Your map is taking shape"
+                  : "Understand how your code fits together."}
+              </h2>
+              <p className="mx-auto mt-4 max-w-lg text-sm leading-6 text-text-secondary">
+                {isIngesting
+                  ? "We’re exploring the repository and mapping its connections. This can take a moment."
+                  : "Explore an interactive map of any public GitHub repository. Follow dependencies, inspect source files, and ask questions as you go."}
+              </p>
+              {!isIngesting && (
+                <p className="mt-6 flex items-center justify-center gap-2 text-xs text-text-muted">
+                  <ArrowUp
+                    className="h-4 w-4 shrink-0 text-accent-text"
+                    aria-hidden="true"
+                  />
+                  Paste a repository URL above to get started.
+                </p>
+              )}
+            </section>
             {!isIngesting && (
-              <div className="flex flex-col items-center gap-3 pt-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--surface-panel)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)]">
-                  <Sparkles className="w-3 h-3 text-[var(--accent-primary)]" />
-                  <span>Try entering facebook/react or vercel/next.js</span>
-                </div>
-                <div className="flex items-center gap-1.5 pt-1">
+              <section
+                className="border-t border-border-subtle pt-6"
+                aria-label="Example repositories"
+              >
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Explore an example
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-text-secondary">
+                  See how the workspace works with a public project.
+                </p>
+                <div className="welcome-examples mt-4 grid gap-3">
                   {DEMO_REPOS.map((demo) => (
                     <button
                       key={demo.name}
@@ -860,13 +942,27 @@ function ArchitectureCanvasInner({
                         startIngestion({ repositoryUrl: demo.repo });
                       }}
                       data-testid={`demo-repo-btn-${demo.name}`}
-                      className="px-2.5 py-1 rounded text-xs font-mono bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors cursor-pointer"
+                      className="group flex w-full min-w-0 items-center gap-3 rounded-lg border border-border-default bg-surface-panel p-4 text-left transition-colors hover:border-accent-border hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
                     >
-                      {demo.name}
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent-subtle text-accent-text">
+                        <GitBranch className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-text-primary">
+                          {demo.name === "react" ? "React" : "Next.js"}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-text-muted">
+                          {demo.repo}
+                        </span>
+                      </span>
+                      <ArrowUpRight
+                        className="ml-auto h-4 w-4 shrink-0 text-text-muted group-hover:text-accent-text"
+                        aria-hidden="true"
+                      />
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
           </div>
         </div>
@@ -931,7 +1027,7 @@ function ArchitectureCanvasInner({
       {/* Floating Controls Bar (Layer Filters & Canvas Zoom Controls) */}
       <div
         className={cn(
-          "absolute top-3 z-20 pointer-events-none flex items-start justify-between gap-3",
+          "absolute top-3 z-20 pointer-events-none flex flex-col items-start gap-2",
           !isSmallScreen && isLeftCollapsed ? "left-12" : "left-3",
           !isSmallScreen && isRightCollapsed ? "right-12" : "right-3",
         )}
@@ -974,7 +1070,7 @@ function ArchitectureCanvasInner({
         <div
           role="alert"
           data-testid="canvas-layout-error"
-          className="absolute top-16 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 text-xs text-status-warning bg-surface-panel border border-status-warning/40 rounded-lg shadow-lg pointer-events-auto select-none"
+          className="absolute top-28 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 text-xs text-status-warning bg-surface-panel border border-status-warning/40 rounded-lg shadow-lg pointer-events-auto select-none"
         >
           <AlertTriangle className="w-4 h-4 text-status-warning shrink-0" />
           <span>
@@ -1002,10 +1098,14 @@ function ArchitectureCanvasInner({
         defaultEdgeOptions={{
           type: "smoothstep",
           animated: false,
-          style: { stroke: "#475569", strokeWidth: 1.5, strokeOpacity: 0.6 },
+          style: {
+            stroke: "var(--border-strong)",
+            strokeWidth: 1.5,
+            strokeOpacity: 0.6,
+          },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: "rgba(100, 116, 139, 0.6)",
+            color: theme === "light" ? "#777086" : "#918ba8",
             width: 12,
             height: 12,
           },
@@ -1016,7 +1116,7 @@ function ArchitectureCanvasInner({
           variant={BackgroundVariant.Dots}
           gap={16}
           size={1}
-          color="rgba(255, 255, 255, 0.05)"
+          color="var(--border-subtle)"
         />
         {isMinimapVisible && <CustomMiniMap />}
       </ReactFlow>

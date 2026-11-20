@@ -32,8 +32,8 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
 };
 
 const SIZE_CLASSES: Record<IconButtonSize, { button: string; icon: string }> = {
-  sm: { button: "h-6 w-6 rounded-md", icon: "w-3.5 h-3.5" },
-  md: { button: "h-7 w-7 rounded-md", icon: "w-4 h-4" },
+  sm: { button: "h-8 w-8 rounded-md", icon: "w-3.5 h-3.5" },
+  md: { button: "h-9 w-9 rounded-md", icon: "w-4 h-4" },
 };
 
 /**
